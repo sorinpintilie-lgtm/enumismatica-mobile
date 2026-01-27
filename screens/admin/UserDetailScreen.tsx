@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput } from 'react-native';
 import { useNavigation, useRoute, NavigationProp, RouteProp } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { getUserDetails, updateUserStatus, getUserActivity, isAdmin } from '../@shared/adminService';
+import { getUserDetails, updateUserStatus, getUserActivity, isAdmin } from '@shared/adminService';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { RootStackParamList } from '../../navigationTypes';
