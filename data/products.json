@@ -1,0 +1,282 @@
+[
+  {
+    "id": 1,
+    "face_value": "1 Leu",
+    "issue_year": "1952",
+    "diameter": "23 mm",
+    "weight": "4 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Populară Română"
+  },
+  {
+    "id": 2,
+    "face_value": "5 Lei",
+    "issue_year": "1952",
+    "diameter": "25 mm",
+    "weight": "5 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Populară Română"
+  },
+  {
+    "id": 3,
+    "face_value": "10 Lei",
+    "issue_year": "1952",
+    "diameter": "27 mm",
+    "weight": "6 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Populară Română"
+  },
+  {
+    "id": 4,
+    "face_value": "25 Lei",
+    "issue_year": "1952",
+    "diameter": "29 mm",
+    "weight": "7 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Populară Română"
+  },
+  {
+    "id": 5,
+    "face_value": "50 Lei",
+    "issue_year": "1952",
+    "diameter": "31 mm",
+    "weight": "8 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Populară Română"
+  },
+  {
+    "id": 6,
+    "face_value": "1 Leu",
+    "issue_year": "1966",
+    "diameter": "23 mm",
+    "weight": "4 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 7,
+    "face_value": "3 Lei",
+    "issue_year": "1966",
+    "diameter": "25 mm",
+    "weight": "5 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 8,
+    "face_value": "5 Lei",
+    "issue_year": "1966",
+    "diameter": "27 mm",
+    "weight": "6 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 9,
+    "face_value": "10 Lei",
+    "issue_year": "1966",
+    "diameter": "29 mm",
+    "weight": "7 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 10,
+    "face_value": "25 Lei",
+    "issue_year": "1966",
+    "diameter": "31 mm",
+    "weight": "8 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 11,
+    "face_value": "50 Lei",
+    "issue_year": "1966",
+    "diameter": "33 mm",
+    "weight": "9 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "Republica Socialistă România"
+  },
+  {
+    "id": 12,
+    "face_value": "1 Leu",
+    "issue_year": "1990",
+    "diameter": "23 mm",
+    "weight": "4 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 13,
+    "face_value": "5 Lei",
+    "issue_year": "1990",
+    "diameter": "25 mm",
+    "weight": "5 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 14,
+    "face_value": "10 Lei",
+    "issue_year": "1990",
+    "diameter": "27 mm",
+    "weight": "6 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 15,
+    "face_value": "50 Lei",
+    "issue_year": "1990",
+    "diameter": "29 mm",
+    "weight": "7 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 16,
+    "face_value": "100 Lei",
+    "issue_year": "1990",
+    "diameter": "31 mm",
+    "weight": "8 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 17,
+    "face_value": "500 Lei",
+    "issue_year": "1990",
+    "diameter": "33 mm",
+    "weight": "9 g",
+    "metal": "Aluminiu",
+    "mint": "București",
+    "era": "România Modernă"
+  },
+  {
+    "id": 18,
+    "face_value": "1 Leu",
+    "issue_year": "2005",
+    "diameter": "16.75 mm",
+    "weight": "2.5 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 19,
+    "face_value": "5 Lei",
+    "issue_year": "2005",
+    "diameter": "18.25 mm",
+    "weight": "3.1 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 20,
+    "face_value": "10 Lei",
+    "issue_year": "2005",
+    "diameter": "19.75 mm",
+    "weight": "3.6 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 21,
+    "face_value": "50 Lei",
+    "issue_year": "2005",
+    "diameter": "21.25 mm",
+    "weight": "4.3 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 22,
+    "face_value": "1 Leu",
+    "issue_year": "2010",
+    "diameter": "16.75 mm",
+    "weight": "2.5 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 23,
+    "face_value": "5 Lei",
+    "issue_year": "2010",
+    "diameter": "18.25 mm",
+    "weight": "3.1 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 24,
+    "face_value": "10 Lei",
+    "issue_year": "2010",
+    "diameter": "19.75 mm",
+    "weight": "3.6 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 25,
+    "face_value": "50 Lei",
+    "issue_year": "2010",
+    "diameter": "21.25 mm",
+    "weight": "4.3 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 26,
+    "face_value": "100 Lei",
+    "issue_year": "2010",
+    "diameter": "22.75 mm",
+    "weight": "5 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 27,
+    "face_value": "200 Lei",
+    "issue_year": "2010",
+    "diameter": "24.25 mm",
+    "weight": "5.7 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  },
+  {
+    "id": 28,
+    "face_value": "500 Lei",
+    "issue_year": "2010",
+    "diameter": "25.75 mm",
+    "weight": "6.4 g",
+    "metal": "Oțel placat cupru",
+    "mint": "București",
+    "era": "Uniunea Europeană"
+  }
+]
