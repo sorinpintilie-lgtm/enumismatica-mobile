@@ -666,7 +666,7 @@ const ProductCatalogScreen: React.FC = () => {
     // Romanian coin specific filters
     if (filters.country === 'România') {
       // Load product data to get detailed information for filtering
-      const productsData = require('../../data/products.json');
+      const productsData = require('../data/products.json');
       
       filtered = filtered.filter((product) => {
         // Find matching product in detailed data
