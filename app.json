@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "eNumismatica",
+    "slug": "enumismatica",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/eNumismatica.ro_logo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/eNumismatica.ro_logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020617"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "statusBar": {
+        "style": "dark",
+        "backgroundColor": "#ffffff"
+      },
+      "infoPlist": {
+        "UIStatusBarHidden": false,
+        "UIViewControllerBasedStatusBarAppearance": true,
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "ro.enumismatica.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/eNumismatica.ro_logo.png",
+        "backgroundColor": "#00020d"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "ro.enumismatica.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "enumismatica",
+    "extra": {
+      "eas": {
+        "projectId": "f4fa174b-8702-4031-b9b3-e72887532885"
+      }
+    }
+  }
+}

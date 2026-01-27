@@ -1,0 +1,9 @@
+               <Stack.Screen name="Collection" component={CollectionScreen} />
+               <Stack.Screen name="Cart" component={CartScreen} />
+               <Stack.Screen name="About" component={AboutScreen} />
+               <Stack.Screen name="Contact" component={ContactScreen} />
+               <Stack.Screen name="Pronumismatica" component={PronumismaticaScreen} />
+               <Stack.Screen name="MonetariaStatului" component={MonetariaStatuluiScreen} />
+               <Stack.Screen name="Contracts" component={ContractsScreen} />
+               <Stack.Screen name="Event" component={EventScreen} />
+               <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
