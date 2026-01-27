@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { HelpArticle, HelpCategory } from '@shared/types';
 import { getHelpArticle, getHelpCategories, submitHelpFeedback } from '@shared/helpService';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import InlineBackButton from '../components/InlineBackButton';
 
 export default function HelpArticleScreen() {
   const [article, setArticle] = useState<HelpArticle | null>(null);
@@ -98,10 +99,7 @@ export default function HelpArticleScreen() {
       <View style={styles.errorContainer}>
         <Text style={styles.errorTitle}>Error</Text>
         <Text style={styles.errorText}>{error || 'Article not found'}</Text>
-        <Button
-          title="Back to Help Center"
-          onPress={() => navigation.goBack()}
-        />
+        <InlineBackButton />
       </View>
     );
   }
@@ -109,12 +107,7 @@ export default function HelpArticleScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
+        <InlineBackButton />
         <Text style={styles.categoryText}>{getCategoryName(article.categoryId)}</Text>
       </View>
 
@@ -280,14 +273,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb'
-  },
-  backButton: {
-    padding: 8
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#3b82f6',
-    fontWeight: '500'
   },
   categoryText: {
     fontSize: 14,

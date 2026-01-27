@@ -1,19 +1,38 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Video, ResizeMode, type AVPlaybackStatus } from 'expo-av';
 
 const SplashScreen: React.FC = () => {
+  const videoRef = useRef<Video | null>(null);
+
+  const handlePlaybackStatus = useCallback(async (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+    if (status.didJustFinish) {
+      try {
+        await videoRef.current?.stopAsync();
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../assets/eNumismatica.ro_logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <Video
+        ref={videoRef}
+        source={require('../assets/splashvideoani.mov')}
+        style={styles.video}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping={false}
+        rate={2.67}
+        onPlaybackStatusUpdate={handlePlaybackStatus}
+      />
+      <View style={styles.overlay}>
         <Text style={styles.tagline}>Vânzare și licitații de monede rare</Text>
-      </View>
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Încarcă aplicația...</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Încarcă aplicația...</Text>
+        </View>
       </View>
     </View>
   );
@@ -27,20 +46,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
-  logoContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  video: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  logo: {
-    width: 250,
-    height: 250,
-    marginBottom: 30,
-    shadowColor: '#e7b73c',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+  overlay: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+    backgroundColor: 'rgba(2, 6, 23, 0.2)',
   },
   tagline: {
     fontSize: 18,

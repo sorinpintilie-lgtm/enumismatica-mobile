@@ -134,15 +134,23 @@ export function useProducts(
         querySnapshot.forEach((doc) => {
           const data = doc.data();
           
-          // Skip sold items (isSold == true)
-          if (data.isSold === true) {
-            if (debug) {
-              console.log('[useProducts] Skipping sold product:', doc.id);
-            }
-            return;
+        // Skip sold items (isSold == true)
+        if (data.isSold === true) {
+          if (debug) {
+            console.log('[useProducts] Skipping sold product:', doc.id);
           }
-          
-          // NOTE:
+          return;
+        }
+
+        // Skip pulled-back items (isPulledBack == true)
+        if (data.isPulledBack === true) {
+          if (debug) {
+            console.log('[useProducts] Skipping pulled-back product:', doc.id);
+          }
+          return;
+        }
+        
+        // NOTE:
           // The web hook only filters by `status === 'approved'` at query level
           // and then skips sold items in-memory. It does NOT filter on
           // other status values here. To keep mobile E‑shop behavior identical

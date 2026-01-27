@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
+import { shouldSendNotification } from './notificationPreferencesService';
 import { AuctionNotification } from './types';
 import { showBrowserNotification } from './chatService';
 import { countUnreadAuctionNotifications } from './utils/auctionNotificationUtils';
@@ -28,6 +29,17 @@ export async function createAuctionNotification(
   auctionTitle?: string,
   bidAmount?: number
 ): Promise<void> {
+  const preferenceKey =
+    type === 'outbid'
+      ? 'auctionOutbid'
+      : type === 'auction_won'
+      ? 'auctionWon'
+      : 'auctionEndedNoWin';
+
+  if (!(await shouldSendNotification(userId, preferenceKey))) {
+    return;
+  }
+
   const notificationsRef = collection(db, 'users', userId, 'auctionNotifications');
 
   const notificationData: any = {

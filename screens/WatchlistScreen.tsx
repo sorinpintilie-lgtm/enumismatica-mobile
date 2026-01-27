@@ -17,6 +17,7 @@ import { WatchlistItem } from '@shared/types';
 import { getUserWatchlist, removeFromWatchlist, clearWatchlist } from '@shared/watchlistService';
 import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
+import InlineBackButton from '../components/InlineBackButton';
 
 const styles = StyleSheet.create({
   screen: {
@@ -466,6 +467,7 @@ const WatchlistScreen: React.FC = () => {
   if (!user) {
     return (
       <View style={styles.loadingContainer}>
+        <InlineBackButton />
         <Text style={styles.loadingTitle}>
           Vă rugăm să vă autentificați pentru a accesa watchlist-ul
         </Text>
@@ -486,7 +488,8 @@ const WatchlistScreen: React.FC = () => {
       <View style={styles.screen}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Watchlist-ul meu</Text>
+          <InlineBackButton />
+          <Text style={[styles.headerTitle, { marginTop: 12 }]}>Watchlist-ul meu</Text>
           <Text style={styles.headerSubtitle}>
             {watchlist.length} elemente • {productsInWatchlist.length} produse • {auctionsInWatchlist.length} licitații
           </Text>

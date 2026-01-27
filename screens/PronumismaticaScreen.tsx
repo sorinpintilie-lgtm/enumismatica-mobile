@@ -16,6 +16,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import { parseCnp, validCnp } from '@shared/cnpValidator';
+import InlineBackButton from '../components/InlineBackButton';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -205,12 +206,9 @@ export default function PronumismaticaScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Asociația Pronumismatica</Text>
-        <View style={{ width: 36 }} />
+      <View style={{ marginBottom: 16 }}>
+        <InlineBackButton />
+        <Text style={[styles.title, { marginTop: 12, textAlign: 'left' }]}>Asociația Pronumismatica</Text>
       </View>
 
       {/* Stepper indicator */}
@@ -490,27 +488,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 96,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  backBtnText: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
   },
   title: {
     color: colors.textPrimary,

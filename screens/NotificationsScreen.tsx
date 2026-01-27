@@ -9,6 +9,7 @@ import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import NotificationItem from '../components/NotificationItem';
+import InlineBackButton from '../components/InlineBackButton';
 import type { AuctionNotification } from '@shared/types';
 
 export default function NotificationsScreen() {
@@ -96,16 +97,8 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
+      <InlineBackButton />
       <View style={styles.headerRow}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerIconButton}
-          accessibilityRole="button"
-          accessibilityLabel="Înapoi"
-        >
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
-
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Notificări</Text>
           <Text style={styles.subtitle}>{headerSubtitle}</Text>
@@ -169,16 +162,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginBottom: 16,
-  },
-  headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    backgroundColor: colors.inputBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerActionButton: {
     width: 40,

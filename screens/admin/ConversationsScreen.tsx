@@ -8,6 +8,7 @@ import { isAdmin, isSuperAdmin, getAllConversations, getConversationMessages, de
 import { Conversation, ChatMessage } from '@shared/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type ConversationsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -102,15 +103,10 @@ export default function ConversationsScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <View>
+            <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('Dashboard' as never)} />
             <Text style={styles.title}>Toate Conversațiile</Text>
             <Text style={styles.subtitle}>Monitorizează toate conversațiile private din platformă</Text>
           </View>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('Dashboard' as never)}
-          >
-            <Text style={styles.backButtonText}>Înapoi la Admin</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Search */}
@@ -255,9 +251,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
   },
   title: {
@@ -269,15 +262,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginTop: 4,
-  },
-  backButton: {
-    padding: 8,
-    backgroundColor: '#4b5563',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 12,
   },
   searchSection: {
     marginBottom: 16,

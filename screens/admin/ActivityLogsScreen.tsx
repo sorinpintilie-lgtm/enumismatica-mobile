@@ -15,6 +15,7 @@ import {
 } from '@shared/activityLogService';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import InlineBackButton from '../../components/InlineBackButton';
 
 const EVENT_TYPE_LABELS: Record<ActivityEventType, string> = {
   // Authentication
@@ -243,6 +244,7 @@ export default function ActivityLogsScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminDashboard' as never)} />
           <Text style={styles.title}>Loguri Activitate</Text>
           <Text style={styles.subtitle}>Monitorizare completă a activității utilizatorilor</Text>
         </View>

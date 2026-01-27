@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../context/AuthContext';
 import { formatEUR } from '../utils/currency';
-import { sharedStyles } from '../styles/sharedStyles';
+import { colors, sharedStyles } from '../styles/sharedStyles';
+import InlineBackButton from '../components/InlineBackButton';
 
 export default function CheckoutScreen() {
 	const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -106,123 +107,120 @@ export default function CheckoutScreen() {
 
   if (cart.length === 0) {
     return (
-      <View className="flex-1 bg-navy-900 p-4">
-        <Text className="text-slate-100 text-lg font-semibold mb-4">
-          Coșul de cumpărături este gol
-        </Text>
-			<TouchableOpacity
-				className="bg-gold-500 py-3 px-6 rounded-lg"
-				onPress={() => (navigation as any).navigate('MainTabs', { screen: 'ProductCatalog' })}
-			>
-          <Text className="text-navy-900 font-semibold">
-            Continuă cumpărăturile
-          </Text>
+      <View style={styles.cartEmptyContainer}>
+        <Text style={styles.cartEmptyTitle}>Coșul de cumpărături este gol</Text>
+        <TouchableOpacity
+          style={styles.cartEmptyButton}
+          onPress={() => (navigation as any).navigate('MainTabs', { screen: 'ProductCatalog' })}
+        >
+          <Text style={styles.cartEmptyButtonText}>Continuă cumpărăturile</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-navy-900 p-4">
-      <Text className="text-slate-100 text-2xl font-bold mb-6">
+    <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent}>
+      <InlineBackButton />
+      <Text style={styles.headerTitle}>
         Finalizare comandă
       </Text>
 
       {/* Shipping Information */}
-      <View className="bg-navy-800 rounded-xl p-4 mb-6">
-        <Text className="text-slate-100 text-lg font-semibold mb-4">
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>
           Informații de livrare
         </Text>
 
-        <View className="mb-4">
-          <Text className="text-slate-300 mb-2">Nume complet</Text>
+        <View style={styles.formControl}>
+          <Text style={styles.label}>Nume complet</Text>
           <TextInput
-            className="bg-navy-700 text-slate-100 rounded-lg px-3 py-2 border border-slate-600"
+            style={styles.input}
             value={shippingInfo.name}
             onChangeText={(text) => handleInputChange('name', text)}
             placeholder="Nume complet"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
           />
         </View>
 
-        <View className="mb-4">
-          <Text className="text-slate-300 mb-2">Adresă</Text>
+        <View style={styles.formControl}>
+          <Text style={styles.label}>Adresă</Text>
           <TextInput
-            className="bg-navy-700 text-slate-100 rounded-lg px-3 py-2 border border-slate-600"
+            style={styles.input}
             value={shippingInfo.address}
             onChangeText={(text) => handleInputChange('address', text)}
             placeholder="Adresă"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
           />
         </View>
 
-        <View className="mb-4">
-          <Text className="text-slate-300 mb-2">Oraș</Text>
+        <View style={styles.formControl}>
+          <Text style={styles.label}>Oraș</Text>
           <TextInput
-            className="bg-navy-700 text-slate-100 rounded-lg px-3 py-2 border border-slate-600"
+            style={styles.input}
             value={shippingInfo.city}
             onChangeText={(text) => handleInputChange('city', text)}
             placeholder="Oraș"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colors.textSecondary}
           />
         </View>
 
-        <View className="flex-row gap-4">
-          <View className="flex-1">
-            <Text className="text-slate-300 mb-2">Cod poștal</Text>
+        <View style={styles.rowGap}>
+          <View style={styles.flex1}>
+            <Text style={styles.label}>Cod poștal</Text>
             <TextInput
-              className="bg-navy-700 text-slate-100 rounded-lg px-3 py-2 border border-slate-600"
+              style={styles.input}
               value={shippingInfo.postalCode}
               onChangeText={(text) => handleInputChange('postalCode', text)}
               placeholder="Cod poștal"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textSecondary}
               keyboardType="numeric"
             />
           </View>
-          <View className="flex-1">
-            <Text className="text-slate-300 mb-2">Țară</Text>
+          <View style={styles.flex1}>
+            <Text style={styles.label}>Țară</Text>
             <TextInput
-              className="bg-navy-700 text-slate-100 rounded-lg px-3 py-2 border border-slate-600"
+              style={styles.input}
               value={shippingInfo.country}
               onChangeText={(text) => handleInputChange('country', text)}
               placeholder="Țară"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textSecondary}
             />
           </View>
         </View>
       </View>
 
       {/* Payment Method */}
-      <View className="bg-navy-800 rounded-xl p-4 mb-6">
-        <Text className="text-slate-100 text-lg font-semibold mb-4">
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>
           Metodă de plată
         </Text>
 
-        <View className="flex-row gap-4">
+        <View style={styles.rowGap}>
           <TouchableOpacity
-            className={`flex-1 py-3 rounded-lg border ${paymentMethod === 'card' ? 'bg-gold-500 border-gold-400' : 'bg-navy-700 border-slate-600'}`}
+            style={[styles.paymentButton, paymentMethod === 'card' ? styles.paymentButtonActive : styles.paymentButtonInactive]}
             onPress={() => setPaymentMethod('card')}
           >
-            <Text className={`text-center font-semibold ${paymentMethod === 'card' ? 'text-navy-900' : 'text-slate-100'}`}>
+            <Text style={[styles.paymentButtonText, paymentMethod === 'card' ? styles.paymentButtonTextActive : styles.paymentButtonTextInactive]}>
               Card
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className={`flex-1 py-3 rounded-lg border ${paymentMethod === 'bank' ? 'bg-gold-500 border-gold-400' : 'bg-navy-700 border-slate-600'}`}
+            style={[styles.paymentButton, paymentMethod === 'bank' ? styles.paymentButtonActive : styles.paymentButtonInactive]}
             onPress={() => setPaymentMethod('bank')}
           >
-            <Text className={`text-center font-semibold ${paymentMethod === 'bank' ? 'text-navy-900' : 'text-slate-100'}`}>
+            <Text style={[styles.paymentButtonText, paymentMethod === 'bank' ? styles.paymentButtonTextActive : styles.paymentButtonTextInactive]}>
               Transfer bancar
             </Text>
           </TouchableOpacity>
         </View>
 
         {paymentMethod === 'card' && (
-          <View className="mt-4">
-            <Text className="text-slate-300 mb-2">Detalii card</Text>
-            <View className="bg-navy-700 rounded-lg p-3 border border-slate-600">
-              <Text className="text-slate-400">
+          <View style={styles.paymentInfoBlock}>
+            <Text style={styles.label}>Detalii card</Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoBoxText}>
                 Plata cu cardul se va procesa în siguranță prin intermediul platformei noastre de plăți.
               </Text>
             </View>
@@ -230,10 +228,10 @@ export default function CheckoutScreen() {
         )}
 
         {paymentMethod === 'bank' && (
-          <View className="mt-4">
-            <Text className="text-slate-300 mb-2">Instrucțiuni transfer bancar</Text>
-            <View className="bg-navy-700 rounded-lg p-3 border border-slate-600">
-              <Text className="text-slate-400">
+          <View style={styles.paymentInfoBlock}>
+            <Text style={styles.label}>Instrucțiuni transfer bancar</Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoBoxText}>
                 Veți primi instrucțiuni detaliate pentru transferul bancar după plasarea comenzii.
               </Text>
             </View>
@@ -242,45 +240,217 @@ export default function CheckoutScreen() {
       </View>
 
       {/* Order Summary */}
-      <View className="bg-navy-800 rounded-xl p-4 mb-8">
-        <Text className="text-slate-100 text-lg font-semibold mb-4">
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>
           Rezumat comandă
         </Text>
 
-					{cart.map((item: any) => (
-          <View key={item.id} className="flex-row justify-between items-center py-2 border-b border-slate-700">
-            <View className="flex-1">
-              <Text className="text-slate-100 font-medium" numberOfLines={1}>
+        {cart.map((item: any) => (
+          <View key={item.id} style={styles.summaryRow}>
+            <View style={styles.flex1}>
+              <Text style={styles.summaryItemName} numberOfLines={1}>
                 {item.name}
               </Text>
-				<Text className="text-slate-400 text-sm">
-					{item.quantity} x {formatEUR(item.price)}
-				</Text>
+              <Text style={styles.summaryItemDetails}>
+                {item.quantity} x {formatEUR(item.price)}
+              </Text>
             </View>
-				<Text className="text-slate-100 font-semibold">
-					{formatEUR(item.price * item.quantity)}
-				</Text>
+            <Text style={styles.summaryItemTotal}>{formatEUR(item.price * item.quantity)}</Text>
           </View>
         ))}
 
-        <View className="flex-row justify-between items-center py-3 mt-4 border-t border-slate-700">
-          <Text className="text-slate-100 font-semibold">Total</Text>
-			<Text className="text-gold-500 text-xl font-bold">
-				{formatEUR(calculateTotal())}
-			</Text>
+        <View style={styles.summaryTotalRow}>
+          <Text style={styles.summaryTotalLabel}>Total</Text>
+          <Text style={styles.summaryTotalValue}>{formatEUR(calculateTotal())}</Text>
         </View>
       </View>
 
       {/* Checkout Button */}
       <TouchableOpacity
-        className={`w-full py-4 rounded-xl ${isLoading ? 'bg-gold-600' : 'bg-gold-500'} shadow-md shadow-[0_0_18px_rgba(231,183,60,0.6)]`}
+        style={[styles.checkoutButton, isLoading && styles.checkoutButtonDisabled]}
         onPress={handleCheckout}
         disabled={isLoading}
       >
-        <Text className="text-navy-900 text-center font-bold text-lg">
+        <Text style={styles.checkoutButtonText}>
           {isLoading ? 'Procesare...' : 'Plasează comanda'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  cartEmptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  cartEmptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  cartEmptyButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  cartEmptyButtonText: {
+    color: colors.primaryText,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screenContent: {
+    padding: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 20,
+  },
+  card: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  formControl: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  rowGap: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  flex1: {
+    flex: 1,
+  },
+  paymentButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paymentButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  paymentButtonInactive: {
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  paymentButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  paymentButtonTextActive: {
+    color: colors.primaryText,
+  },
+  paymentButtonTextInactive: {
+    color: colors.textSecondary,
+  },
+  paymentInfoBlock: {
+    marginTop: 16,
+  },
+  infoBox: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  infoBoxText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderColor,
+  },
+  summaryItemName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  summaryItemDetails: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  summaryItemTotal: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  summaryTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    marginTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: colors.borderColor,
+  },
+  summaryTotalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  summaryTotalValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  checkoutButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  checkoutButtonDisabled: {
+    backgroundColor: colors.disabledButton,
+  },
+  checkoutButtonText: {
+    color: colors.primaryText,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});

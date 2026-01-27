@@ -5,6 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
+import InlineBackButton from '../components/InlineBackButton';
 
 const AboutScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -280,6 +281,9 @@ const AboutScreen: React.FC = () => {
         contentContainerStyle={aboutStyles.scrollContent}
       >
         <View style={aboutStyles.content}>
+          <View style={{ marginBottom: 12 }}>
+            <InlineBackButton />
+          </View>
           {/* Hero Section */}
           <View style={aboutStyles.heroContainer}>
             <Text style={aboutStyles.heroTitle}>Despre eNumismatica</Text>

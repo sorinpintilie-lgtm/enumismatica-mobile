@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigationTypes';
 import { isAdmin } from '@shared/adminService';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type ModeratorScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -49,6 +50,7 @@ export default function ModeratorScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('Dashboard' as never)} />
           <Text style={styles.title}>Panou Admin (Simplificat)</Text>
           <Text style={styles.description}>
             Acesta este panoul pentru administratorii obișnuiți. Poți aproba și gestiona piese și

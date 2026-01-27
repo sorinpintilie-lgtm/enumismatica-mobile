@@ -7,6 +7,7 @@ import { RootStackParamList } from '../../navigationTypes';
 import { getUsersWithPendingVerification, updateUserVerificationStatus, isAdmin } from '@shared/adminService';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type VerificationScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -137,6 +138,7 @@ export default function VerificationScreen() {
       <ScrollView style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminModerator' as never)} />
           <Text style={styles.title}>Verificare Utilizatori</Text>
           <Text style={styles.subtitle}>Gestionare documente de identitate și verificări</Text>
         </View>

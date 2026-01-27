@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Offer } from './types';
+import { shouldSendNotification } from './notificationPreferencesService';
 
 /**
  * Create an offer notification
@@ -30,6 +31,10 @@ async function createOfferNotification(
   itemId: string
 ): Promise<void> {
   if (!db) throw new Error('Firestore not initialized');
+
+  if (!(await shouldSendNotification(userId, 'offerUpdates'))) {
+    return;
+  }
 
   const notificationsRef = collection(db, 'users', userId, 'notifications');
 

@@ -9,6 +9,7 @@ import { Product } from '@shared/types';
 import { useAuth } from '../../context/AuthContext';
 import { RootStackParamList } from '../../navigationTypes';
 import { isAdmin } from '@shared/adminService';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type TestBoostNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -114,13 +115,8 @@ export default function TestBoostScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('Dashboard' as never)} />
           <Text style={styles.title}>Test Boost Products</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.navigate('Dashboard' as never)}
-          >
-            <Text style={styles.backButtonText}>Înapoi la Admin</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Boost Form */}
@@ -223,9 +219,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
     backgroundColor: '#3b82f6',
     padding: 16,
@@ -235,16 +228,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-  },
-  backButton: {
-    backgroundColor: '#4b5563',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontWeight: '500',
   },
   boostForm: {
     backgroundColor: '#ffffff',

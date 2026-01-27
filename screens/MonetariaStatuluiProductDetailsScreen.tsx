@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
+import InlineBackButton from '../components/InlineBackButton';
 
 interface RawProduct {
   title: string;
@@ -147,10 +148,8 @@ export default function MonetariaStatuluiProductDetailsScreen() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Eroare la încărcarea produsului: {error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.retryButtonText}>Înapoi</Text>
-        </TouchableOpacity>
+        <InlineBackButton />
+        <Text style={[styles.errorText, { marginTop: 12 }]}>Eroare la încărcarea produsului: {error}</Text>
       </View>
     );
   }
@@ -158,10 +157,8 @@ export default function MonetariaStatuluiProductDetailsScreen() {
   if (!product) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Produsul nu a fost găsit</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.retryButtonText}>Înapoi</Text>
-        </TouchableOpacity>
+        <InlineBackButton />
+        <Text style={[styles.errorText, { marginTop: 12 }]}>Produsul nu a fost găsit</Text>
       </View>
     );
   }
@@ -169,12 +166,9 @@ export default function MonetariaStatuluiProductDetailsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Detalii Produs</Text>
-          <View style={{ width: 36 }} />
+        <View style={{ marginBottom: 16 }}>
+          <InlineBackButton />
+          <Text style={[styles.title, { marginTop: 12, textAlign: 'left' }]}>Detalii Produs</Text>
         </View>
 
         {/* Product Image */}
@@ -252,27 +246,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 96,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  backBtnText: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
   },
   title: {
     color: colors.textPrimary,

@@ -23,6 +23,7 @@ import { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import PullbackButton from '../components/PullbackButton';
 import PullbackStatusIndicator from '../components/PullbackStatusIndicator';
+import InlineBackButton from '../components/InlineBackButton';
 import { isAuctionEligibleForPullbackData } from '@shared/pullbackEligibility';
 import { formatEUR } from '../utils/currency';
 
@@ -182,12 +183,7 @@ const AuctionDetailsScreen: React.FC = () => {
         <Text style={styles.errorText}>
           {auctionError || 'Licitație negăsită'}
         </Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Înapoi</Text>
-        </TouchableOpacity>
+        <InlineBackButton />
       </View>
     );
   }
@@ -195,14 +191,10 @@ const AuctionDetailsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
+        <InlineBackButton />
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>← Înapoi</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
           <View style={styles.headerActions}>
             <PullbackStatusIndicator isPulledBack={isPulledBack} />
             {eligibleForPullback && isOwner && (
@@ -421,18 +413,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  backButton: {
-    backgroundColor: '#020617',
-    borderWidth: 1,
-    borderColor: '#4b5563',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  backButtonText: {
-    color: '#e5e7eb',
-    fontWeight: '600',
   },
   headerActions: {
     flexDirection: 'row',

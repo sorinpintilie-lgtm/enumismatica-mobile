@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, View, type GestureResponderEvent } from 'react-native';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -24,6 +24,11 @@ export const WatchlistButton: React.FC<WatchlistButtonProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [checked, setChecked] = useState<boolean>(false);
 
+  useEffect(() => {
+    setChecked(false);
+    setIsInWatchlist(false);
+  }, [itemId]);
+
   // Check initial watchlist status
   useEffect(() => {
     if (user && !checked) {
@@ -42,7 +47,8 @@ export const WatchlistButton: React.FC<WatchlistButtonProps> = ({
     }
   }, [user, itemId, checkWatchlistStatus, checked]);
 
-  const handleToggleWatchlist = async () => {
+  const handleToggleWatchlist = async (event?: GestureResponderEvent) => {
+    event?.stopPropagation?.();
     if (!user) {
       showToast({
         type: 'error',
@@ -63,14 +69,14 @@ export const WatchlistButton: React.FC<WatchlistButtonProps> = ({
           setIsInWatchlist(false);
           showToast({
             type: 'success',
-            title: 'Îndepărtat din lista de urmărire',
-            message: 'Articolul a fost îndepărtat din lista de urmărire.',
+            title: 'Eliminat din lista de urmărire',
+            message: 'Articolul a fost eliminat din lista de urmărire.',
           });
         } else {
           showToast({
             type: 'error',
-            title: 'Eroare la îndepărtare',
-            message: result.error || 'A apărut o eroare la îndepărtarea din lista de urmărire.',
+            title: 'Eroare la eliminare',
+            message: result.error || 'A apărut o eroare la eliminarea din lista de urmărire.',
           });
         }
       } else {

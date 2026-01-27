@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -29,6 +29,7 @@ import { createDirectOrderForProduct } from '@shared/orderService';
 import { createOrGetConversation } from '@shared/chatService';
 import { logEvent } from '../hooks/useActivityLogger';
 import OfferModal from '../components/OfferModal';
+import InlineBackButton from '../components/InlineBackButton';
 import { formatEUR } from '../utils/currency';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebaseConfig';
@@ -40,6 +41,7 @@ const ProductDetailsScreen: React.FC = () => {
   const { product, loading, error } = useProduct(productId);
   const { user } = useAuth();
 
+  const scrollRef = useRef<ScrollView | null>(null);
   const [optimisticPulledBack, setOptimisticPulledBack] = useState(false);
   const [showBuyConfirm, setShowBuyConfirm] = useState(false);
   const [buying, setBuying] = useState(false);
@@ -89,6 +91,11 @@ const ProductDetailsScreen: React.FC = () => {
     listingType: 'direct',
     live: false,
   });
+
+  // Scroll to top when changing product
+  React.useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [productId]);
 
   // Set default view mode for owners to 'owner' on first load
   React.useEffect(() => {
@@ -328,18 +335,6 @@ const ProductDetailsScreen: React.FC = () => {
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 16,
-    },
-    backButton: {
-      backgroundColor: colors.navy800,
-      borderWidth: 1,
-      borderColor: colors.slate600,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-    },
-    backButtonText: {
-      color: colors.textSecondary,
-      fontWeight: '600',
     },
     actionButtonsContainer: {
       flexDirection: 'row',
@@ -730,27 +725,18 @@ const ProductDetailsScreen: React.FC = () => {
         <Text style={sharedStyles.errorMessage}>
           {error || 'Product not found'}
         </Text>
-        <TouchableOpacity
-          style={[sharedStyles.emptyButton, { marginTop: 16 }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={sharedStyles.emptyButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        <InlineBackButton style={{ marginTop: 16 }} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView ref={scrollRef} style={styles.container}>
       <View style={styles.headerContainer}>
+        <InlineBackButton />
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1 }} />
           <View style={styles.actionButtonsContainer}>
             <WatchlistButton itemType="product" itemId={product.id} size="medium" />
             <TouchableOpacity
@@ -994,17 +980,30 @@ const ProductDetailsScreen: React.FC = () => {
             {product.listingExpiresAt && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Expiră listarea:</Text>
-                <Text style={styles.detailValue}>{product.listingExpiresAt.toLocaleDateString()}</Text>
+                <Text style={styles.detailValue}>
+                  {(() => {
+                    const date = product.listingExpiresAt;
+                    if (date instanceof Date) return date.toLocaleDateString();
+                    if (date && typeof (date as any).toDate === 'function') {
+                      return (date as any).toDate().toLocaleDateString();
+                    }
+                    return new Date(date as any).toLocaleDateString();
+                  })()}
+                </Text>
               </View>
             )}
             {product.boostExpiresAt && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Promovat până la:</Text>
                 <Text style={{ ...styles.detailValue, color: colors.emerald300 }}>
-                  {product.boostExpiresAt instanceof Date 
-                    ? product.boostExpiresAt.toLocaleDateString() 
-                    : new Date(product.boostExpiresAt).toLocaleDateString()
-                  }
+                  {(() => {
+                    const date = product.boostExpiresAt;
+                    if (date instanceof Date) return date.toLocaleDateString();
+                    if (date && typeof (date as any).toDate === 'function') {
+                      return (date as any).toDate().toLocaleDateString();
+                    }
+                    return new Date(date as any).toLocaleDateString();
+                  })()}
                 </Text>
               </View>
             )}
@@ -1012,10 +1011,14 @@ const ProductDetailsScreen: React.FC = () => {
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Promoție până la:</Text>
                 <Text style={{ ...styles.detailValue, color: colors.emerald300 }}>
-                  {product.promotionExpiresAt instanceof Date 
-                    ? product.promotionExpiresAt.toLocaleDateString() 
-                    : new Date(product.promotionExpiresAt).toLocaleDateString()
-                  }
+                  {(() => {
+                    const date = product.promotionExpiresAt;
+                    if (date instanceof Date) return date.toLocaleDateString();
+                    if (date && typeof (date as any).toDate === 'function') {
+                      return (date as any).toDate().toLocaleDateString();
+                    }
+                    return new Date(date as any).toLocaleDateString();
+                  })()}
                 </Text>
               </View>
             )}
@@ -1109,7 +1112,7 @@ const ProductDetailsScreen: React.FC = () => {
         {/* Other Products by this Seller */}
         {otherProducts.filter(p => p.id !== product.id).length > 0 && (
           <View style={styles.otherProductsSection}>
-            <Text style={styles.otherProductsTitle}>Alte Piese de la Acest Vânzător</Text>
+            <Text style={styles.otherProductsTitle}>Mai multe piese din magazinul acestui vânzător</Text>
             <View style={styles.otherProductsGrid}>
               {otherProducts
                 .filter(p => p.id !== product.id)

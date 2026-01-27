@@ -9,6 +9,7 @@ import { isAdmin } from '@shared/adminService';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { Picker } from '@react-native-picker/picker';
+import InlineBackButton from '../../components/InlineBackButton';
 
 export default function NotificationsScreen() {
   const { user, loading: authLoading } = useAuth();
@@ -160,6 +161,7 @@ export default function NotificationsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminDashboard' as never)} />
         <Text style={styles.title}>Notificări Admin</Text>
         <Text style={styles.subtitle}>Alerte și notificări pentru evenimente critice</Text>
       </View>

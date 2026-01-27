@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Image,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -19,6 +21,7 @@ import { db } from '@shared/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigationTypes';
 import { useCoinAutocomplete } from '../hooks/useCoinAutocomplete';
+import InlineBackButton from '../components/InlineBackButton';
 import {
   pickImagesFromGallery,
   takePhoto,
@@ -81,7 +84,11 @@ const HorizontalPillScroll: React.FC<{ children: ReactNode }> = ({ children }) =
   }
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    <ScrollView 
+      horizontal 
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.pillScrollContent}
+    >
       {children}
     </ScrollView>
   );
@@ -494,13 +501,15 @@ const NewListingScreen: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#00020d' }}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.container, { paddingBottom: 100 }]}
-        keyboardShouldPersistTaps="handled"
-        scrollEnabled={true}
-        showsVerticalScrollIndicator={true}
-      >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.container, { paddingBottom: 100 }]}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={true}
+          showsVerticalScrollIndicator={true}
+        >
+          <InlineBackButton />
         <Text style={styles.title}>
           {isEditing 
             ? 'Editează produs' 
@@ -1076,7 +1085,8 @@ const NewListingScreen: React.FC = () => {
           </Text>
         )}
       </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </View>
   );
 };
@@ -1167,31 +1177,37 @@ const styles = StyleSheet.create({
   pillRow: {
     flexDirection: 'row',
     marginVertical: 4,
-    gap: 8,
+    gap: 6,
   },
   pillWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  pillScrollContent: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
   pill: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.8)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    marginRight: 0,
   },
   pillActive: {
     borderColor: '#e7b73c',
     backgroundColor: 'rgba(231, 183, 60, 0.2)',
   },
   pillText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#e5e7eb',
   },
   pillTextActive: {
     color: '#facc6b',
     fontWeight: '600',
+    fontSize: 11,
   },
   coinInfoBox: {
     marginTop: 8,

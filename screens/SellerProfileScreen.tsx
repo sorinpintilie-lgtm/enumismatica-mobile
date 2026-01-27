@@ -12,6 +12,7 @@ import { useAuctions } from '../hooks/useAuctions';
 import { RootStackParamList } from '../navigationTypes';
 import { Product, Auction } from '@shared/types';
 import { colors } from '../styles/sharedStyles';
+import InlineBackButton from '../components/InlineBackButton';
 
 type SellerTab = 'products' | 'auctions';
 type SellerProfileRouteProp = RouteProp<RootStackParamList, 'SellerProfile'>;
@@ -195,6 +196,7 @@ export default function SellerProfileScreen() {
   if (authLoading) {
     return (
       <View style={styles.loadingContainer}>
+        <InlineBackButton />
         <ActivityIndicator size="large" color="#e7b73c" />
         <Text style={styles.loadingText}>Se verifică sesiunea de utilizator...</Text>
       </View>
@@ -204,6 +206,7 @@ export default function SellerProfileScreen() {
   if (!user) {
     return (
       <View style={styles.authContainer}>
+        <InlineBackButton />
         <View style={styles.authCard}>
           <Text style={styles.authTitle}>Profilul vânzătorului este disponibil doar pentru utilizatori autentificați</Text>
            <Text style={styles.authDescription}>
@@ -232,6 +235,7 @@ export default function SellerProfileScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         {/* Header */}
+        <InlineBackButton />
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.avatarContainer}>

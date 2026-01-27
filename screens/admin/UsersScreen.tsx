@@ -6,6 +6,7 @@ import { RootStackParamList } from '../../navigationTypes';
 import { useAuth } from '../../context/AuthContext';
 import { User } from '@shared/types';
 import { isAdmin, isSuperAdmin, getAllUsers, setUserAsAdmin, removeAdminRole, deleteUser } from '@shared/adminService';
+import InlineBackButton from '../../components/InlineBackButton';
 
 export default function UsersScreen() {
 	const { user, loading: authLoading } = useAuth();
@@ -125,13 +126,8 @@ export default function UsersScreen() {
   return (
     <ScrollView style={styles.container}>
 			<View style={styles.header}>
+        <InlineBackButton label="Înapoi la Admin" onPress={() => (navigation as any).navigate('Dashboard')} />
 				<Text style={styles.title}>Gestionează utilizatori</Text>
-				<TouchableOpacity
-					style={styles.backButton}
-					onPress={() => (navigation as any).navigate('Dashboard')}
-				>
-					<Text style={styles.backButtonText}>Înapoi la Admin</Text>
-				</TouchableOpacity>
       </View>
 
       {users.length === 0 ? (
@@ -224,25 +220,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
-  },
-  backButton: {
-    backgroundColor: '#4b5563',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-  },
-  backButtonText: {
-    color: 'white',
-    fontWeight: '500',
   },
   noUsersText: {
     color: '#9ca3af',

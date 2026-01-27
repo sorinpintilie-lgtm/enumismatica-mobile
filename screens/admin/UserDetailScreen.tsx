@@ -6,6 +6,7 @@ import { getUserDetails, updateUserStatus, getUserActivity, isAdmin } from '@sha
 import { formatDistanceToNow, format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { RootStackParamList } from '../../navigationTypes';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type UserDetailScreenNavigationProp = NavigationProp<RootStackParamList, 'AdminUserDetail'>;
 type UserDetailScreenRouteProp = RouteProp<RootStackParamList, 'AdminUserDetail'>;
@@ -107,9 +108,7 @@ export default function UserDetailScreen() {
       <ScrollView style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Înapoi</Text>
-          </TouchableOpacity>
+          <InlineBackButton />
           <Text style={styles.title}>Detalii Utilizator</Text>
           <Text style={styles.subtitle}>Gestionare și monitorizare utilizator</Text>
         </View>
@@ -153,10 +152,6 @@ export default function UserDetailScreen() {
           </View>
 
           <View style={styles.userStats}>
-            <View style={styles.userStatItem}>
-              <Text style={styles.userStatLabel}>ID Utilizator</Text>
-              <Text style={styles.userStatValue}>{userDetails.userId}</Text>
-            </View>
             <View style={styles.userStatItem}>
               <Text style={styles.userStatLabel}>Data Înregistrării</Text>
               <Text style={styles.userStatValue}>
@@ -388,13 +383,6 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 20,
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#F5B800',
-    fontSize: 16,
   },
   title: {
     color: 'white',

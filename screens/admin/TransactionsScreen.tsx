@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import InlineBackButton from '../../components/InlineBackButton';
 import { formatRON } from '../../utils/currency';
+import { RootStackParamList } from '../../navigationTypes';
 
 type Transaction = {
   id: string;
@@ -20,6 +24,7 @@ async function getTransactions(page: number, pageSize: number): Promise<Transact
 }
 
 const TransactionsScreen = () => {
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -114,6 +119,7 @@ const TransactionsScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminDashboard' as never)} />
         <Text style={styles.headerTitle}>Transactions</Text>
       </View>
 

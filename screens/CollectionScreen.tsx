@@ -7,6 +7,7 @@ import { getUserCredits, payCollectionSubscriptionWithCredits } from '@shared/cr
 import { uploadMultipleImages } from '@shared/storageService';
 import { format } from 'date-fns';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import InlineBackButton from '../components/InlineBackButton';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 
@@ -39,14 +40,10 @@ export default function CollectionScreen() {
         // This is a simplified check - in production you'd want to check the actual subscription status
         const userCredits = await getUserCredits(user.uid);
         setCredits(userCredits);
-        
+
         // For now, we'll assume subscription is active if user has enough credits
         // In a real implementation, you'd check the collectionSubscriptionExpiresAt field
         setSubscriptionActive(userCredits >= 50);
-        
-        // Check if there's an existing subscription expiry date
-        // This would require fetching the user document
-        setSubscriptionActive(true); // Simplified for demo
       } catch (err) {
         console.error('Failed to check subscription:', err);
         setSubscriptionActive(false);
@@ -128,6 +125,7 @@ export default function CollectionScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
+	        <InlineBackButton />
 	        <Text style={styles.headerTitle}>Autentifică-te pentru a vedea colecția</Text>
       </View>
     );
@@ -136,6 +134,7 @@ export default function CollectionScreen() {
   if (subscriptionLoading && subscriptionActive === null) {
     return (
       <View style={styles.container}>
+        <InlineBackButton />
         <Text style={styles.loadingText}>Se verifică abonamentul colecției...</Text>
       </View>
     );
@@ -144,6 +143,7 @@ export default function CollectionScreen() {
   if (subscriptionActive === false) {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
+        <InlineBackButton />
         <View style={styles.subscriptionCard}>
           <Text style={styles.subscriptionTitle}>Abonament Colecție Necesar</Text>
           <Text style={styles.subscriptionDescription}>
@@ -175,6 +175,7 @@ export default function CollectionScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
+      <InlineBackButton />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Colecția Mea</Text>
         <Text style={styles.headerSubtitle}>Gestionează colecția ta numismatică personală</Text>
@@ -453,10 +454,10 @@ function CollectionItemModal({ item, onClose, onSave }: {
     });
 
     if (!result.canceled && result.assets) {
-	      const newImages = result.assets.map((asset: any) => ({
+      const newImages = result.assets.map((asset: ImagePicker.ImagePickerAsset) => ({
         uri: asset.uri,
         name: asset.fileName || `image_${Date.now()}.jpg`,
-        type: asset.type || 'image/jpeg',
+        type: asset.mimeType || 'image/jpeg',
       }));
       setImageFiles(prev => [...prev, ...newImages]);
     }
@@ -474,16 +475,6 @@ function CollectionItemModal({ item, onClose, onSave }: {
 
       // Upload new images if any
       if (imageFiles.length > 0) {
-        // Convert image files to File objects for upload
-        const filesToUpload = imageFiles.map(img => {
-          // In React Native, we need to create a File-like object
-          return {
-            uri: img.uri,
-            name: img.name,
-            type: img.type,
-          } as unknown as File;
-        });
-
         // Note: uploadMultipleImages expects File objects, but in React Native we need to handle this differently
         // For now, we'll simulate this by just adding the URIs
         const uploadedUrls = imageFiles.map(img => img.uri);
@@ -588,10 +579,10 @@ function CollectionItemModal({ item, onClose, onSave }: {
                 <Text style={styles.formLabel}>Raritate</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
-	                    selectedValue={formData.rarity}
-	                    onValueChange={(value: any) => setFormData({ ...formData, rarity: value })}
-	                    style={styles.picker}
-	                  >
+                    selectedValue={formData.rarity}
+                    onValueChange={(value: any) => setFormData({ ...formData, rarity: value })}
+                    style={styles.picker}
+                  >
                     <Picker.Item label="Selectează..." value={undefined} />
                     <Picker.Item label="Comun" value="common" />
                     <Picker.Item label="Necomun" value="uncommon" />
@@ -680,7 +671,6 @@ function getRarityStyle(rarity: string) {
       return { backgroundColor: '#9CA3AF' };
   }
 }
-
 
 const styles = StyleSheet.create({
   container: {

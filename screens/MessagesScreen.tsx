@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { subscribeToUserConversations, subscribeToConversationMessages, sendPrivateMessage, markConversationAsRead } from '@shared/chatService';
 import { sharedStyles, colors } from '../styles/sharedStyles';
+import InlineBackButton from '../components/InlineBackButton';
 
 // Web container wrapper - move outside component to prevent re-rendering
 const WebContainer = ({ children }: { children: React.ReactNode }) => {
@@ -38,9 +39,25 @@ const MessagesScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const messagesContainerRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
+
+  // Keyboard listeners to adjust ScrollView when keyboard shows/hides
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e: any) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -269,7 +286,7 @@ const MessagesScreen: React.FC = () => {
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
-                    contentContainerStyle={styles.messagesContent}
+                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight + 16 }]}
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
                   >
                     {messages.length === 0 ? (
@@ -321,6 +338,8 @@ const MessagesScreen: React.FC = () => {
                       editable={!sending}
                       multiline
                       maxLength={500}
+                      returnKeyType="send"
+                      onSubmitEditing={handleSendMessage}
                     />
                     <TouchableOpacity
                       style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
@@ -415,9 +434,7 @@ const MessagesScreen: React.FC = () => {
               // Chat View
               <View style={styles.mobileChatContainer}>
                 <View style={[styles.chatHeader, { borderBottomColor: colors.borderColor }]}>
-                  <TouchableOpacity onPress={() => setSelectedConversationId(null)}>
-                    <Text style={[styles.chatBackButton, { color: colors.primary }]}>← Înapoi</Text>
-                  </TouchableOpacity>
+                  <InlineBackButton onPress={() => setSelectedConversationId(null)} />
                   <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
                     {conversations.find(c => c.id === selectedConversationId)?.isAdminSupport ? 'Suport Admin' : getOtherUserName(conversations.find(c => c.id === selectedConversationId) as Conversation)}
                   </Text>
@@ -426,7 +443,7 @@ const MessagesScreen: React.FC = () => {
                 <ScrollView
                   ref={messagesContainerRef}
                   style={styles.messagesArea}
-                  contentContainerStyle={styles.messagesContent}
+                  contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight + 16 }]}
                   onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
                 >
                   {messages.length === 0 ? (
@@ -477,6 +494,8 @@ const MessagesScreen: React.FC = () => {
                     editable={!sending}
                     multiline
                     maxLength={500}
+                    returnKeyType="send"
+                    onSubmitEditing={handleSendMessage}
                   />
                   <TouchableOpacity
                     style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
@@ -637,10 +656,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  chatBackButton: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   chatHeaderTitle: {
     fontSize: 16,

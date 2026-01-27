@@ -10,6 +10,7 @@ import { sharedStyles, colors } from '../styles/sharedStyles';
 import { useToast } from '../context/ToastContext';
 import { apiGet, apiPost } from '../services/apiClient';
 import { auth, db } from '@shared/firebaseConfig';
+import InlineBackButton from '../components/InlineBackButton';
 
 type SetupResponse = { secret: string; qrCode: string };
 
@@ -127,12 +128,9 @@ const TwoFAScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>2FA</Text>
-        <View style={{ width: 36 }} />
+      <View style={{ marginBottom: 16 }}>
+        <InlineBackButton />
+        <Text style={[styles.title, { marginTop: 12 }]}>2FA</Text>
       </View>
 
       <View style={styles.card}>
@@ -288,26 +286,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 96,
     gap: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  backBtnText: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
   },
   title: {
     color: colors.textPrimary,

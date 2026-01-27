@@ -8,6 +8,7 @@ import { useCart } from '../hooks/useCart';
 import { useProducts } from '../hooks/useProducts';
 import { createDirectOrderForProduct } from '@shared/orderService';
 import { colors } from '../styles/sharedStyles';
+import InlineBackButton from '../components/InlineBackButton';
 import { formatEUR } from '../utils/currency';
 
 const CartScreen: React.FC = () => {
@@ -132,6 +133,7 @@ const CartScreen: React.FC = () => {
   return (
     <ScrollView style={styles.screenContainer}>
       <View style={styles.headerContainer}>
+        <InlineBackButton />
         <Text style={styles.headerTitle}>Coșul meu</Text>
         {loading ? (
           <View style={styles.loadingRow}>

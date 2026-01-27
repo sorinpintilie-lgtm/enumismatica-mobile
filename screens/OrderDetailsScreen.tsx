@@ -9,6 +9,7 @@ import { getOrderById } from '@shared/orderService';
 import type { Order } from '@shared/types';
 import { colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
+import InlineBackButton from '../components/InlineBackButton';
 
 const styles = StyleSheet.create({
   screen: {
@@ -17,12 +18,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   title: {
     fontSize: 24,
@@ -33,19 +28,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
     color: colors.textSecondary,
-  },
-  backButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  backButtonText: {
-    fontSize: 12,
-    color: colors.primary,
-    fontWeight: '700',
   },
   card: {
     borderRadius: 14,
@@ -315,19 +297,12 @@ const OrderDetailsScreen: React.FC = () => {
   return (
     <ScrollView style={styles.screen}>
       <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Detalii comandă</Text>
-            <Text style={styles.subtitle}>
-              Comanda #{order.id}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backButtonText}>Înapoi</Text>
-          </TouchableOpacity>
+        <InlineBackButton />
+        <View style={{ marginTop: 12, marginBottom: 16 }}>
+          <Text style={styles.title}>Detalii comandă</Text>
+          <Text style={styles.subtitle}>
+            Comanda #{order.id}
+          </Text>
         </View>
 
         {/* Order Status */}

@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { RootStackParamList } from '../../navigationTypes';
 import { isAdmin, getAllAuctions, deleteAuction, approveAuction, rejectAuction, forceEndAuction, getProductById } from '@shared/adminService';
 import { Product, Auction } from '@shared/types';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type AuctionsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -168,10 +169,8 @@ export default function AuctionsScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminDashboard' as never)} />
           <Text style={styles.title}>Gestionează licitații</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('AdminDashboard' as never)}>
-            <Text style={styles.backButtonText}>Înapoi la Admin</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Filter Tabs */}
@@ -362,24 +361,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 24,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
-  },
-  backButton: {
-    padding: 8,
-    backgroundColor: '#4b5563',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 12,
   },
   filterTabs: {
     flexDirection: 'row',

@@ -5,6 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../context/AuthContext';
 import { RootStackParamList } from '../../navigationTypes';
 import { isAdmin, isSuperAdmin } from '@shared/adminService';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type AnalyticsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -73,6 +74,7 @@ export default function AnalyticsScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminDashboard' as never)} />
           <Text style={styles.title}>Panou Analitic Admin</Text>
           <Text style={styles.subtitle}>Analiză avansată a activității platformei și comportamentului utilizatorilor</Text>
         </View>

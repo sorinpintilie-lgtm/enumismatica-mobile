@@ -3,7 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-jsx",
-    "types": ["nativewind/types"],
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["./shared/*"]
@@ -12,7 +11,9 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "../shared/**/*.d.ts"
+    "../shared/**/*.d.ts",
+    "./types/**/*.d.ts",
+    "./react-native-picker.d.ts"
   ],
   "exclude": [
     "node_modules"

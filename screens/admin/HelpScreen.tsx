@@ -6,6 +6,7 @@ import { RootStackParamList } from '../../navigationTypes';
 import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '@shared/adminService';
 import { sharedStyles } from '../../styles/sharedStyles';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type HelpScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -105,9 +106,7 @@ const HelpScreen = () => {
     return (
       <ScrollView style={styles.container}>
         <View style={styles.detailHeader}>
-          <TouchableOpacity onPress={handleBackToList} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back to List</Text>
-          </TouchableOpacity>
+          <InlineBackButton label="Înapoi la listă" onPress={handleBackToList} />
           <Text style={styles.detailTitle}>Help Request Details</Text>
         </View>
 
@@ -345,13 +344,6 @@ const styles = StyleSheet.create({
   },
   detailHeader: {
     marginBottom: 20,
-  },
-  backButton: {
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: '#4CAF50',
-    fontSize: 16,
   },
   detailTitle: {
     fontSize: 20,

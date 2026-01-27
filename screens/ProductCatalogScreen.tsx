@@ -534,14 +534,13 @@ const ProductCatalogScreen: React.FC = () => {
       listener: (event: any) => {
         const currentY = event.nativeEvent.contentOffset.y;
         const scrollDirection = currentY > lastScrollY.current ? 'down' : 'up';
-        const scrollDistance = Math.abs(currentY - lastScrollY.current);
         
-        // Hide header when scrolling down more than 20px
-        if (scrollDirection === 'down' && scrollDistance > 20 && headerVisible) {
+        // Hide header when scrolling down past 50px from top
+        if (scrollDirection === 'down' && currentY > 50 && headerVisible) {
           setHeaderVisible(false);
         } 
-        // Show header when scrolling up more than 20px
-        else if (scrollDirection === 'up' && scrollDistance > 20 && !headerVisible) {
+        // Show header when scrolling up near the top (below 30px)
+        else if (scrollDirection === 'up' && currentY < 30 && !headerVisible) {
           setHeaderVisible(true);
         }
         

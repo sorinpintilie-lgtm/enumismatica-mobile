@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert, Platform, Linking } from 'react-native';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
+import InlineBackButton from '../components/InlineBackButton';
 
 const ContactScreen: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -218,6 +219,9 @@ const ContactScreen: React.FC = () => {
         contentContainerStyle={contactStyles.scrollContent}
       >
         <View style={contactStyles.content}>
+          <View style={{ marginBottom: 12 }}>
+            <InlineBackButton />
+          </View>
           {/* Header */}
           <View style={contactStyles.header}>
             <Text style={contactStyles.headerTitle}>Contactează-ne</Text>

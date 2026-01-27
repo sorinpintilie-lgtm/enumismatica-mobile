@@ -10,6 +10,7 @@ export interface User {
   lastLogin?: Date;
   preferences?: UserPreferences;
   helpPreferences?: UserHelpPreferences;
+  notificationPreferences?: UserNotificationPreferences;
 
   /**
    * Private personal/contact details.
@@ -81,6 +82,19 @@ export interface UserPreferences {
   theme: 'light' | 'dark';
   language: 'ro' | 'en';
   notifications: boolean;
+}
+
+export interface UserNotificationPreferences {
+  pushEnabled: boolean;
+  auctionOutbid: boolean;
+  auctionWon: boolean;
+  auctionEndedNoWin: boolean;
+  watchlistUpdates: boolean;
+  offerUpdates: boolean;
+  orderUpdates: boolean;
+  messageUpdates: boolean;
+  systemUpdates: boolean;
+  marketingUpdates: boolean;
 }
 
 export interface UserHelpPreferences {

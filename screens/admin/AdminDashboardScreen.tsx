@@ -11,6 +11,7 @@ import { collection, query, where, getDocs, orderBy, limit } from 'firebase/fire
 import { db } from '@shared/firebaseConfig';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import InlineBackButton from '../../components/InlineBackButton';
 
 interface DashboardStats {
   totalUsers: number;
@@ -222,7 +223,8 @@ export default function AdminDashboardScreen() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Panou Admin</Text>
+          <InlineBackButton label="Înapoi" onPress={() => navigation.navigate('Dashboard' as never)} />
+          <Text style={[styles.title, { marginTop: 10 }]}>Panou Admin</Text>
           <Text style={styles.subtitle}>Monitorizare și control complet al platformei</Text>
         </View>
 

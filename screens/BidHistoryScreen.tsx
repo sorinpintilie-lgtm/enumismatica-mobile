@@ -8,6 +8,7 @@ import { ro } from 'date-fns/locale/ro';
 import { RootStackParamList } from '../navigationTypes';
 import { getBidHistoryForAuction, getUserBidHistory } from '@shared/bidHistoryService';
 import { BidHistory, BidHistoryStats } from '@shared/types';
+import InlineBackButton from '../components/InlineBackButton';
 
 // Currency formatting function
 const formatRON = (amount: number): string => `${amount.toFixed(2)} EUR`;
@@ -165,9 +166,10 @@ export default function BidHistoryScreen() {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content}>
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>
+          <InlineBackButton />
+          <Text style={[styles.title, { marginTop: 10 }]}
+          >
             {auctionId ? 'Istoric Licitări' : 'Licitările Mele'}
           </Text>
 

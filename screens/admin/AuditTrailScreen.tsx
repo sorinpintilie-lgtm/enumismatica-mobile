@@ -8,6 +8,7 @@ import { isAdmin } from '@shared/adminService';
 import { getAdminActions, UserControlAction } from '@shared/adminControlService';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import InlineBackButton from '../../components/InlineBackButton';
 
 type AuditTrailNavigationProp = StackNavigationProp<RootStackParamList>;
 
@@ -102,6 +103,7 @@ export default function AuditTrailScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
+          <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('AdminModerator' as never)} />
           <Text style={styles.title}>Audit Trail Admin</Text>
           <Text style={styles.subtitle}>Istoric complet al acțiunilor administrative</Text>
         </View>

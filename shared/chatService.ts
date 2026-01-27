@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { ChatMessage, Conversation, ChatNotification, UserPresence } from './types';
+import { shouldSendNotification } from './notificationPreferencesService';
 
 /**
  * Basic content validation for public auction chat:
@@ -569,6 +570,10 @@ async function createChatNotification(
   auctionId?: string
 ): Promise<void> {
   if (!db) throw new Error('Firestore not initialized');
+
+  if (!(await shouldSendNotification(userId, 'messageUpdates'))) {
+    return;
+  }
 
   const notificationsRef = collection(db, 'users', userId, 'notifications');
 

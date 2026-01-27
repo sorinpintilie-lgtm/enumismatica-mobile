@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
-  Image,
   StyleSheet,
   TouchableOpacity,
   Modal,
@@ -13,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
-import { PinchGestureHandler, State } from 'react-native-gesture-handler';
+import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -27,6 +26,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
   const insets = useSafeAreaInsets();
   const scale = useRef(new Animated.Value(1)).current;
   const lastScale = useRef(1);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastTranslate = useRef({ x: 0, y: 0 });
+  const pinchRef = useRef(null);
+  const panRef = useRef(null);
 
   const handleImagePress = (index: number) => {
     setCurrentIndex(index);
@@ -34,6 +38,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
     // Reset scale when opening modal
     scale.setValue(1);
     lastScale.current = 1;
+    translateX.setValue(0);
+    translateY.setValue(0);
+    lastTranslate.current = { x: 0, y: 0 };
   };
 
   const handleNext = () => {
@@ -42,6 +49,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
       // Reset scale when changing image
       scale.setValue(1);
       lastScale.current = 1;
+      translateX.setValue(0);
+      translateY.setValue(0);
+      lastTranslate.current = { x: 0, y: 0 };
     }
   };
 
@@ -51,6 +61,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
       // Reset scale when changing image
       scale.setValue(1);
       lastScale.current = 1;
+      translateX.setValue(0);
+      translateY.setValue(0);
+      lastTranslate.current = { x: 0, y: 0 };
     }
   };
 
@@ -62,6 +75,30 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
   const onPinchHandlerStateChange = useCallback((event: any) => {
     if (event.nativeEvent.state === State.END) {
       lastScale.current = lastScale.current * event.nativeEvent.scale;
+
+      if (lastScale.current < 1) {
+        lastScale.current = 1;
+        scale.setValue(1);
+        translateX.setValue(0);
+        translateY.setValue(0);
+        lastTranslate.current = { x: 0, y: 0 };
+      }
+    }
+  }, [scale, translateX, translateY]);
+
+  const onPanGestureEvent = useCallback((event: any) => {
+    const nextX = lastTranslate.current.x + event.nativeEvent.translationX;
+    const nextY = lastTranslate.current.y + event.nativeEvent.translationY;
+    translateX.setValue(nextX);
+    translateY.setValue(nextY);
+  }, [translateX, translateY]);
+
+  const onPanHandlerStateChange = useCallback((event: any) => {
+    if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
+      lastTranslate.current = {
+        x: lastTranslate.current.x + event.nativeEvent.translationX,
+        y: lastTranslate.current.y + event.nativeEvent.translationY,
+      };
     }
   }, []);
 
@@ -85,10 +122,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
             onPress={() => setCurrentIndex(index)}
             activeOpacity={0.7}
           >
-            <Image
+            <ExpoImage
               source={{ uri: image }}
               style={styles.thumbnailImage}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={150}
             />
           </TouchableOpacity>
         ))}
@@ -104,10 +142,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
         onPress={() => handleImagePress(0)}
         activeOpacity={0.9}
       >
-        <Image
+        <ExpoImage
           source={{ uri: images[0] }}
           style={styles.mainImage}
-          resizeMode="contain"
+          contentFit="contain"
+          transition={200}
         />
         {images.length > 1 && (
           <View style={styles.overlayIndicator}>
@@ -135,10 +174,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
               onPress={() => handleImagePress(index)}
               activeOpacity={0.7}
             >
-              <Image
+              <ExpoImage
                 source={{ uri: image }}
                 style={styles.thumbnailImage}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={150}
               />
             </TouchableOpacity>
           ))}
@@ -167,19 +207,38 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
           </View>
 
           <View style={styles.modalImageContainer}>
-            <PinchGestureHandler
-              onGestureEvent={onPinchGestureEvent}
-              onHandlerStateChange={onPinchHandlerStateChange}
+            <PanGestureHandler
+              ref={panRef}
+              simultaneousHandlers={pinchRef}
+              onGestureEvent={onPanGestureEvent}
+              onHandlerStateChange={onPanHandlerStateChange}
             >
-              <Animated.View style={{ transform: [{ scale }] }}>
-                <ExpoImage
-                  source={{ uri: images[currentIndex] }}
-                  style={styles.modalImage}
-                  contentFit="contain"
-                  transition={200}
-                />
+              <Animated.View style={styles.zoomContainer}>
+                <PinchGestureHandler
+                  ref={pinchRef}
+                  simultaneousHandlers={panRef}
+                  onGestureEvent={onPinchGestureEvent}
+                  onHandlerStateChange={onPinchHandlerStateChange}
+                >
+                  <Animated.View
+                    style={{
+                      transform: [
+                        { translateX },
+                        { translateY },
+                        { scale },
+                      ],
+                    }}
+                  >
+                    <ExpoImage
+                      source={{ uri: images[currentIndex] }}
+                      style={styles.modalImage}
+                      contentFit="contain"
+                      transition={200}
+                    />
+                  </Animated.View>
+                </PinchGestureHandler>
               </Animated.View>
-            </PinchGestureHandler>
+            </PanGestureHandler>
           </View>
 
           {images.length > 1 && (
@@ -217,10 +276,11 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
                   ]}
                   onPress={() => setCurrentIndex(index)}
                 >
-                  <Image
+                  <ExpoImage
                     source={{ uri: image }}
                     style={styles.modalThumbnailImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={150}
                   />
                 </TouchableOpacity>
               ))}

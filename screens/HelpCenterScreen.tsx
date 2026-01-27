@@ -6,6 +6,7 @@ import { sharedStyles, colors } from '../styles/sharedStyles';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
+import InlineBackButton from '../components/InlineBackButton';
 
 export default function HelpCenterScreen() {
   const [articles, setArticles] = useState<HelpArticle[]>([]);
@@ -142,7 +143,8 @@ export default function HelpCenterScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Help Center</Text>
+      <InlineBackButton />
+      <Text style={[styles.title, { marginTop: 12 }]}>Help Center</Text>
 
       {error && (
         <View style={styles.errorContainer}>
