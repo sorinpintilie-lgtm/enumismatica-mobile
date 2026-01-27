@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getOffersForSeller, acceptOffer, rejectOffer } from '../../shared/offerService';
-import { createOrGetConversation } from '../../shared/chatService';
+import { getOffersForSeller, acceptOffer, rejectOffer } from '@shared/offerService';
+import { createOrGetConversation } from '@shared/chatService';
 import { formatEUR } from '../utils/currency';
-import type { Offer } from '../../shared/types';
+import type { Offer } from '@shared/types';
 
 interface OfferManagementProps {
   productId?: string;
@@ -460,3 +460,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

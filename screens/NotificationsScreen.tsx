@@ -9,7 +9,7 @@ import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import NotificationItem from '../components/NotificationItem';
-import type { AuctionNotification } from '../../shared/types';
+import type { AuctionNotification } from '@shared/types';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -224,4 +224,5 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
   },
 });
+
 

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
-import type { AuctionNotification } from '../../shared/types';
+import type { AuctionNotification } from '@shared/types';
 import { colors } from '../styles/sharedStyles';
 
 function getTypeLabel(type: AuctionNotification['type']): string {
@@ -180,4 +180,5 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 });
+
 

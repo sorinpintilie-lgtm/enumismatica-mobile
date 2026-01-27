@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { createOffer } from '../../shared/offerService';
+import { createOffer } from '@shared/offerService';
 import { useToast } from '../context/ToastContext';
 import { formatEUR } from '../utils/currency';
 
@@ -279,3 +279,4 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 });
+

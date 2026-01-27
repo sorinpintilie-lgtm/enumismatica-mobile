@@ -3,8 +3,8 @@ import {
   subscribeToAuctionNotifications,
   markAuctionNotificationAsRead,
   markAllAuctionNotificationsAsRead,
-} from '../../shared/auctionNotificationService';
-import { AuctionNotification } from '../../shared/types';
+} from '@shared/auctionNotificationService';
+import { AuctionNotification } from '@shared/types';
 
 /**
  * Hook for managing auction notifications in mobile app
@@ -51,3 +51,4 @@ export function useAuctionNotifications(userId: string | null) {
     markAllAsRead,
   };
 }
+

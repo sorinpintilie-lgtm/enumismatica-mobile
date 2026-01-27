@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../shared/firebaseConfig';
+import { db } from '@shared/firebaseConfig';
 
 export type PublicUserProfile = {
   id: string;
@@ -83,3 +83,4 @@ export function useUserProfile(userId?: string, enabled: boolean = true) {
 
   return { profile, loading, error };
 }
+

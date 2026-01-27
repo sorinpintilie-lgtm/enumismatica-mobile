@@ -6,8 +6,8 @@ import {
   deleteCollectionItem,
   getCollectionStats,
   searchCollectionItems,
-} from '../../shared/collectionService';
-import { CollectionItem } from '../../shared/types';
+} from '@shared/collectionService';
+import { CollectionItem } from '@shared/types';
 
 /**
  * Hook for managing user collection in mobile app
@@ -125,3 +125,4 @@ export function useCollection(userId: string | null) {
     searchItems,
   };
 }
+

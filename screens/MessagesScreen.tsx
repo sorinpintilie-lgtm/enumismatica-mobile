@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
-import { Conversation, ChatMessage } from '../../shared/types';
+import { Conversation, ChatMessage } from '@shared/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
-import { subscribeToUserConversations, subscribeToConversationMessages, sendPrivateMessage, markConversationAsRead } from '../../shared/chatService';
+import { subscribeToUserConversations, subscribeToConversationMessages, sendPrivateMessage, markConversationAsRead } from '@shared/chatService';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 
 // Web container wrapper - move outside component to prevent re-rendering
@@ -758,3 +758,4 @@ const styles = StyleSheet.create({
 });
 
 export default MessagesScreen;
+

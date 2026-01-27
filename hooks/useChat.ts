@@ -17,8 +17,8 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   requestNotificationPermission,
-} from '../../shared/chatService';
-import { ChatMessage, Conversation, ChatNotification } from '../../shared/types';
+} from '@shared/chatService';
+import { ChatMessage, Conversation, ChatNotification } from '@shared/types';
 
 /**
  * Hook for managing auction public chat in mobile app
@@ -447,3 +447,4 @@ export function useNotifications(userId: string | null) {
     markAllAsRead,
   };
 }
+

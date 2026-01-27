@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getSiteAsset } from '../../shared/siteAssetService';
-import { SiteAsset } from '../../shared/types';
+import { getSiteAsset } from '@shared/siteAssetService';
+import { SiteAsset } from '@shared/types';
 
 // In-memory cache so we only hit Firestore once per asset name per session.
 // This is especially important for above-the-fold assets like the logo
@@ -76,3 +76,4 @@ export function useSiteAsset(name: string) {
 
   return { data, isLoading, error };
 }
+

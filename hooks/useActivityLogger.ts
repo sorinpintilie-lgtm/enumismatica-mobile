@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { logActivity } from '../../shared/activityLogService';
+import { logActivity } from '@shared/activityLogService';
 
 /**
  * Hook to automatically log user activity in mobile app
@@ -88,3 +88,4 @@ export async function logEvent(
     console.error(`Failed to log event ${eventType}:`, error);
   }
 }
+
