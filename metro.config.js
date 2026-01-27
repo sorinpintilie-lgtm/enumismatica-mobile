@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
+const fs = require('fs');
 
 const config = getDefaultConfig(__dirname);
 
@@ -8,7 +9,7 @@ config.watchFolders = [
   path.resolve(__dirname, '..', 'shared'),
   path.resolve(__dirname, '..', 'data'),
   path.resolve(__dirname, '..', 'node_modules'),
-];
+].filter((folder) => fs.existsSync(folder));
 
 // Explicitly map packages that are hoisted to parent node_modules
 const parentNodeModules = path.resolve(__dirname, '..', 'node_modules');
