@@ -1,4 +1,4 @@
-import productsData from '../../data/products.json';
+import productsData from '../data/products.json';
 
 // Extract unique values for each filter from the products data
 export const romanianCoinOptions = {
