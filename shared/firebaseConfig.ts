@@ -1,8 +1,15 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
+import type { Persistence } from 'firebase/auth';
+import * as rnAuth from '@firebase/auth/dist/rn/index.js';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAnalytics, type Analytics } from 'firebase/analytics';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+const getReactNativePersistence = (rnAuth as unknown as { getReactNativePersistence: (storage: typeof AsyncStorage) => Persistence })
+  .getReactNativePersistence;
 
 // Global flag to disable Firebase in React Native
 export const FIREBASE_DISABLED = false;
@@ -31,7 +38,13 @@ if (getApps().length === 0) {
   app = getApp();
 }
 
-auth = getAuth(app);
+if (Platform.OS === 'ios' || Platform.OS === 'android') {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage),
+  });
+} else {
+  auth = getAuth(app);
+}
 db = getFirestore(app);
 storage = getStorage(app);
 

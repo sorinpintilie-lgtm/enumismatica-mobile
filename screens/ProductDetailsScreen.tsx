@@ -644,16 +644,23 @@ const ProductDetailsScreen: React.FC = () => {
       lineHeight: 20,
     },
     ownerActions: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       gap: 12,
     },
     ownerActionButton: {
-      flex: 1,
-      backgroundColor: colors.primary,
+      width: '100%',
+      alignItems: 'center',
       paddingVertical: 12,
       borderRadius: 12,
       borderWidth: 1,
+    },
+    ownerActionPrimary: {
+      backgroundColor: colors.primary,
       borderColor: 'rgba(231, 183, 60, 0.6)',
+    },
+    ownerActionSecondary: {
+      backgroundColor: 'rgba(15, 23, 42, 0.85)',
+      borderColor: 'rgba(148, 163, 184, 0.5)',
     },
     ownerActionButtonText: {
       color: colors.primaryText,
@@ -1081,7 +1088,7 @@ const ProductDetailsScreen: React.FC = () => {
             </Text>
             <View style={styles.ownerActions}>
               <TouchableOpacity 
-                style={styles.ownerActionButton}
+                style={[styles.ownerActionButton, styles.ownerActionPrimary]}
                 onPress={() => navigation.navigate('NewListing', { 
                   listingType: product.listingType as 'direct' | 'auction',
                   productId: product.id 
@@ -1090,7 +1097,7 @@ const ProductDetailsScreen: React.FC = () => {
                 <Text style={styles.ownerActionButtonText}>Editează Piesa</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={styles.ownerActionButton}
+                style={[styles.ownerActionButton, styles.ownerActionSecondary]}
                 onPress={() => setShowOfferManagement(true)}
               >
                 <Text style={styles.ownerActionButtonText}>Gestionare Oferte</Text>
@@ -1183,12 +1190,20 @@ const ProductDetailsScreen: React.FC = () => {
 
       {/* Offer Management */}
       {showOfferManagement && (
-        <OfferManagement
-          productId={product.id}
-          productName={product.name}
-          onClose={() => setShowOfferManagement(false)}
-          onNavigateToMessages={(conversationId) => navigation.navigate('Messages', { conversationId })}
-        />
+        <Modal
+          isVisible={showOfferManagement}
+          onBackdropPress={() => setShowOfferManagement(false)}
+          onBackButtonPress={() => setShowOfferManagement(false)}
+          backdropOpacity={0.6}
+          style={{ margin: 0 }}
+        >
+          <OfferManagement
+            productId={product.id}
+            productName={product.name}
+            onClose={() => setShowOfferManagement(false)}
+            onNavigateToMessages={(conversationId) => navigation.navigate('Messages', { conversationId })}
+          />
+        </Modal>
       )}
     </ScrollView>
   );
