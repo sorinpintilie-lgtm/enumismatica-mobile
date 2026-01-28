@@ -116,7 +116,7 @@ const UserProductsScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă produsele tale...</Text>
+        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă produsele utilizatorului...</Text>
       </View>
     );
   }
@@ -125,7 +125,7 @@ const UserProductsScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <Text style={[styles.title, { fontSize: 18, textAlign: 'center', marginBottom: 12 }]}>
-          Produsele tale sunt disponibile doar pentru utilizatori autentificați.
+          Produsele utilizatorului sunt disponibile doar pentru utilizatori autentificați.
         </Text>
         <TouchableOpacity
           style={[styles.primaryButton, { alignSelf: 'stretch' }]}
@@ -155,11 +155,11 @@ const UserProductsScreen: React.FC = () => {
         <View style={{ marginTop: 12, marginBottom: 16 }}>
           <View style={styles.headerRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.title}>Produsele mele</Text>
+              <Text style={styles.title}>Produsele utilizatorului</Text>
               <Text style={styles.subtitle}>
                 {isEmpty
-                  ? 'Nu ai încă produse active listate în magazin.'
-                  : `Ai ${activeProducts.length} ${activeProducts.length === 1 ? 'produs activ' : 'produse active'} în magazin.`}
+                  ? 'Nu există încă produse active listate în magazin.'
+                  : `Există ${activeProducts.length} ${activeProducts.length === 1 ? 'produs activ' : 'produse active'} în magazin.`}
               </Text>
             </View>
             <TouchableOpacity
@@ -173,7 +173,7 @@ const UserProductsScreen: React.FC = () => {
 
         {isEmpty ? (
           <View style={styles.card}>
-            <Text style={[styles.mutedText, { marginBottom: 12 }]}>Nu ai produse active încă.</Text>
+            <Text style={[styles.mutedText, { marginBottom: 12 }]}>Nu există produse active încă.</Text>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => navigation.navigate('NewListing', { listingType: 'direct' })}

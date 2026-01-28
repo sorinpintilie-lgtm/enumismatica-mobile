@@ -133,7 +133,7 @@ const SalesHistoryScreen: React.FC = () => {
       } catch (err: any) {
         console.error('Failed to load sales for seller (mobile)', err);
         if (isMounted) {
-          setSalesError(err?.message || 'Nu s-au putut încărca vânzările tale.');
+          setSalesError(err?.message || 'Nu s-au putut încărca vânzările utilizatorului.');
         }
       } finally {
         if (isMounted) {
@@ -164,7 +164,7 @@ const SalesHistoryScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă vânzările tale...</Text>
+        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă vânzările utilizatorului...</Text>
       </View>
     );
   }
@@ -203,18 +203,18 @@ const SalesHistoryScreen: React.FC = () => {
       <View style={styles.content}>
         <InlineBackButton />
         <View style={{ marginTop: 12, marginBottom: 16 }}>
-          <Text style={styles.title}>Vânzările mele</Text>
+          <Text style={styles.title}>Vânzările utilizatorului</Text>
           <Text style={styles.subtitle}>
             {isEmpty
-              ? 'Nu ai încă nicio vânzare înregistrată prin magazin.'
-              : `Ai înregistrat ${lines.length} ${lines.length === 1 ? 'vânzare' : 'vânzări'} în magazin.`}
+              ? 'Nu există încă nicio vânzare înregistrată prin magazin.'
+              : `Au fost înregistrate ${lines.length} ${lines.length === 1 ? 'vânzare' : 'vânzări'} în magazin.`}
           </Text>
         </View>
 
         {isEmpty ? (
           <View style={styles.card}>
             <Text style={[styles.mutedText, { marginBottom: 12 }]}>
-              Nu ai vândut încă niciun produs prin magazin.
+              Nu s-a vândut încă niciun produs prin magazin.
             </Text>
             <TouchableOpacity
               style={styles.primaryButton}

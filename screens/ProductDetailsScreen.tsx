@@ -167,7 +167,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să te autentifici pentru a cumpăra această piesă.',
+        'Trebuie să fie autentificat pentru a cumpăra această piesă.',
         [{ text: 'OK' }]
       );
       return;
@@ -176,7 +176,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți cumpăra propria piesă',
-        'Ești deja proprietarul acestei piese.',
+        'Este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -228,7 +228,7 @@ const ProductDetailsScreen: React.FC = () => {
 
       Alert.alert(
         'Cumpărare reușită',
-        `Ai cumpărat această piesă. Comanda ta a fost înregistrată (ID: ${orderId}).`,
+        `S-a cumpărat această piesă. Comanda a fost înregistrată (ID: ${orderId}).`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -250,7 +250,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să te autentifici pentru a adăuga în coș.',
+        'Trebuie să fie autentificat pentru a adăuga în coș.',
         [{ text: 'OK' }]
       );
       return;
@@ -259,7 +259,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți adăuga propria piesă în coș',
-        'Ești deja proprietarul acestei piese.',
+        'Este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -281,7 +281,7 @@ const ProductDetailsScreen: React.FC = () => {
       console.error('Failed to add to cart:', error);
       Alert.alert(
         'Eroare',
-        'Nu am putut adăuga produsul în coș. Încearcă din nou.',
+        'Nu s-a putut adăuga produsul în coș. Încearcă din nou.',
         [{ text: 'OK' }]
       );
     }
@@ -293,7 +293,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să te autentifici pentru a face o ofertă.',
+        'Trebuie să fie autentificat pentru a face o ofertă.',
         [{ text: 'OK' }]
       );
       return;
@@ -302,7 +302,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți face ofertă pe propria piesă',
-        'Ești deja proprietarul acestei piese.',
+        'Este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -1112,7 +1112,7 @@ const ProductDetailsScreen: React.FC = () => {
           <View style={styles.ownerView}>
             <Text style={styles.ownerViewTitle}>Mod Proprietar</Text>
             <Text style={styles.ownerViewDescription}>
-              Gestionați-vă piesa și vizualizați ofertele primite.
+              Gestionați piesa și vizualizați ofertele primite.
             </Text>
             <View style={styles.ownerActions}>
               <TouchableOpacity 
@@ -1137,7 +1137,7 @@ const ProductDetailsScreen: React.FC = () => {
         {/* Other Products by this Seller */}
         {otherProducts.filter(p => p.id !== product.id).length > 0 && (
           <View style={styles.otherProductsSection}>
-            <Text style={styles.otherProductsTitle}>Mai multe piese din magazinul acestui vânzător</Text>
+            <Text style={styles.otherProductsTitle}>Există mai multe piese din magazinul acestui vânzător</Text>
             <View style={styles.otherProductsGrid}>
               {otherProducts
                 .filter(p => p.id !== product.id)
@@ -1180,7 +1180,7 @@ const ProductDetailsScreen: React.FC = () => {
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Confirmă cumpărarea</Text>
           <Text style={styles.modalText}>
-            Ești sigur că vrei să cumperi această piesă pentru {formatEUR(product.price)}?
+            Este sigur că doriți să cumperi această piesă pentru {formatEUR(product.price)}?
           </Text>
           <View style={styles.modalButtons}>
             <TouchableOpacity

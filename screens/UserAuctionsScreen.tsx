@@ -132,7 +132,7 @@ const UserAuctionsScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă licitațiile tale...</Text>
+        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă licitațiile utilizatorului...</Text>
       </View>
     );
   }
@@ -141,7 +141,7 @@ const UserAuctionsScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <Text style={[styles.title, { fontSize: 18, textAlign: 'center', marginBottom: 12 }]}>
-          Licitațiile tale sunt disponibile doar pentru utilizatori autentificați.
+          Licitațiile utilizatorului sunt disponibile doar pentru utilizatori autentificați.
         </Text>
         <TouchableOpacity
           style={[styles.primaryButton, { alignSelf: 'stretch' }]}
@@ -171,11 +171,11 @@ const UserAuctionsScreen: React.FC = () => {
         <View style={{ marginTop: 12, marginBottom: 16 }}>
           <View style={styles.headerRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.title}>Licitațiile mele</Text>
+              <Text style={styles.title}>Licitațiile utilizatorului</Text>
               <Text style={styles.subtitle}>
                 {isEmpty
-                  ? 'Nu ai licitații active în acest moment.'
-                  : `Ai ${userAuctions.length} ${userAuctions.length === 1 ? 'licitație activă' : 'licitații active'}.`}
+                  ? 'Nu există licitații active în acest moment.'
+                  : `Există ${userAuctions.length} ${userAuctions.length === 1 ? 'licitație activă' : 'licitații active'}.`}
               </Text>
             </View>
             <TouchableOpacity
@@ -189,7 +189,7 @@ const UserAuctionsScreen: React.FC = () => {
 
         {isEmpty ? (
           <View style={styles.card}>
-            <Text style={[styles.mutedText, { marginBottom: 12 }]}>Nu ai licitații active încă.</Text>
+            <Text style={[styles.mutedText, { marginBottom: 12 }]}>Nu există licitații active încă.</Text>
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={() => navigation.navigate('NewListing', { listingType: 'auction' })}

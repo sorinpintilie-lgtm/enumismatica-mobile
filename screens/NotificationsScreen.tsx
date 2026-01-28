@@ -125,10 +125,10 @@ export default function NotificationsScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Notificări</Text>
-          <Text style={styles.subtitle}>Trebuie să fii autentificat.</Text>
+          <Text style={styles.subtitle}>Trebuie să fie autentificat.</Text>
         </View>
         <View style={styles.center}>
-          <Text style={styles.emptyText}>Conectează-te pentru a vedea notificările.</Text>
+          <Text style={styles.emptyText}>Conectați-vă pentru a vedea notificările.</Text>
         </View>
       </View>
     );
@@ -185,7 +185,7 @@ export default function NotificationsScreen() {
       ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="notifications-off-outline" size={28} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Nu ai notificări încă.</Text>
+          <Text style={styles.emptyText}>Nu există notificări încă.</Text>
         </View>
       ) : (
         <FlatList

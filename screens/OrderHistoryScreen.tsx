@@ -133,7 +133,7 @@ const OrderHistoryScreen: React.FC = () => {
       } catch (err: any) {
         console.error('Failed to load orders for buyer (mobile)', err);
         if (isMounted) {
-          setOrdersError(err?.message || 'Nu s-au putut încărca comenzile tale.');
+          setOrdersError(err?.message || 'Nu s-au putut încărca comenzile utilizatorului.');
         }
       } finally {
         if (isMounted) {
@@ -164,7 +164,7 @@ const OrderHistoryScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă comenzile tale...</Text>
+        <Text style={[styles.subtitle, { marginTop: 12 }]}>Se încarcă comenzile utilizatorului...</Text>
       </View>
     );
   }
@@ -203,18 +203,18 @@ const OrderHistoryScreen: React.FC = () => {
       <View style={styles.content}>
         <InlineBackButton />
         <View style={{ marginTop: 12, marginBottom: 16 }}>
-          <Text style={styles.title}>Comenzile mele</Text>
+          <Text style={styles.title}>Comenzile utilizatorului</Text>
           <Text style={styles.subtitle}>
             {isEmpty
-              ? 'Nu ai încă nicio comandă înregistrată.'
-              : `Ai plasat ${lines.length} ${lines.length === 1 ? 'comandă' : 'comenzi'} în magazin.`}
+              ? 'Nu există încă nicio comandă înregistrată.'
+              : `Au fost plasate ${lines.length} ${lines.length === 1 ? 'comandă' : 'comenzi'} în magazin.`}
           </Text>
         </View>
 
         {isEmpty ? (
           <View style={styles.card}>
             <Text style={[styles.mutedText, { marginBottom: 12 }]}>
-              Nu ai cumpărat încă niciun produs din magazin.
+              Nu s-a cumpărat încă niciun produs din magazin.
             </Text>
             <TouchableOpacity
               style={styles.primaryButton}

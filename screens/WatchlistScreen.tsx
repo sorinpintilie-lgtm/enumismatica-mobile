@@ -489,7 +489,7 @@ const WatchlistScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.headerContainer}>
           <InlineBackButton />
-          <Text style={[styles.headerTitle, { marginTop: 12 }]}>Watchlist-ul meu</Text>
+          <Text style={[styles.headerTitle, { marginTop: 12 }]}>Watchlist-ul utilizatorului</Text>
           <Text style={styles.headerSubtitle}>
             {watchlist.length} elemente • {productsInWatchlist.length} produse • {auctionsInWatchlist.length} licitații
           </Text>

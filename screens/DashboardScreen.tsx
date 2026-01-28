@@ -266,7 +266,7 @@ const DashboardScreen: React.FC = () => {
           <View style={dashboardStyles.header}>
             <View>
               <Text style={dashboardStyles.headerTitle}>Panou de Control</Text>
-              <Text style={dashboardStyles.headerSubtitle}>Bine ai revenit, {user.email}</Text>
+              <Text style={dashboardStyles.headerSubtitle}>Bine ați revenit, {user.email}</Text>
             </View>
           </View>
 
