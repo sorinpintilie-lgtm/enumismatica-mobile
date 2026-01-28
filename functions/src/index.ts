@@ -58,15 +58,21 @@ async function sendExpoPushNotifications(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify(chunk),
       });
 
+      const bodyText = await response.text();
       if (!response.ok) {
-        const body = await response.text();
         logger.error("Expo push send failed", {
           status: response.status,
-          body,
+          body: bodyText,
+        });
+      } else {
+        logger.info("Expo push sent", {
+          status: response.status,
+          body: bodyText,
         });
       }
     })

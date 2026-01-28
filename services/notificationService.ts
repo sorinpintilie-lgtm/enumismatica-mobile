@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // Configure notification behavior only on non-web platforms
 if (Platform.OS !== 'web') {
@@ -12,6 +13,18 @@ if (Platform.OS !== 'web') {
       shouldShowList: true,
     }),
   });
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#e7b73c',
+      sound: 'default',
+    }).catch(() => {
+      // ignore channel errors
+    });
+  }
 }
 
 // Request notification permissions
@@ -39,7 +52,11 @@ export async function getPushToken() {
     console.log('Push notifications not supported on web');
     return '';
   }
-  const token = await Notifications.getExpoPushTokenAsync();
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+    ?? Constants.easConfig?.projectId;
+  const token = await Notifications.getExpoPushTokenAsync({
+    projectId,
+  });
   return token.data;
 }
 
