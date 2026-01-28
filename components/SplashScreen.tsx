@@ -1,20 +1,43 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Video, ResizeMode, type AVPlaybackStatus } from 'expo-av';
 
-const SplashScreen: React.FC = () => {
-  const videoRef = useRef<Video | null>(null);
+type SplashScreenProps = {
+  onFinish?: () => void;
+};
 
-  const handlePlaybackStatus = useCallback(async (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) return;
-    if (status.didJustFinish) {
-      try {
-        await videoRef.current?.stopAsync();
-      } catch {
-        // ignore
+const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+  const videoRef = useRef<Video | null>(null);
+  const finishedRef = useRef(false);
+
+  const finishSplash = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    onFinish?.();
+  }, [onFinish]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      finishSplash();
+    }, 6000);
+
+    return () => clearTimeout(timeout);
+  }, [finishSplash]);
+
+  const handlePlaybackStatus = useCallback(
+    async (status: AVPlaybackStatus) => {
+      if (!status.isLoaded) return;
+      if (status.didJustFinish) {
+        try {
+          await videoRef.current?.stopAsync();
+        } catch {
+          // ignore
+        }
+        finishSplash();
       }
-    }
-  }, []);
+    },
+    [finishSplash]
+  );
 
   return (
     <View style={styles.container}>
@@ -27,6 +50,7 @@ const SplashScreen: React.FC = () => {
         isLooping={false}
         rate={2.67}
         onPlaybackStatusUpdate={handlePlaybackStatus}
+        onError={finishSplash}
       />
       <View style={styles.overlay}>
         <Text style={styles.tagline}>Vânzare și licitații de monede rare</Text>

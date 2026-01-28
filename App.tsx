@@ -301,7 +301,7 @@ function MainTabs() {
           swipeEnabled: true,
           animationEnabled: true,
         }}
-        tabBar={(props) => (
+        tabBar={(props: MaterialTopTabBarProps) => (
           <CustomTabBar
             {...props}
             onFabPress={() => setSellSheetVisible(true)}
@@ -342,16 +342,16 @@ function AppContent() {
   const { user, loading } = useAuth();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    if (!loading) {
-      ExpoSplashScreen.hideAsync().catch(() => {
-        // Ignore errors if hideAsync fails
-      });
-    }
-  }, [loading]);
+  const [splashComplete, setSplashComplete] = useState(false);
 
-  if (loading) {
-    return <SplashScreen />; // Show custom splash screen instead of default gray
+  useEffect(() => {
+    ExpoSplashScreen.hideAsync().catch(() => {
+      // Ignore errors if hideAsync fails
+    });
+  }, []);
+
+  if (loading || !splashComplete) {
+    return <SplashScreen onFinish={() => setSplashComplete(true)} />; // Show custom splash screen until video completes
   }
 
   return (
