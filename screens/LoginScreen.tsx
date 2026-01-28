@@ -10,6 +10,7 @@ import { auth, db } from '@shared/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { sendLoginSuccessEmail, sendLoginAttemptEmail } from '@shared/emailService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email('Adresă de email invalidă'),
@@ -220,6 +221,7 @@ const styles = StyleSheet.create({
 });
 
 const LoginScreen: React.FC = () => {
+  const { twoFactorRequired, refreshAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -229,28 +231,37 @@ const LoginScreen: React.FC = () => {
   const [resetSuccess, setResetSuccess] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
-  
+
   // 2FA state
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [twoFactorError, setTwoFactorError] = useState('');
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [rememberDevice, setRememberDevice] = useState(true);
   const [useBackupCode, setUseBackupCode] = useState(false);
-  
+
   // Stepper state
   const [currentStep, setCurrentStep] = useState(0);
   const [showStepper, setShowStepper] = useState(false);
-  
+
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  // If the user is already authenticated but required to complete 2FA (gate redirects here),
-  // show the 2FA prompt automatically.
+  // If 2FA is required from AuthContext, show the 2FA form automatically
   useEffect(() => {
     const init2FAIfNeeded = async () => {
       try {
         const current = auth.currentUser;
         if (!current?.uid) return;
 
+        // If AuthContext has already determined 2FA is required, show the form
+        if (twoFactorRequired) {
+          setEmail(current.email || '');
+          setPendingUserId(current.uid);
+          setShowStepper(true);
+          setCurrentStep(1);
+          return;
+        }
+
+        // Otherwise, check if 2FA is enabled for the user
         const okKey = `enumismatica_2fa_ok_${current.uid}`;
         const sessionValue = await AsyncStorage.getItem(okKey);
         if (sessionValue === '1') return;
@@ -270,7 +281,7 @@ const LoginScreen: React.FC = () => {
     };
 
     init2FAIfNeeded();
-  }, []);
+  }, [twoFactorRequired]);
 
   const sendLoginSuccessNotification = async (email: string) => {
     try {
@@ -342,36 +353,18 @@ const LoginScreen: React.FC = () => {
 
     const { user, error } = await signInWithEmail(email, password);
     setLoading(false);
-    
+
     if (error) {
       setError(error);
       return;
     }
-    
+
     if (user) {
-      // Check if user has 2FA enabled
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists() && userDoc.data().twoFactorEnabled) {
-          // Check trusted device first
-          // For mobile, we'll use a simplified approach
-          
-          // User has 2FA enabled, show 2FA step
-          await sendLoginAttemptNotification(user.email || email);
-          setShowStepper(true);
-          setCurrentStep(1);
-          setPendingUserId(user.uid);
-        } else {
-          // No 2FA, send login success email and proceed to dashboard
-          await sendLoginSuccessNotification(user.email || email);
-          await startSessionOnServer();
-          // Navigation will be handled by AuthContext
-        }
-      } catch (err) {
-        console.error('Error checking 2FA status:', err);
-        await startSessionOnServer();
-        // Navigation will be handled by AuthContext
-      }
+      // AuthContext will handle 2FA gating automatically
+      // If 2FA is required, it will set twoFactorRequired to true
+      // and the LoginScreen will show the 2FA form
+      await startSessionOnServer();
+      // Navigation will be handled by AuthContext
     }
   };
 
@@ -439,6 +432,10 @@ const LoginScreen: React.FC = () => {
       }
 
       await startSessionOnServer();
+
+      // Trigger AuthContext to re-check authentication status
+      await refreshAuth();
+
       // Navigation will be handled by AuthContext
     } catch (err: any) {
       setTwoFactorError(err.message || 'Cod invalid. Te rugăm să încerci din nou.');
@@ -458,6 +455,14 @@ const LoginScreen: React.FC = () => {
     if (currentUser) {
       await sendLoginAttemptNotification(currentUser.email || '');
     }
+
+    // Sign out the user to provide a clean state
+    try {
+      await auth.signOut();
+    } catch (err) {
+      console.warn('Failed to sign out:', err);
+    }
+
     setShowStepper(false);
     setCurrentStep(0);
     setTwoFactorCode('');
