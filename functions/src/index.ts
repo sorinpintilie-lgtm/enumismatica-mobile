@@ -88,41 +88,77 @@ export const sendChatMessagePush = onDocumentCreated(
     document: "users/{userId}/notifications/{notificationId}",
   },
   async (event) => {
-    const {userId} = event.params as {
+    const params = event.params as {
       userId: string;
       notificationId: string;
     };
     const snap = event.data;
     const data = snap?.data() as NotificationDoc | undefined;
 
-    if (!data) return;
+    if (!data) {
+      logger.info("No notification data", {
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+      return;
+    }
 
-    if (data.pushed === true) return;
+    if (data.pushed === true) {
+      logger.info("Notification already pushed", {
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+      return;
+    }
 
-    if (data.type !== "new_message") return;
+    if (data.type !== "new_message") {
+      logger.info("Skipping non-message notification", {
+        userId: params.userId,
+        notificationId: params.notificationId,
+        type: data.type,
+      });
+      return;
+    }
 
     const title = data.senderName
       ? `Mesaj nou de la ${data.senderName}`
       : "Mesaj nou";
     const body = data.message || "Ai primit un mesaj nou.";
 
+    logger.info("Processing chat message notification", {
+      userId: params.userId,
+      notificationId: params.notificationId,
+      title,
+      body,
+    });
+
     const devicesSnap = await admin
       .firestore()
       .collection("users")
-      .doc(userId)
+      .doc(params.userId)
       .collection("devices")
       .get();
 
     if (devicesSnap.empty) {
-      logger.info("No devices for push", {userId});
+      logger.info("No devices for push", {userId: params.userId});
       return;
     }
+
+    logger.info(`Found ${devicesSnap.size} devices for user ${params.userId}`);
 
     const messages: ExpoPushMessage[] = [];
 
     devicesSnap.forEach((doc) => {
       const device = doc.data() as DeviceRecord;
-      if (!device.expoPushToken) return;
+      if (!device.expoPushToken) {
+        logger.info("Device without expoPushToken", {deviceId: doc.id});
+        return;
+      }
+
+      logger.info("Adding device to push messages", {
+        deviceId: doc.id,
+        token: device.expoPushToken.substring(0, 20) + "...",
+      });
 
       messages.push({
         to: device.expoPushToken,
@@ -137,11 +173,17 @@ export const sendChatMessagePush = onDocumentCreated(
       });
     });
 
+    logger.info(`Sending ${messages.length} push notifications to Expo`);
+
     await sendExpoPushNotifications(messages);
 
     if (snap?.ref) {
       await snap.ref.update({
         pushed: true,
+      });
+      logger.info("Marked notification as pushed", {
+        userId: params.userId,
+        notificationId: params.notificationId,
       });
     }
   }

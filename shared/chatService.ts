@@ -910,4 +910,8 @@ async function sendPushNotification(
       });
     }
   }
+
+  // For mobile (Expo), the Firebase function will handle push notifications
+  // The notification document is created in Firestore, which triggers the Firebase function
+  // to send push notifications to Expo
 }
