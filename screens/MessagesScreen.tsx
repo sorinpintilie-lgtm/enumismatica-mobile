@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -39,25 +39,9 @@ const MessagesScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const messagesContainerRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
-
-  // Keyboard listeners to adjust ScrollView when keyboard shows/hides
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e: any) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -188,7 +172,7 @@ const MessagesScreen: React.FC = () => {
     <WebContainer>
       <KeyboardAvoidingView 
         style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         {isLargeScreen ? (
@@ -286,7 +270,9 @@ const MessagesScreen: React.FC = () => {
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
-                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight + 16 }]}
+                    contentContainerStyle={styles.messagesContent}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
                   >
                     {messages.length === 0 ? (
@@ -443,7 +429,9 @@ const MessagesScreen: React.FC = () => {
                 <ScrollView
                   ref={messagesContainerRef}
                   style={styles.messagesArea}
-                  contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight + 16 }]}
+                  contentContainerStyle={styles.messagesContent}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
                   onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
                 >
                   {messages.length === 0 ? (

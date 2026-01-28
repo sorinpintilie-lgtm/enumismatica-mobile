@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Button, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Button, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from 'react-native';
 import { HelpArticle, HelpCategory } from '@shared/types';
 import { getHelpArticles, getHelpCategories, searchHelpContent } from '@shared/helpService';
 import { sharedStyles, colors } from '../styles/sharedStyles';
@@ -198,136 +198,149 @@ export default function HelpCenterScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <InlineBackButton />
-      <Text style={[styles.title, { marginTop: 12 }]}>Help Center</Text>
-
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      <View style={styles.supportCard}>
-        <Text style={styles.supportTitle}>Ai nevoie de ajutor?</Text>
-        <Text style={styles.supportSubtitle}>
-          Trimite un mesaj echipei de suport. Un admin va prelua conversația.
-        </Text>
-        <TextInput
-          style={styles.supportInput}
-          value={supportMessage}
-          onChangeText={setSupportMessage}
-          placeholder="Scrie mesajul tău..."
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          maxLength={500}
-        />
-        <TouchableOpacity
-          style={[styles.supportButton, supportMessage.trim() ? null : styles.supportButtonDisabled]}
-          onPress={handleStartSupport}
-          disabled={!supportMessage.trim() || supportSending}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.supportButtonText}>
-            {supportSending ? 'Se trimite...' : 'Trimite mesaj către suport'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <InlineBackButton />
+          <Text style={[styles.title, { marginTop: 12 }]}>Help Center</Text>
 
-      {/* Search and Language Selection */}
-      <View style={styles.searchContainer}>
-        <View style={styles.languageSelector}>
-          <Text style={styles.languageLabel}>Language:</Text>
-          <View style={styles.languageButtons}>
-            <Button
-              title="English"
-              onPress={() => setLanguage('en')}
-              color={language === 'en' ? '#3b82f6' : '#d1d5db'}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          <View style={styles.supportCard}>
+            <Text style={styles.supportTitle}>Ai nevoie de ajutor?</Text>
+            <Text style={styles.supportSubtitle}>
+              Trimite un mesaj echipei de suport. Un admin va prelua conversația.
+            </Text>
+            <TextInput
+              style={styles.supportInput}
+              value={supportMessage}
+              onChangeText={setSupportMessage}
+              placeholder="Scrie mesajul tău..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              maxLength={500}
             />
-            <Button
-              title="Română"
-              onPress={() => setLanguage('ro')}
-              color={language === 'ro' ? '#3b82f6' : '#d1d5db'}
-            />
-          </View>
-        </View>
-
-        <View style={styles.searchInputContainer}>
-          <TextInput
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search help articles..."
-          />
-          <Button
-            title="Search"
-            onPress={handleSearch}
-            disabled={!searchQuery.trim()}
-          />
-        </View>
-      </View>
-
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
-        <Text style={styles.sectionTitle}>Categories</Text>
-        <FlatList
-          horizontal
-          data={categories.filter(cat => cat.language === language)}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
             <TouchableOpacity
-              style={[
-                styles.categoryItem,
-                selectedCategory === item.id && styles.selectedCategory
-              ]}
-              onPress={() => handleCategorySelect(item.id)}
+              style={[styles.supportButton, supportMessage.trim() ? null : styles.supportButtonDisabled]}
+              onPress={handleStartSupport}
+              disabled={!supportMessage.trim() || supportSending}
             >
-              <Text style={[
-                styles.categoryText,
-                selectedCategory === item.id && styles.selectedCategoryText
-              ]}>
-                {item.name}
+              <Text style={styles.supportButtonText}>
+                {supportSending ? 'Se trimite...' : 'Trimite mesaj către suport'}
               </Text>
             </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.categoriesList}
-        />
-      </View>
+          </View>
 
-      {/* Articles List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading help articles...</Text>
-        </View>
-      ) : filteredArticles.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {searchQuery
-              ? 'No articles match your search. Try different keywords.'
-              : 'No articles available in this category.'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredArticles}
-          keyExtractor={(item) => item.id}
-          renderItem={renderArticleItem}
-          contentContainerStyle={styles.articlesList}
-        />
-      )}
-
-      <View style={styles.faqSection}>
-        <Text style={styles.sectionTitle}>FAQ</Text>
-        <View style={styles.faqList}>
-          {faqItems.map((item) => (
-            <View key={item.question} style={styles.faqItem}>
-              <Text style={styles.faqQuestion}>{item.question}</Text>
-              <Text style={styles.faqAnswer}>{item.answer}</Text>
+          {/* Search and Language Selection */}
+          <View style={styles.searchContainer}>
+            <View style={styles.languageSelector}>
+              <Text style={styles.languageLabel}>Language:</Text>
+              <View style={styles.languageButtons}>
+                <Button
+                  title="English"
+                  onPress={() => setLanguage('en')}
+                  color={language === 'en' ? '#3b82f6' : '#d1d5db'}
+                />
+                <Button
+                  title="Română"
+                  onPress={() => setLanguage('ro')}
+                  color={language === 'ro' ? '#3b82f6' : '#d1d5db'}
+                />
+              </View>
             </View>
-          ))}
-        </View>
-      </View>
-    </View>
+
+            <View style={styles.searchInputContainer}>
+              <TextInput
+                style={styles.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search help articles..."
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Button
+                title="Search"
+                onPress={handleSearch}
+                disabled={!searchQuery.trim()}
+              />
+            </View>
+          </View>
+
+          {/* Categories */}
+          <View style={styles.categoriesContainer}>
+            <Text style={styles.sectionTitle}>Categories</Text>
+            <FlatList
+              horizontal
+              data={categories.filter(cat => cat.language === language)}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.categoryItem,
+                    selectedCategory === item.id && styles.selectedCategory
+                  ]}
+                  onPress={() => handleCategorySelect(item.id)}
+                >
+                  <Text style={[
+                    styles.categoryText,
+                    selectedCategory === item.id && styles.selectedCategoryText
+                  ]}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              contentContainerStyle={styles.categoriesList}
+              showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            />
+          </View>
+
+          {/* Articles List */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading help articles...</Text>
+            </View>
+          ) : filteredArticles.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? 'No articles match your search. Try different keywords.'
+                  : 'No articles available in this category.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.articlesListContainer}>
+              {filteredArticles.map((item) => (
+                <View key={item.id}>{renderArticleItem({ item })}</View>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.faqSection}>
+            <Text style={styles.sectionTitle}>FAQ</Text>
+            <View style={styles.faqList}>
+              {faqItems.map((item) => (
+                <View key={item.question} style={styles.faqItem}>
+                  <Text style={styles.faqQuestion}>{item.question}</Text>
+                  <Text style={styles.faqAnswer}>{item.answer}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -336,6 +349,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: colors.background
+  },
+  scrollContent: {
+    paddingBottom: 32,
   },
   title: {
     fontSize: 24,
@@ -561,6 +577,9 @@ const styles = StyleSheet.create({
   },
   articlesList: {
     paddingBottom: 24
+  },
+  articlesListContainer: {
+    paddingBottom: 24,
   },
   faqSection: {
     marginTop: 16,

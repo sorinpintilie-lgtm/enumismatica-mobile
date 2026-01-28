@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { initializeApp, cert, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const DEFAULT_SERVICE_ACCOUNT = './e-numismatica-ro-firebase-adminsdk-fbsvc-ba41e55b6f.json';
 const EXPO_TOKEN_REGEX = /Expo(nent)?PushToken\[[^\]]+\]/i;
@@ -14,6 +14,7 @@ function parseArgs(argv) {
     data: {},
     dryRun: false,
     limit: 0,
+    inApp: true,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -45,6 +46,12 @@ function parseArgs(argv) {
         break;
       case '--dry-run':
         args.dryRun = true;
+        break;
+      case '--no-in-app':
+        args.inApp = false;
+        break;
+      case '--in-app':
+        args.inApp = true;
         break;
       case '--limit':
         args.limit = Number(next || 0);
@@ -92,6 +99,45 @@ function chunkArray(items, size) {
     chunks.push(items.slice(i, i + size));
   }
   return chunks;
+}
+
+async function createInAppNotifications(db, userIds, title, body) {
+  if (!userIds.length) {
+    console.log('No users matched for in-app notification creation.');
+    return;
+  }
+
+  const batchSize = 400;
+  let batch = db.batch();
+  let ops = 0;
+  let created = 0;
+
+  for (const userId of userIds) {
+    const notifRef = db.collection('users').doc(userId).collection('notifications').doc();
+    batch.set(notifRef, {
+      userId,
+      type: 'system',
+      title,
+      message: body,
+      read: false,
+      pushed: true,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    ops += 1;
+    created += 1;
+
+    if (ops >= batchSize) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+
+  if (ops > 0) {
+    await batch.commit();
+  }
+
+  console.log(`Created ${created} in-app notifications.`);
 }
 
 async function sendExpoPush(tokens, title, body, data) {
@@ -142,15 +188,20 @@ async function main() {
 
   const allTokens = [];
   const subcollectionTokens = [];
+  const tokenEntries = [];
 
   for (const userDoc of snapshot.docs) {
     const data = userDoc.data() || {};
-    allTokens.push(...extractTokensFromUser(data));
+    const userTokens = extractTokensFromUser(data);
+    allTokens.push(...userTokens);
+    userTokens.forEach((token) => tokenEntries.push({ userId: userDoc.id, token }));
 
     const devicesSnap = await userDoc.ref.collection('devices').get();
     devicesSnap.forEach((deviceDoc) => {
       const deviceData = deviceDoc.data() || {};
-      subcollectionTokens.push(...extractTokensFromUser(deviceData));
+      const deviceTokens = extractTokensFromUser(deviceData);
+      subcollectionTokens.push(...deviceTokens);
+      deviceTokens.forEach((token) => tokenEntries.push({ userId: userDoc.id, token }));
     });
   }
 
@@ -177,12 +228,21 @@ async function main() {
     process.exit(0);
   }
 
+  const selectedTokenSet = new Set(limitedTokens);
+  const targetUserIds = Array.from(
+    new Set(tokenEntries.filter((entry) => selectedTokenSet.has(entry.token)).map((entry) => entry.userId))
+  );
+
   const chunks = chunkArray(limitedTokens, 100);
   for (let i = 0; i < chunks.length; i += 1) {
     const chunk = chunks[i];
     console.log(`Sending chunk ${i + 1}/${chunks.length} (${chunk.length} tokens)...`);
     const result = await sendExpoPush(chunk, args.title, args.body, args.data);
     console.log(`Chunk ${i + 1} response:`, JSON.stringify(result));
+  }
+
+  if (args.inApp) {
+    await createInAppNotifications(db, targetUserIds, args.title, args.body);
   }
 
   console.log('Push notification test complete.');
