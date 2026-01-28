@@ -34,7 +34,7 @@ export async function requestNotificationPermissions() {
     return false;
   }
   const permissions = await Notifications.getPermissionsAsync();
-  
+
   if (permissions.status !== 'granted') {
     const newPermissions = await Notifications.requestPermissionsAsync();
     if (newPermissions.status !== 'granted') {
@@ -152,6 +152,13 @@ export function setupNotificationListeners() {
     console.log('Push notifications not supported on web');
     return () => {};
   }
+
+  // Handle incoming push notifications from Expo
+  const pushTokenListener = Notifications.addPushTokenListener((token) => {
+    console.log('Push token received:', token);
+    // Token is automatically registered by pushTokenService
+  });
+
   // Handle notification received while app is foregrounded
   const notificationListener = Notifications.addNotificationReceivedListener(notification => {
     console.log('Notification received:', notification);
@@ -164,12 +171,13 @@ export function setupNotificationListeners() {
 
     // Handle navigation based on notification type
     if (data?.auctionId) {
-      // Navigate to auction details - this would need to be handled by the navigation context
+      // Navigate to auction details - this would need to be handled by navigation context
       console.log('Navigate to auction:', data.auctionId);
     }
   });
 
   return () => {
+    pushTokenListener.remove();
     notificationListener.remove();
     responseListener.remove();
   };

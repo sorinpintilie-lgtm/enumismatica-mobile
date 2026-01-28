@@ -24,6 +24,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ToastProvider from './context/ToastContext';
 import type { RootStackParamList } from './navigationTypes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { setupNotificationListeners } from './services/notificationService';
 
 // Import all screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -343,6 +344,15 @@ function AuthStack() {
 function AppContent() {
   const { user, loading } = useAuth();
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    // Setup notification listeners for push notifications
+    const cleanup = setupNotificationListeners();
+
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) {
