@@ -292,7 +292,7 @@ const DashboardScreen: React.FC = () => {
 
           <TouchableOpacity
             style={dashboardStyles.statsCard}
-            onPress={() => navigation.navigate('Collection' as never)}
+            onPress={() => navigation.navigate('Collection')}
           >
             <Ionicons name="albums-outline" size={32} color={colors.primary} />
             <Text style={dashboardStyles.statsCardValue}>{collectionItems?.length || 0}</Text>
@@ -301,7 +301,7 @@ const DashboardScreen: React.FC = () => {
 
           <TouchableOpacity
             style={dashboardStyles.statsCard}
-            onPress={() => navigation.navigate('Messages' as never)}
+            onPress={() => navigation.navigate('Messages', {})}
           >
             <Ionicons name="chatbubbles-outline" size={32} color={colors.primary} />
             <Text style={dashboardStyles.statsCardValue}>{conversations?.length || 0}</Text>
@@ -348,7 +348,7 @@ const DashboardScreen: React.FC = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}
-              onPress={() => navigation.navigate('Watchlist' as never)}
+              onPress={() => navigation.navigate('Watchlist')}
             >
               <Ionicons name="bookmark" size={28} color={colors.primary} />
               <Text style={dashboardStyles.actionGridText}>Watchlist</Text>
@@ -410,7 +410,7 @@ const DashboardScreen: React.FC = () => {
             <Text style={dashboardStyles.sectionTitle}>Activitatea Mea la Licitatii</Text>
             <TouchableOpacity
               style={[dashboardStyles.viewAllButton]}
-              onPress={() => navigation.navigate('AuctionList' as never)}
+              onPress={() => navigation.navigate('AuctionList', {})}
             >
               <Text style={dashboardStyles.viewAllButtonText}>Vezi Toate</Text>
             </TouchableOpacity>

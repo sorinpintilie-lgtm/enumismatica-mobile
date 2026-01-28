@@ -42,6 +42,9 @@ export type RootStackParamList = {
   Contracts: undefined;
   Event: undefined;
   Bookmarks: undefined;
+  Watchlist: undefined;
+  Collection: undefined;
+  AuctionList: { filters?: any };
   SellerProfile: {
     sellerId: string;
     /** Optional display data passed from product/auction screens to avoid extra reads. */
