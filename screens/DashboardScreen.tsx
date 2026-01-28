@@ -274,7 +274,7 @@ const DashboardScreen: React.FC = () => {
         <View style={dashboardStyles.statsGrid}>
           <TouchableOpacity
             style={dashboardStyles.statsCard}
-            onPress={() => navigation.navigate('NewListing', { listingType: 'direct' })}
+            onPress={() => navigation.navigate('UserProducts')}
           >
             <Ionicons name="cube-outline" size={32} color={colors.primary} />
             <Text style={dashboardStyles.statsCardValue}>{products.length}</Text>
@@ -283,7 +283,7 @@ const DashboardScreen: React.FC = () => {
 
           <TouchableOpacity
             style={dashboardStyles.statsCard}
-            onPress={() => navigation.navigate('NewListing', { listingType: 'auction' })}
+            onPress={() => navigation.navigate('UserAuctions')}
           >
             <Ionicons name="pricetag-outline" size={32} color={colors.primary} />
             <Text style={dashboardStyles.statsCardValue}>{userAuctions.length}</Text>
@@ -345,6 +345,13 @@ const DashboardScreen: React.FC = () => {
             >
               <Ionicons name="settings" size={28} color={colors.primary} />
               <Text style={dashboardStyles.actionGridText}>Setări</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={dashboardStyles.actionGridButton}
+              onPress={() => navigation.navigate('Watchlist' as never)}
+            >
+              <Ionicons name="bookmark" size={28} color={colors.primary} />
+              <Text style={dashboardStyles.actionGridText}>Watchlist</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}

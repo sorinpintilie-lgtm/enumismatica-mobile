@@ -54,6 +54,8 @@ import CheckoutScreen from './screens/CheckoutScreen';
 import SellerProfileScreen from './screens/SellerProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import MessagesScreen from './screens/MessagesScreen';
+import UserProductsScreen from './screens/UserProductsScreen';
+import UserAuctionsScreen from './screens/UserAuctionsScreen';
 // Settings & Security
 import SettingsScreen from './screens/SettingsScreen';
 import ChangePasswordScreen from './screens/ChangePasswordScreen';
@@ -401,6 +403,8 @@ function AppContent() {
             <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Messages" component={MessagesScreen} />
+            <Stack.Screen name="UserProducts" component={UserProductsScreen} />
+            <Stack.Screen name="UserAuctions" component={UserAuctionsScreen} />
             {/* Admin screens */}
             <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
             <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />

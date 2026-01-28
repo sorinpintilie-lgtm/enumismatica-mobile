@@ -909,7 +909,5 @@ async function sendPushNotification(
         requireInteraction: false,
       });
     }
-  } else {
-    console.log('Push notifications not supported in this environment');
   }
 }
