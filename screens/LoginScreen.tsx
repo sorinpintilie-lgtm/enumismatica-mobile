@@ -281,7 +281,7 @@ const LoginScreen: React.FC = () => {
     };
 
     init2FAIfNeeded();
-  }, [twoFactorRequired]);
+  }, [twoFactorRequired, auth.currentUser]);
 
   const sendLoginSuccessNotification = async (email: string) => {
     try {
