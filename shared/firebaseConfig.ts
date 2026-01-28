@@ -102,6 +102,7 @@ export {
   serverTimestamp,
   Timestamp,
   updateDoc,
+  setDoc,
 } from 'firebase/firestore';
 
 export type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@shared/auth';
+import { registerPushTokenForUser } from '../services/pushTokenService';
 
 interface AuthContextType {
   user: User | null;
@@ -23,6 +24,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChange((user: User | null) => {
       setUser(user);
+
+      if (user?.uid) {
+        registerPushTokenForUser(user.uid).catch((error) => {
+          console.error('[AuthContext] Failed to register push token:', error);
+        });
+      }
+
       // Clear timeout if authentication completes before minimum time
       clearTimeout(minimumLoadingTime);
       // Still show splash screen for minimum duration

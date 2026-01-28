@@ -34,6 +34,12 @@ yarn-error.*
 .env*.local
 .env
 
+# secrets
+*firebase-adminsdk*.json
+
+# OS
+Desktop.ini
+
 # typescript
 *.tsbuildinfo
 
