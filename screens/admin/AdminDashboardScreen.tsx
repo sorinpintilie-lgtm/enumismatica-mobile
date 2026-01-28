@@ -232,7 +232,7 @@ export default function AdminDashboardScreen() {
         <View style={styles.searchContainer}>
           <Text style={styles.sectionTitle}>Caută rapid anunț / licitație</Text>
           <Text style={styles.sectionSubtitle}>
-            Introdu ID-ul (sau link-ul) și te ducem direct la pagina anunțului.
+            Introduceți ID-ul (sau link-ul) și se va fi dus direct la pagina anunțului.
           </Text>
           <View style={styles.searchRow}>
             <TouchableOpacity
@@ -294,7 +294,7 @@ export default function AdminDashboardScreen() {
         <View style={styles.supportChat}>
           <Text style={styles.sectionTitle}>Suport Utilizatori</Text>
           <Text style={styles.sectionSubtitle}>
-            Începe o conversație de suport cu orice utilizator pentru ajutor sau moderare
+            Începeți o conversație de suport cu orice utilizator pentru ajutor sau moderare
           </Text>
           <View style={styles.supportChatRow}>
             <TextInput

@@ -348,7 +348,7 @@ const AuctionDetailsScreen: React.FC = () => {
         {!user && !isEnded && (
           <View style={styles.loginPrompt}>
             <Text style={styles.loginPromptText}>
-              Autentifică-te pentru a licita
+              Autentificați-vă pentru a licita
             </Text>
           </View>
         )}

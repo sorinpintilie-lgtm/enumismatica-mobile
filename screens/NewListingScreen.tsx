@@ -303,7 +303,7 @@ const NewListingScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!user) {
-      setError('Trebuie să fii autentificat pentru a adăuga o piesă.');
+      setError('Trebuie să fie autentificat pentru a adăuga o piesă.');
       navigation.navigate('Login');
       return;
     }
@@ -320,7 +320,7 @@ const NewListingScreen: React.FC = () => {
     if (mode === 'direct') {
       numericPrice = Number(price);
       if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-        setError('Introdu un preț valid mai mare decât 0.');
+        setError('Introduceți un preț valid mai mare decât 0.');
         return;
       }
     }
@@ -333,13 +333,13 @@ const NewListingScreen: React.FC = () => {
     if (mode === 'auction') {
       numericReserve = Number(reservePrice || price);
       if (!Number.isFinite(numericReserve) || numericReserve <= 0) {
-        setError('Introdu un preț de start valid mai mare decât 0.');
+        setError('Introduceți un preț de start valid mai mare decât 0.');
         return;
       }
 
       numericMinAccept = Number(minAcceptPrice || numericReserve);
       if (!Number.isFinite(numericMinAccept) || numericMinAccept <= 0) {
-        setError('Introdu un preț minim acceptat valid mai mare decât 0.');
+        setError('Introduceți un preț minim acceptat valid mai mare decât 0.');
         return;
       }
       if (numericMinAccept < numericReserve) {
@@ -361,7 +361,7 @@ const NewListingScreen: React.FC = () => {
       }
 
       if (!auctionDuration) {
-        setError('Selectează durata licitației (3 sau 5 zile).');
+        setError('Selectați durata licitației (3 sau 5 zile).');
         return;
       }
     }
@@ -459,7 +459,7 @@ const NewListingScreen: React.FC = () => {
           console.error('Failed to upload images:', imageError);
           Alert.alert(
             'Avertisment',
-            'Produsul a fost creat dar imaginile nu au putut fi încărcate. Poți adăuga imagini mai târziu.'
+            'Produsul a fost creat dar imaginile nu au putut fi încărcate. Puteți adăuga imagini mai târziu.'
           );
         } finally {
           setUploadingImages(false);
@@ -1020,9 +1020,9 @@ const NewListingScreen: React.FC = () => {
       {/* Image Upload Section */}
       <View style={styles.sectionBox}>
         <Text style={styles.sectionTitle}>Imagini</Text>
-        <Text style={styles.toggleSubtitle}>
-          Adaugă imagini pentru a crește șansele de vânzare
-        </Text>
+          <Text style={styles.toggleSubtitle}>
+            Adăugați imagini pentru a crește șansele de vânzare
+          </Text>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
           <TouchableOpacity
@@ -1080,9 +1080,9 @@ const NewListingScreen: React.FC = () => {
             </Text>
           </View>
         ) : (
-          <Text style={styles.submitText}>
-            {isEditing ? 'Salvează modificările' : 'Trimite spre aprobare'}
-          </Text>
+            <Text style={styles.submitText}>
+              {isEditing ? 'Salvați modificările' : 'Trimite spre aprobare'}
+            </Text>
         )}
       </TouchableOpacity>
         </ScrollView>

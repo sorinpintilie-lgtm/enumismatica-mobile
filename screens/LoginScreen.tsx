@@ -380,7 +380,7 @@ const LoginScreen: React.FC = () => {
 
     try {
       if (!auth.currentUser) {
-        throw new Error('Sesiune invalidă. Te rugăm să te autentifici din nou.');
+        throw new Error('Sesiune invalidă. Se rugă să se autentifice din nou.');
       }
 
       const token = await auth.currentUser.getIdToken();
@@ -438,7 +438,7 @@ const LoginScreen: React.FC = () => {
 
       // Navigation will be handled by AuthContext
     } catch (err: any) {
-      setTwoFactorError(err.message || 'Cod invalid. Te rugăm să încerci din nou.');
+      setTwoFactorError(err.message || 'Cod invalid. Se rugă să încerce din nou.');
       // Send login attempt notification on failed 2FA
       const currentUser = auth.currentUser;
       if (currentUser) {
@@ -486,7 +486,7 @@ const LoginScreen: React.FC = () => {
     setResetSuccess('');
 
     if (!resetEmail) {
-      setResetError('Te rugăm să introduci adresa de email.');
+      setResetError('Se rugă să se introducă adresa de email.');
       return;
     }
 
@@ -513,7 +513,7 @@ const LoginScreen: React.FC = () => {
       }
 
       setResetSuccess(
-        'Dacă există un cont cu această adresă de email, vei primi un email cu instrucțiuni pentru resetarea parolei.',
+        'Dacă există un cont cu această adresă de email, se va primi un email cu instrucțiuni pentru resetarea parolei.',
       );
       setResetEmail('');
       
@@ -547,7 +547,7 @@ const LoginScreen: React.FC = () => {
           Autentificare
         </Text>
         <Text style={styles.subtitle}>
-          Conectează-te la contul tău eNumismatica
+          Conectați-vă la contul eNumismatica
         </Text>
       </View>
 
@@ -605,7 +605,7 @@ const LoginScreen: React.FC = () => {
 
         <View style={styles.linkContainer}>
           <TouchableOpacity onPress={() => setShowResetPassword(true)}>
-            <Text style={styles.linkText}>Ai uitat parola?</Text>
+            <Text style={styles.linkText}>A uitat parola?</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
             <Text style={styles.linkText}>Înregistrează-te</Text>
@@ -622,7 +622,7 @@ const LoginScreen: React.FC = () => {
           Autentificare cu Doi Factori
         </Text>
         <Text style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-          Introdu codul din aplicația ta de autentificare
+          Introduceți codul din aplicația de autentificare
         </Text>
       </View>
 
@@ -806,7 +806,7 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <Text style={{ color: '#94a3b8', marginBottom: 24, fontSize: 14 }}>
-            Introdu adresa ta de email și îți vom trimite instrucțiuni pentru resetarea parolei.
+            Introduceți adresa de email și se va trimite instrucțiuni pentru resetarea parolei.
           </Text>
 
           <TextInput

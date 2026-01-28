@@ -174,12 +174,12 @@ export default function HelpCenterScreen() {
 
   const handleStartSupport = async () => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a contacta suportul.');
+      Alert.alert('Autentificare necesară', 'Trebuie să fie autentificat pentru a contacta suportul.');
       return;
     }
 
     if (!supportMessage.trim()) {
-      Alert.alert('Mesaj gol', 'Scrie un mesaj pentru echipa de suport.');
+      Alert.alert('Mesaj gol', 'Scrieți un mesaj pentru echipa de suport.');
       return;
     }
 
@@ -191,7 +191,7 @@ export default function HelpCenterScreen() {
       navigation.navigate('Messages', { conversationId });
     } catch (err) {
       console.error('Failed to start support conversation', err);
-      Alert.alert('Eroare', 'Nu am putut trimite mesajul către suport. Încearcă din nou.');
+      Alert.alert('Eroare', 'Nu s-a putut trimite mesajul către suport. Încearcă din nou.');
     } finally {
       setSupportSending(false);
     }
@@ -218,7 +218,7 @@ export default function HelpCenterScreen() {
           )}
 
           <View style={styles.supportCard}>
-            <Text style={styles.supportTitle}>Ai nevoie de ajutor?</Text>
+            <Text style={styles.supportTitle}>Este nevoie de ajutor?</Text>
             <Text style={styles.supportSubtitle}>
               Trimite un mesaj echipei de suport. Un admin va prelua conversația.
             </Text>
@@ -226,7 +226,7 @@ export default function HelpCenterScreen() {
               style={styles.supportInput}
               value={supportMessage}
               onChangeText={setSupportMessage}
-              placeholder="Scrie mesajul tău..."
+              placeholder="Scrieți mesajul..."
               placeholderTextColor={colors.textSecondary}
               multiline
               maxLength={500}

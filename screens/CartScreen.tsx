@@ -29,7 +29,7 @@ const CartScreen: React.FC = () => {
     return (
       <View style={styles.authContainer}>
         <Text style={styles.authTitle}>
-          Autentifică-te pentru a accesa coșul tău de cumpărături.
+          Autentificați-vă pentru a accesa coșul de cumpărături.
         </Text>
         <TouchableOpacity
           style={styles.authButton}
@@ -78,7 +78,7 @@ const CartScreen: React.FC = () => {
 
   const handleCheckoutItem = async (productId: string, cartItemId: string) => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a cumpăra.');
+      Alert.alert('Autentificare necesară', 'Trebuie să fie autentificat pentru a cumpăra.');
       return;
     }
 
@@ -89,13 +89,13 @@ const CartScreen: React.FC = () => {
 
       Alert.alert(
         'Comandă creată',
-        'Comanda ta a fost înregistrată. O poți vedea în istoricul comenzilor pe web.',
+        'Comanda a fost înregistrată. Se poate vedea în istoricul comenzilor pe web.',
       );
     } catch (err: any) {
       console.error('Failed to create order from cart', err);
       Alert.alert(
         'Eroare la cumpărare',
-        err?.message || 'Nu am putut finaliza cumpărarea acestui produs.',
+        err?.message || 'Nu s-a putut finaliza cumpărarea acestui produs.',
       );
     } finally {
       setPlacingOrderFor(null);
@@ -106,7 +106,7 @@ const CartScreen: React.FC = () => {
     if (!items.length) return;
     Alert.alert(
       'Golește coșul',
-      'Ești sigur că vrei să golești întregul coș?',
+      'Este sigur că doriți să golești întregul coș?',
       [
         { text: 'Anulează', style: 'cancel' },
         {
@@ -119,7 +119,7 @@ const CartScreen: React.FC = () => {
               console.error('Failed to clear cart', err);
               Alert.alert(
                 'Eroare',
-                err?.message || 'Nu am putut goli coșul. Încearcă din nou.',
+                err?.message || 'Nu s-a putut goli coșul. Încearcă din nou.',
               );
             }
           },
@@ -134,7 +134,7 @@ const CartScreen: React.FC = () => {
     <ScrollView style={styles.screenContainer}>
       <View style={styles.headerContainer}>
         <InlineBackButton />
-        <Text style={styles.headerTitle}>Coșul meu</Text>
+        <Text style={styles.headerTitle}>Coșul de cumpărături</Text>
         {loading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -142,12 +142,12 @@ const CartScreen: React.FC = () => {
           </View>
         ) : isEmpty ? (
           <Text style={styles.emptyText}>
-            Coșul tău este gol. Adaugă monede din magazin pentru a le cumpăra direct.
+            Coșul este gol. Adăugați monede din magazin pentru a le cumpăra direct.
           </Text>
         ) : (
           <View style={styles.cartSummary}>
             <Text style={styles.cartSummaryText}>
-              Ai {lines.length} {lines.length === 1 ? 'produs' : 'produse'} în coș.
+              Există {lines.length} {lines.length === 1 ? 'produs' : 'produse'} în coș.
             </Text>
             <Text style={styles.cartTotalText}>
               Total estimat:{' '}

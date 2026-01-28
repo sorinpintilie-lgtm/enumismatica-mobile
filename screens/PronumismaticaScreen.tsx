@@ -137,7 +137,7 @@ export default function PronumismaticaScreen() {
 
   const handleSubmit = async () => {
     if (!canGoNext() || step !== 5) {
-      setError('Te rugăm să completezi toate câmpurile obligatorii.');
+      setError('Se rugă să se completeze toate câmpurile obligatorii.');
       return;
     }
 
@@ -185,10 +185,10 @@ export default function PronumismaticaScreen() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Cererea nu a putut fi trimisă. Încearcă din nou mai târziu.');
+        throw new Error(errorData.error || 'Cererea nu a putut fi trimisă. Încercați din nou mai târziu.');
       }
 
-      setSuccess('Formularul a fost trimis cu succes. Vei fi contactat în curând.');
+      setSuccess('Formularul a fost trimis cu succes. Se va fi contactat în curând.');
       setForm(initialForm);
       setIdFrontUri(null);
       setIdBackUri(null);
@@ -197,7 +197,7 @@ export default function PronumismaticaScreen() {
       console.error('Pronumismatica form submit error:', err);
       setError(
         err?.message ||
-          'A apărut o eroare la trimiterea formularului. Te rugăm să încerci din nou.',
+          'A apărut o eroare la trimiterea formularului. Se rugă să se încerce din nou.',
       );
     } finally {
       setSubmitting(false);
@@ -374,7 +374,7 @@ export default function PronumismaticaScreen() {
           <View style={styles.stepContainer}>
             <View style={styles.infoBox}>
               <Text style={styles.infoText}>
-                Încarcă poze clare ale actului selectat ({form.idType || 'act'}):{' '}
+                Încărcați poze clare ale actului selectat ({form.idType || 'act'}):{' '}
                 <Text style={styles.bold}>față</Text> și <Text style={styles.bold}>verso</Text>.
               </Text>
             </View>

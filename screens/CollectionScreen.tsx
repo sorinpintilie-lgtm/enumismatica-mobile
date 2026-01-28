@@ -126,7 +126,7 @@ export default function CollectionScreen() {
     return (
       <View style={styles.container}>
 	        <InlineBackButton />
-	        <Text style={styles.headerTitle}>Autentifică-te pentru a vedea colecția</Text>
+	        <Text style={styles.headerTitle}>Autentificați-vă pentru a vedea colecția</Text>
       </View>
     );
   }
@@ -147,11 +147,11 @@ export default function CollectionScreen() {
         <View style={styles.subscriptionCard}>
           <Text style={styles.subscriptionTitle}>Abonament Colecție Necesar</Text>
           <Text style={styles.subscriptionDescription}>
-            Pentru a folosi funcțiile "Colecția Mea" (vizualizare, adăugare și gestionare articole), ai nevoie de un abonament activ plătit cu credite.
+            Pentru a folosi funcțiile "Colecția Mea" (vizualizare, adăugare și gestionare articole), este nevoie de un abonament activ plătit cu credite.
           </Text>
           <View style={styles.subscriptionInfo}>
             <Text style={styles.infoText}>• Cost: 50 credite / an</Text>
-            <Text style={styles.infoText}>• Abonamentul îți permite să menții și să gestionezi colecția personală</Text>
+            <Text style={styles.infoText}>• Abonamentul permite să se mențină și să se gestioneze colecția personală</Text>
             <Text style={styles.infoText}>• Creditele pot fi obținute din bonus înregistrare, recomandări sau plăți</Text>
           </View>
           <View style={styles.creditsInfo}>
@@ -177,8 +177,8 @@ export default function CollectionScreen() {
       {/* Header */}
       <InlineBackButton />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Colecția Mea</Text>
-        <Text style={styles.headerSubtitle}>Gestionează colecția ta numismatică personală</Text>
+        <Text style={styles.headerTitle}>Colecția Utilizatorului</Text>
+        <Text style={styles.headerSubtitle}>Gestionați colecția numismatică personală</Text>
       </View>
 
       {/* Stats */}
@@ -237,7 +237,7 @@ export default function CollectionScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="sad-outline" size={60} color="#999" />
           <Text style={styles.emptyText}>
-            {searchTerm ? 'Nu s-au găsit rezultate' : 'Colecția ta este goală'}
+            {searchTerm ? 'Nu s-au găsit rezultate' : 'Colecția este goală'}
           </Text>
           {!searchTerm && (
             <TouchableOpacity style={styles.addFirstButton} onPress={() => setShowAddModal(true)}>

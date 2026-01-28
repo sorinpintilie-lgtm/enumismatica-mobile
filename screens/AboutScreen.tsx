@@ -241,7 +241,7 @@ const AboutScreen: React.FC = () => {
     {
       icon: 'list-outline',
       title: 'Listare și administrare ușoară',
-      description: 'Publică rapid monedele tale, completează detaliile esențiale și gestionează totul dintr-un singur loc — de la anunțuri până la licitații.',
+      description: 'Publică rapid monedele, completați detaliile esențiale și gestionați totul dintr-un singur loc — de la anunțuri până la licitații.',
     },
     {
       icon: 'school-outline',
@@ -266,7 +266,7 @@ const AboutScreen: React.FC = () => {
     },
     {
       title: 'Evaluări de experți',
-      description: 'Obține evaluări profesionale și certificări pentru colecția ta de la echipa noastră de numismați experimentați.',
+      description: 'Obțineți evaluări profesionale și certificări pentru colecția de la echipa noastră de numismați experimentați.',
     },
     {
       title: 'Comunitate pentru colecționari',
@@ -288,7 +288,7 @@ const AboutScreen: React.FC = () => {
           <View style={aboutStyles.heroContainer}>
             <Text style={aboutStyles.heroTitle}>Despre eNumismatica</Text>
             <Text style={aboutStyles.heroSubtitle}>
-              Partenerul tău de încredere în colecționarea numismatică din 2025
+              Partenerul de încredere în colecționarea numismatică din 2025
             </Text>
           </View>
 
@@ -300,10 +300,10 @@ const AboutScreen: React.FC = () => {
                 eNumismatica a fost fondată cu pasiunea de a păstra istoria prin monede și valută. Ceea ce a început ca o colecție mică a crescut până la a deveni platforma numismatică de top din România, conectând colecționari, entuziaști și istorici din întreaga lume.
               </Text>
               <Text style={aboutStyles.sectionText}>
-                Platforma noastră combină expertiza numismatică tradițională cu tehnologia modernă, oferind atât un magazin selectat, cât și oportunități interesante de licitație. Fie că ești un colecționar experimentat sau abia începi călătoria în fascinanta lume a monedelor, suntem aici să te ajutăm să descoperi, să achiziționezi și să apreciezi aceste piese tangibile de istorie.
+                Platforma noastră combină expertiza numismatică tradițională cu tehnologia modernă, oferind atât un magazin selectat, cât și oportunități interesante de licitație. Fie că este un colecționar experimentat sau abia începe călătoria în fascinanta lume a monedelor, suntem aici să ajutăm să descopere, să achiziționeze și să aprecieze aceste piese tangibile de istorie.
               </Text>
               <Text style={aboutStyles.sectionText}>
-                Fiecare monedă spune o poveste - despre imperii ridicate și căzute, despre revoluții economice, despre realizări artistice și despre civilizația umană însăși. La eNumismatica, suntem dedicați să te ajutăm să descoperi aceste povești și să construiești o colecție care reflectă pasiunea și interesele tale.
+                Fiecare monedă spune o poveste - despre imperii ridicate și căzute, despre revoluții economice, despre realizări artistice și despre civilizația umană însăși. La eNumismatica, suntem dedicați să ajutăm să descopere aceste povești și să construiască o colecție care reflectă pasiunea și interesele.
               </Text>
             </View>
           </View>
@@ -365,10 +365,10 @@ const AboutScreen: React.FC = () => {
 
           {/* Call to Action */}
           <View style={aboutStyles.section}>
-            <Text style={aboutStyles.sectionTitle}>Gata să-ți începi colecția?</Text>
+            <Text style={aboutStyles.sectionTitle}>Gata să înceapă colecția?</Text>
             <View style={aboutStyles.sectionContent}>
               <Text style={aboutStyles.sectionText}>
-                Alătură-te comunității de colecționari care aleg eNumismatica pentru piese verificate și tranzacții sigure. Răsfoiește selecția noastră sau intră în următoarea licitație.
+                Alăturați-vă comunității de colecționari care aleg eNumismatica pentru piese verificate și tranzacții sigure. Răsfoiți selecția noastră sau intrați în următoarea licitație.
               </Text>
               <View style={aboutStyles.ctaButtons}>
                 <TouchableOpacity

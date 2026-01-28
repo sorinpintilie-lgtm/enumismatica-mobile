@@ -39,7 +39,7 @@ const ChangePasswordScreen: React.FC = () => {
     try {
       schema.parse({ currentPassword, newPassword, confirmPassword });
       const user = auth.currentUser;
-      if (!user?.email) throw new Error('Sesiune invalidă. Autentifică-te din nou.');
+      if (!user?.email)      throw new Error('Sesiune invalidă. Autentificați-vă din nou.');
 
       const cred = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, cred);

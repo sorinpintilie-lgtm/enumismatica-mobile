@@ -53,8 +53,8 @@ export default function ModeratorScreen() {
           <InlineBackButton label="Înapoi la Admin" onPress={() => navigation.navigate('Dashboard' as never)} />
           <Text style={styles.title}>Panou Admin (Simplificat)</Text>
           <Text style={styles.description}>
-            Acesta este panoul pentru administratorii obișnuiți. Poți aproba și gestiona piese și
-            licitații, dar nu ai acces la gestionarea utilizatorilor, loguri complete sau analitice
+            Acesta este panoul pentru administratorii obișnuiți. Se poate aproba și gestiona piese și
+            licitații, dar nu există acces la gestionarea utilizatorilor, loguri complete sau analitice
             avansate.
           </Text>
         </View>
@@ -68,7 +68,7 @@ export default function ModeratorScreen() {
           >
             <Text style={styles.cardTitle}>Piese</Text>
             <Text style={styles.cardDescription}>
-              Vezi și aprobă piesele trimise de utilizatori pentru vânzare directă.
+              Vedeți și aprobați piesele trimise de utilizatori pentru vânzare directă.
             </Text>
             <Text style={styles.cardLink}>Mergi la gestionare piese →</Text>
           </TouchableOpacity>
@@ -79,7 +79,7 @@ export default function ModeratorScreen() {
           >
             <Text style={styles.cardTitle}>Licitații</Text>
             <Text style={styles.cardDescription}>
-              Vezi, aprobă și gestionează licitațiile active și cele în așteptare.
+              Vedeți, aprobați și gestionați licitațiile active și cele în așteptare.
             </Text>
             <Text style={styles.cardLink}>Mergi la gestionare licitații →</Text>
           </TouchableOpacity>
@@ -90,7 +90,7 @@ export default function ModeratorScreen() {
           >
             <Text style={styles.cardTitle}>Utilizatori</Text>
             <Text style={styles.cardDescription}>
-              Vezi și gestionează conturile utilizatorilor (roluri de admin / utilizator, ștergere cont).
+              Vedeți și gestionați conturile utilizatorilor (roluri de admin / utilizator, ștergere cont).
             </Text>
             <Text style={styles.cardLink}>Mergi la gestionare utilizatori →</Text>
           </TouchableOpacity>
@@ -99,10 +99,10 @@ export default function ModeratorScreen() {
         {/* Info box for permissions */}
         <View style={styles.infoBox}>
           <Text style={styles.infoTitle}>Permisiuni limitate</Text>
-          <Text style={styles.infoText}>Ca admin, poți:</Text>
-          <Text style={styles.infoListItem}>• Aproba / respinge piese trimise de utilizatori.</Text>
-          <Text style={styles.infoListItem}>• Aproba / respinge licitații și încheia licitații dacă este necesar.</Text>
-          <Text style={styles.infoListItem}>• Modifica detalii pentru piese și licitații existente.</Text>
+          <Text style={styles.infoText}>Ca admin, se poate:</Text>
+          <Text style={styles.infoListItem}>• Aprobați / respingeți piese trimise de utilizatori.</Text>
+          <Text style={styles.infoListItem}>• Aprobați / respingeți licitații și încheiați licitații dacă este necesar.</Text>
+          <Text style={styles.infoListItem}>• Modificați detalii pentru piese și licitații existente.</Text>
           <Text style={styles.infoNote}>
             Gestionarea utilizatorilor, logurile detaliate de activitate și panoul complet de analitice
             sunt rezervate super-adminului.
