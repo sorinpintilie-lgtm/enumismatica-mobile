@@ -346,6 +346,13 @@ const DashboardScreen: React.FC = () => {
               <Ionicons name="settings" size={28} color={colors.primary} />
               <Text style={dashboardStyles.actionGridText}>Setări</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={dashboardStyles.actionGridButton}
+              onPress={() => navigation.navigate('HelpCenter')}
+            >
+              <Ionicons name="help-circle" size={28} color={colors.primary} />
+              <Text style={dashboardStyles.actionGridText}>Help Center</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

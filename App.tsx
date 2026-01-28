@@ -342,16 +342,16 @@ function AppContent() {
   const { user, loading } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [splashComplete, setSplashComplete] = useState(false);
-
   useEffect(() => {
-    ExpoSplashScreen.hideAsync().catch(() => {
-      // Ignore errors if hideAsync fails
-    });
-  }, []);
+    if (!loading) {
+      ExpoSplashScreen.hideAsync().catch(() => {
+        // Ignore errors if hideAsync fails
+      });
+    }
+  }, [loading]);
 
-  if (loading || !splashComplete) {
-    return <SplashScreen onFinish={() => setSplashComplete(true)} />; // Show custom splash screen until video completes
+  if (loading) {
+    return <SplashScreen />; // Show static splash screen while loading
   }
 
   return (
@@ -382,6 +382,7 @@ function AppContent() {
             <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
             <Stack.Screen name="AuctionDetails" component={AuctionDetailsScreen} />
             <Stack.Screen name="BidHistory" component={BidHistoryScreen} />
+            <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
             <Stack.Screen name="HelpArticle" component={HelpArticleScreen} />
             <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
             <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />

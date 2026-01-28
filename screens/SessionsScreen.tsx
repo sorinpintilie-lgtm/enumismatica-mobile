@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import { useToast } from '../context/ToastContext';
 import { apiGet, apiPost } from '../services/apiClient';
@@ -20,7 +17,6 @@ type Session = {
 };
 
 const SessionsScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(false);

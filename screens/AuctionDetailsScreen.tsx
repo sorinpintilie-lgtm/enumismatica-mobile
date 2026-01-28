@@ -8,12 +8,14 @@ import {
   ActivityIndicator, 
   Alert, 
   FlatList,
-  StyleSheet 
+  StyleSheet,
+  Share,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import { z } from 'zod';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuction } from '../hooks/useAuctions';
 import { useBids } from '../hooks/useBids';
 import { useAuth } from '../context/AuthContext';
@@ -120,6 +122,22 @@ const AuctionDetailsScreen: React.FC = () => {
     );
   }, [auction?.ownerId, auction?.status, auction?.winnerId, isPulledBack, user?.uid]);
 
+  const handleShareAuction = async () => {
+    if (!auction) return;
+    const url = `https://enumismatica.ro/auction/${auction.id}`;
+    const message = `Licitație #${auction.id.slice(-6)} - ${formatEUR(currentBid)}\n${url}`;
+
+    try {
+      await Share.share({
+        message,
+        title: `Licitație #${auction.id.slice(-6)}`,
+        url,
+      });
+    } catch (error) {
+      console.error('Failed to share auction:', error);
+    }
+  };
+
   const handleBid = async () => {
     if (!user || !auction) return;
 
@@ -196,6 +214,14 @@ const AuctionDetailsScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={{ flex: 1 }} />
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.shareButton}
+              accessibilityRole="button"
+              accessibilityLabel="Distribuie licitația"
+              onPress={handleShareAuction}
+            >
+              <Ionicons name="share-social-outline" size={18} color={colors.primary} />
+            </TouchableOpacity>
             <PullbackStatusIndicator isPulledBack={isPulledBack} />
             {eligibleForPullback && isOwner && (
               <PullbackButton
@@ -418,6 +444,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  shareButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusBadge: {
     paddingHorizontal: 12,

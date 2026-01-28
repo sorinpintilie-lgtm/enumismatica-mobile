@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { shouldSendNotification } from './notificationPreferencesService';
-import { AuctionNotification } from './types';
+import { AuctionNotification, ChatNotification } from './types';
 import { showBrowserNotification } from './chatService';
 import { countUnreadAuctionNotifications } from './utils/auctionNotificationUtils';
 
@@ -58,6 +58,31 @@ export async function createAuctionNotification(
 
   const docRef = await addDoc(notificationsRef, notificationData);
 
+  // Mirror into unified notifications feed (users/{uid}/notifications)
+  const unifiedRef = collection(db, 'users', userId, 'notifications');
+  const unifiedData: Omit<ChatNotification, 'id'> = {
+    userId,
+    type,
+    message,
+    read: false,
+    pushed: false,
+    createdAt: new Date(),
+    auctionId,
+    auctionTitle,
+    bidAmount,
+    title:
+      type === 'outbid'
+        ? 'Ai fost depășit la licitație'
+        : type === 'auction_won'
+        ? 'Ai câștigat licitația'
+        : 'Licitație încheiată',
+  };
+
+  await addDoc(unifiedRef, {
+    ...unifiedData,
+    createdAt: Timestamp.fromDate(new Date()),
+  });
+
   // Try to show a browser notification (only works in web environment with granted permission)
   try {
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
@@ -83,6 +108,20 @@ export async function createAuctionNotification(
         pushed: true,
         updatedAt: Timestamp.fromDate(new Date()),
       });
+
+      // Mark unified notification as pushed (best-effort)
+      try {
+        const unifiedSnapshot = await getDocs(
+          query(unifiedRef, orderBy('createdAt', 'desc'), limit(1))
+        );
+        if (!unifiedSnapshot.empty) {
+          await updateDoc(unifiedSnapshot.docs[0].ref, {
+            pushed: true,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to mark unified notification as pushed:', err);
+      }
     }
   } catch (error) {
     console.error('Failed to show browser auction notification:', error);

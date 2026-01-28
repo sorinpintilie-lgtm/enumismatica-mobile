@@ -590,15 +590,25 @@ export interface AuctionNotification {
 export interface ChatNotification {
   id: string;
   userId: string;
-  type: 'new_message' | 'conversation_started' | 'message_read';
-  senderId: string;
-  senderName: string;
+  type:
+    | 'new_message'
+    | 'conversation_started'
+    | 'message_read'
+    | 'outbid'
+    | 'auction_won'
+    | 'auction_ended_no_win'
+    | 'system';
+  senderId?: string;
+  senderName?: string;
+  title?: string;
   message: string;
   read: boolean;
   pushed: boolean;
   createdAt: Date;
   conversationId?: string;
   auctionId?: string;
+  auctionTitle?: string;
+  bidAmount?: number;
 }
 
 /**

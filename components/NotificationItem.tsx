@@ -3,10 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
-import type { AuctionNotification } from '@shared/types';
+import type { AuctionNotification, ChatNotification } from '@shared/types';
 import { colors } from '../styles/sharedStyles';
 
-function getTypeLabel(type: AuctionNotification['type']): string {
+function getTypeLabel(type: ChatNotification['type'] | AuctionNotification['type']): string {
   switch (type) {
     case 'outbid':
       return 'Depășit la licitație';
@@ -14,13 +14,21 @@ function getTypeLabel(type: AuctionNotification['type']): string {
       return 'Licitație câștigată';
     case 'auction_ended_no_win':
       return 'Licitație încheiată';
+    case 'new_message':
+      return 'Mesaj nou';
+    case 'conversation_started':
+      return 'Conversație nouă';
+    case 'message_read':
+      return 'Mesaj citit';
+    case 'system':
+      return 'Actualizare sistem';
     default:
       return 'Notificare';
   }
 }
 
 export type NotificationItemProps = {
-  notification: AuctionNotification;
+  notification: ChatNotification | AuctionNotification;
   onPress: () => void;
   onMarkAsRead: () => void;
   disabled?: boolean;
@@ -40,7 +48,7 @@ export default function NotificationItem({
     }
   }, [notification.createdAt]);
 
-  const typeLabel = useMemo(() => getTypeLabel(notification.type), [notification.type]);
+  const typeLabel = useMemo(() => getTypeLabel(notification.type as ChatNotification['type']), [notification.type]);
   const unread = !notification.read;
 
   return (
@@ -64,7 +72,11 @@ export default function NotificationItem({
             <Text style={styles.timeText}>{relativeTime}</Text>
           </View>
 
-          {notification.auctionTitle ? (
+          {'title' in notification && notification.title ? (
+            <Text style={styles.titleText} numberOfLines={1}>
+              {notification.title}
+            </Text>
+          ) : notification.auctionTitle ? (
             <Text style={styles.titleText} numberOfLines={1}>
               {notification.auctionTitle}
             </Text>

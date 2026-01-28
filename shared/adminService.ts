@@ -27,6 +27,7 @@ import { endAuction } from './auctionService';
  * Admin UID - hardcoded for security
  */
 const ADMIN_UID = 'QEm0DSIzylNQIHpQAZlgtWQkYYE3';
+export const SUPPORT_ADMIN_UID = ADMIN_UID;
 
 /**
  * Check if a user is a super-admin (full control) based on their UID or role in Firestore.

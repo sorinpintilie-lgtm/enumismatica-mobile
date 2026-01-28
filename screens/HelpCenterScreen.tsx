@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Button } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Button, Alert } from 'react-native';
 import { HelpArticle, HelpCategory } from '@shared/types';
 import { getHelpArticles, getHelpCategories, searchHelpContent } from '@shared/helpService';
 import { sharedStyles, colors } from '../styles/sharedStyles';
@@ -7,8 +7,14 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import InlineBackButton from '../components/InlineBackButton';
+import { useAuth } from '../context/AuthContext';
+import { useConversations } from '../hooks/useChat';
+import { SUPPORT_ADMIN_UID } from '@shared/adminService';
+import { sendPrivateMessage } from '@shared/chatService';
 
 export default function HelpCenterScreen() {
+  const { user } = useAuth();
+  const { startConversation } = useConversations(user?.uid ?? null);
   const [articles, setArticles] = useState<HelpArticle[]>([]);
   const [categories, setCategories] = useState<HelpCategory[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +23,8 @@ export default function HelpCenterScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'ro' | 'en'>('en');
+  const [supportMessage, setSupportMessage] = useState('');
+  const [supportSending, setSupportSending] = useState(false);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
@@ -141,6 +149,54 @@ export default function HelpCenterScreen() {
     </TouchableOpacity>
   );
 
+  const faqItems = [
+    {
+      question: 'Cum cumpăr o monedă din Magazin?',
+      answer: 'Deschide produsul, apasă „Cumpără acum”, confirmă comanda și vei primi detaliile în Istoricul Comenzilor.',
+    },
+    {
+      question: 'Cum particip la o licitație?',
+      answer: 'Intră în Licitații, alege o licitație activă și plasează o ofertă cel puțin egală cu oferta minimă.',
+    },
+    {
+      question: 'Cum creez o listare?',
+      answer: 'Din tab-ul principal apasă butonul „Vinde” și alege tipul de listare: preț fix sau licitație.',
+    },
+    {
+      question: 'Cum contactez un vânzător?',
+      answer: 'Din pagina produsului poți iniția o conversație; toate mesajele sunt în secțiunea Mesaje.',
+    },
+    {
+      question: 'Ce înseamnă produsele „promovate”?',
+      answer: 'Sunt listări evidențiate pentru vizibilitate sporită; nu există costuri suplimentare pentru cumpărători.',
+    },
+  ];
+
+  const handleStartSupport = async () => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a contacta suportul.');
+      return;
+    }
+
+    if (!supportMessage.trim()) {
+      Alert.alert('Mesaj gol', 'Scrie un mesaj pentru echipa de suport.');
+      return;
+    }
+
+    try {
+      setSupportSending(true);
+      const conversationId = await startConversation(SUPPORT_ADMIN_UID, undefined, undefined, true);
+      await sendPrivateMessage(conversationId, user.uid, supportMessage.trim());
+      setSupportMessage('');
+      navigation.navigate('Messages', { conversationId });
+    } catch (err) {
+      console.error('Failed to start support conversation', err);
+      Alert.alert('Eroare', 'Nu am putut trimite mesajul către suport. Încearcă din nou.');
+    } finally {
+      setSupportSending(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <InlineBackButton />
@@ -151,6 +207,31 @@ export default function HelpCenterScreen() {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
+
+      <View style={styles.supportCard}>
+        <Text style={styles.supportTitle}>Ai nevoie de ajutor?</Text>
+        <Text style={styles.supportSubtitle}>
+          Trimite un mesaj echipei de suport. Un admin va prelua conversația.
+        </Text>
+        <TextInput
+          style={styles.supportInput}
+          value={supportMessage}
+          onChangeText={setSupportMessage}
+          placeholder="Scrie mesajul tău..."
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          maxLength={500}
+        />
+        <TouchableOpacity
+          style={[styles.supportButton, supportMessage.trim() ? null : styles.supportButtonDisabled]}
+          onPress={handleStartSupport}
+          disabled={!supportMessage.trim() || supportSending}
+        >
+          <Text style={styles.supportButtonText}>
+            {supportSending ? 'Se trimite...' : 'Trimite mesaj către suport'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Search and Language Selection */}
       <View style={styles.searchContainer}>
@@ -234,6 +315,18 @@ export default function HelpCenterScreen() {
           contentContainerStyle={styles.articlesList}
         />
       )}
+
+      <View style={styles.faqSection}>
+        <Text style={styles.sectionTitle}>FAQ</Text>
+        <View style={styles.faqList}>
+          {faqItems.map((item) => (
+            <View key={item.question} style={styles.faqItem}>
+              <Text style={styles.faqQuestion}>{item.question}</Text>
+              <Text style={styles.faqAnswer}>{item.answer}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -262,6 +355,48 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.error,
     textAlign: 'center'
+  },
+  supportCard: {
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.3)',
+    marginBottom: 16,
+  },
+  supportTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 8,
+  },
+  supportSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  supportInput: {
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 90,
+    backgroundColor: colors.inputBackground,
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  supportButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  supportButtonDisabled: {
+    opacity: 0.6,
+  },
+  supportButtonText: {
+    color: colors.primaryText,
+    fontWeight: '700',
   },
   searchContainer: {
     marginBottom: 16,
@@ -426,5 +561,30 @@ const styles = StyleSheet.create({
   },
   articlesList: {
     paddingBottom: 24
-  }
+  },
+  faqSection: {
+    marginTop: 16,
+    paddingBottom: 24,
+  },
+  faqList: {
+    gap: 12,
+  },
+  faqItem: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  faqQuestion: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  faqAnswer: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
 });

@@ -13,6 +13,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   /** Private messages / support chat */
   Messages: { conversationId?: string; conversation?: string };
+  HelpCenter: undefined;
   /** Settings hub */
   Settings: undefined;
   ChangePassword: undefined;

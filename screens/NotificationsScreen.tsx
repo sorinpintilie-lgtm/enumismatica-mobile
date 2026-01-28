@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
+import { useNotifications } from '../hooks/useChat';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import NotificationItem from '../components/NotificationItem';
 import InlineBackButton from '../components/InlineBackButton';
-import type { AuctionNotification } from '@shared/types';
+import type { ChatNotification } from '@shared/types';
+import { db } from '@shared/firebaseConfig';
+import { collection, getDocs, writeBatch } from 'firebase/firestore';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -18,7 +20,7 @@ export default function NotificationsScreen() {
   const { showToast } = useToast();
   const userId = user?.uid ?? null;
 
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useAuctionNotifications(userId);
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications(userId);
   const [busyIds, setBusyIds] = useState<Record<string, boolean>>({});
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -37,14 +39,16 @@ export default function NotificationsScreen() {
     });
   };
 
-  const handlePressNotification = async (n: AuctionNotification) => {
+  const handlePressNotification = async (n: ChatNotification) => {
     try {
       if (!n.read) {
         setBusyIds((prev) => ({ ...prev, [n.id]: true }));
         await markAsRead(n.id);
       }
 
-      if (n.auctionId) {
+      if (n.conversationId) {
+        navigation.navigate('Messages', { conversationId: n.conversationId });
+      } else if (n.auctionId) {
         navigation.navigate('AuctionDetails', { auctionId: n.auctionId });
       } else {
         showToast({ type: 'info', title: 'Notificare', message: 'Această notificare nu are o țintă de navigare.' });
@@ -81,6 +85,41 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!userId) return;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'Șterge toate notificările?',
+        'Această acțiune nu poate fi anulată.',
+        [
+          { text: 'Renunță', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Șterge', style: 'destructive', onPress: () => resolve(true) },
+        ]
+      );
+    });
+
+    if (!confirmed) return;
+
+    try {
+      setBulkBusy(true);
+      const notifRef = collection(db, 'users', userId, 'notifications');
+      const auctionRef = collection(db, 'users', userId, 'auctionNotifications');
+      const [notifSnapshot, auctionSnapshot] = await Promise.all([
+        getDocs(notifRef),
+        getDocs(auctionRef),
+      ]);
+      const batch = writeBatch(db);
+      notifSnapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+      auctionSnapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+    } catch (error) {
+      console.error('[NotificationsScreen] Failed to clear notifications:', error);
+      showToast({ type: 'error', title: 'Eroare', message: 'Nu am putut șterge notificările.' });
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   if (!userId) {
     return (
       <View style={styles.container}>
@@ -104,19 +143,38 @@ export default function NotificationsScreen() {
           <Text style={styles.subtitle}>{headerSubtitle}</Text>
         </View>
 
-        <TouchableOpacity
-          onPress={handleMarkAllAsRead}
-          disabled={bulkBusy || unreadCount === 0 || loading}
-          style={[styles.headerActionButton, (bulkBusy || unreadCount === 0 || loading) && styles.headerActionButtonDisabled]}
-          accessibilityRole="button"
-          accessibilityLabel="Marchează toate ca citite"
-        >
-          {bulkBusy ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Ionicons name="checkmark-done" size={20} color={colors.primary} />
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Settings')}
+            style={styles.headerActionButton}
+            accessibilityRole="button"
+            accessibilityLabel="Setări notificări"
+          >
+            <Ionicons name="settings-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleMarkAllAsRead}
+            disabled={bulkBusy || unreadCount === 0 || loading}
+            style={[styles.headerActionButton, (bulkBusy || unreadCount === 0 || loading) && styles.headerActionButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Marchează toate ca citite"
+          >
+            {bulkBusy ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons name="checkmark-done" size={20} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleClearAll}
+            disabled={bulkBusy || loading || notifications.length === 0}
+            style={[styles.headerActionButton, (bulkBusy || loading || notifications.length === 0) && styles.headerActionButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Șterge notificările"
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
@@ -205,6 +263,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 96,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
 });
 

@@ -7,7 +7,8 @@ import {
   ActivityIndicator, 
   StyleSheet, 
   Image,
-  Alert
+  Alert,
+  Share,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import PhotoGallery from '../components/PhotoGallery';
@@ -143,6 +144,22 @@ const ProductDetailsScreen: React.FC = () => {
       cancelled = true;
     };
   }, [product?.ownerId]);
+
+  const handleShareProduct = async () => {
+    if (!product) return;
+    const url = `https://enumismatica.ro/product/${product.id}`;
+    const message = `${product.name} - ${formatEUR(product.price)}\n${url}`;
+
+    try {
+      await Share.share({
+        message,
+        title: product.name,
+        url,
+      });
+    } catch (error) {
+      console.error('Failed to share product:', error);
+    }
+  };
 
   const handleBuyClick = () => {
     if (!product) return;
@@ -735,26 +752,34 @@ const ProductDetailsScreen: React.FC = () => {
       <View style={styles.headerContainer}>
         <InlineBackButton />
         {/* Header */}
-        <View style={styles.header}>
-          <View style={{ flex: 1 }} />
-          <View style={styles.actionButtonsContainer}>
-            <WatchlistButton itemType="product" itemId={product.id} size="medium" />
-            <TouchableOpacity
-              style={styles.cartIconButton}
-              accessibilityRole="button"
-              accessibilityLabel="Deschide coșul"
-              onPress={() => navigation.navigate('Cart')}
-            >
-              <Ionicons name="cart-outline" size={20} color={colors.primary} />
-              {cartCount > 0 && (
-                <View style={styles.cartBadge}>
-                  <Text style={styles.cartBadgeText} numberOfLines={1}>
-                    {cartCount > 99 ? '99+' : String(cartCount)}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <PullbackStatusIndicator isPulledBack={isPulledBack} />
+          <View style={styles.header}>
+            <View style={{ flex: 1 }} />
+            <View style={styles.actionButtonsContainer}>
+              <WatchlistButton itemType="product" itemId={product.id} size="medium" />
+              <TouchableOpacity
+                style={styles.cartIconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Distribuie produsul"
+                onPress={handleShareProduct}
+              >
+                <Ionicons name="share-social-outline" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cartIconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Deschide coșul"
+                onPress={() => navigation.navigate('Cart')}
+              >
+                <Ionicons name="cart-outline" size={20} color={colors.primary} />
+                {cartCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText} numberOfLines={1}>
+                      {cartCount > 99 ? '99+' : String(cartCount)}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <PullbackStatusIndicator isPulledBack={isPulledBack} />
             {eligibleForPullback && (
               <PullbackButton
                 itemId={product.id}
