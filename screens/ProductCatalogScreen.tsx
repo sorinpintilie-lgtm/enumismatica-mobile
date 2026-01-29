@@ -954,13 +954,13 @@ const ProductCatalogScreen: React.FC = () => {
               ? [
                   {
                     paddingTop: headerMeasuredHeight + 16,
-                    paddingBottom: 16,
+                    paddingBottom: 120,
                   },
                   styles.emptyListContent,
                 ]
               : {
                   paddingTop: headerMeasuredHeight + 16,
-                  paddingBottom: 16,
+                  paddingBottom: 120,
                 }
           }
           columnWrapperStyle={styles.columnWrapper}
@@ -978,22 +978,22 @@ const ProductCatalogScreen: React.FC = () => {
               )}
             </View>
           }
+          ListFooterComponent={
+            !user && displayProducts.length >= 10 ? (
+              <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
+                  Autentificarea sau înregistrarea sunt necesare pentru a vedea toate piesele
+                </Text>
+                <TouchableOpacity
+                  style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
+                  <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
         />
- 
-        {/* Login/Register Prompt for unauthenticated users */}
-        {!user && displayProducts.length >= 10 && (
-          <View style={{ padding: 16, alignItems: 'center' }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
-              Autentificarea sau înregistrarea sunt necesare pentru a vedea toate piesele
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => setAuthPromptVisible(true)}
-            >
-              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         <AuthPromptModal
           visible={authPromptVisible}

@@ -306,22 +306,34 @@ const DashboardScreen: React.FC = () => {
             <View style={dashboardStyles.section}>
               <Text style={dashboardStyles.sectionTitle}>Funcționalități</Text>
               <View style={dashboardStyles.actionGrid}>
-                <View style={dashboardStyles.actionGridButton}>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="storefront-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Magazin</Text>
-                </View>
-                <View style={dashboardStyles.actionGridButton}>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="pricetag-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Licitații</Text>
-                </View>
-                <View style={dashboardStyles.actionGridButton}>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="albums-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Colecție</Text>
-                </View>
-                <View style={dashboardStyles.actionGridButton}>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="chatbubbles-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Mesaje</Text>
-                </View>
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -329,14 +341,20 @@ const DashboardScreen: React.FC = () => {
             <View style={dashboardStyles.section}>
               <Text style={dashboardStyles.sectionTitle}>Parteneri</Text>
               <View style={dashboardStyles.actionGrid}>
-                <View style={dashboardStyles.actionGridButton}>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="people-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
-                </View>
-                <View style={dashboardStyles.actionGridButton}>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={dashboardStyles.actionGridButton}
+                  onPress={() => setAuthPromptVisible(true)}
+                >
                   <Ionicons name="business-outline" size={28} color={colors.primary} />
                   <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
-                </View>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
