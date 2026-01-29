@@ -12,6 +12,7 @@ import { sharedStyles, colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import { useConversations } from '../hooks/useChat';
 import { useCollection } from '../hooks/useCollection';
+import AuthPromptModal from '../components/AuthPromptModal';
 
 
 const DashboardScreen: React.FC = () => {
@@ -21,6 +22,7 @@ const DashboardScreen: React.FC = () => {
   const { auctions, loading: auctionsLoading } = useAuctions();
   const { conversations, totalUnreadCount } = useConversations(user?.uid || null);
   const { items: collectionItems, stats: collectionStats } = useCollection(user?.uid || null);
+  const [authPromptVisible, setAuthPromptVisible] = React.useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -267,18 +269,38 @@ const DashboardScreen: React.FC = () => {
               <View style={{ gap: 12 }}>
                 <TouchableOpacity
                   style={[dashboardStyles.actionButton, { paddingVertical: 14 }]}
-                  onPress={() => navigation.navigate('Login')}
+                  onPress={() => setAuthPromptVisible(true)}
                 >
-                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Autentificare</Text>
+                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Continuă ca vizitator</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6', paddingVertical: 14 }]}
-                  onPress={() => navigation.navigate('Register')}
+                  onPress={() => setAuthPromptVisible(true)}
                 >
-                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Înregistrare</Text>
+                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Autentificare / Înregistrare</Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            <AuthPromptModal
+              visible={authPromptVisible}
+              title="Explorează mai mult"
+              message="Creează un cont sau autentifică-te pentru a accesa colecțiile, mesajele, istoricul comenzilor și funcțiile avansate."
+              benefits={[
+                'Mesaje și notificări în timp real',
+                'Colecție personală și watchlist',
+                'Comenzi și licitații salvate',
+              ]}
+              onClose={() => setAuthPromptVisible(false)}
+              onLogin={() => {
+                setAuthPromptVisible(false);
+                navigation.navigate('Login');
+              }}
+              onRegister={() => {
+                setAuthPromptVisible(false);
+                navigation.navigate('Register');
+              }}
+            />
 
             {/* Features Section */}
             <View style={dashboardStyles.section}>

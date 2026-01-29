@@ -338,6 +338,7 @@ function AuthStack() {
 // Main App Component
 function AppContent() {
   const { user, loading } = useAuth();
+  const [splashFinished, setSplashFinished] = useState(false);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -349,8 +350,15 @@ function AppContent() {
     };
   }, []);
 
-  if (loading) {
-    return <SplashScreen onFinish={() => console.log('[App] Splash screen finished')} />; // Show splash screen while loading
+  if (loading || !splashFinished) {
+    return (
+      <SplashScreen
+        onFinish={() => {
+          setSplashFinished(true);
+          console.log('[App] Splash screen finished');
+        }}
+      />
+    );
   }
 
   return (
