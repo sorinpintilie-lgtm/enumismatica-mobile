@@ -6,7 +6,7 @@ type SplashScreenProps = {
   onFinish?: () => void;
 };
 
-const SplashScreen: React.FC<SplashScreenProps> = () => {
+const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const videoRef = useRef<Video>(null);
   const [videoError, setVideoError] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
@@ -20,6 +20,10 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
     if (status.isLoaded && status.didJustFinish && !hasPlayed) {
       console.log('[SplashScreen] Video finished');
       setHasPlayed(true);
+      // Notify parent that splash screen is finished
+      if (onFinish) {
+        onFinish();
+      }
     }
   };
 
@@ -80,6 +84,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'absolute',
+    backgroundColor: '#000000',
   },
   logo: {
     width: '70%',

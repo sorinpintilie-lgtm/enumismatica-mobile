@@ -350,7 +350,7 @@ function AppContent() {
   }, []);
 
   if (loading) {
-    return <SplashScreen />; // Show static splash screen while loading
+    return <SplashScreen onFinish={() => console.log('[App] Splash screen finished')} />; // Show static splash screen while loading
   }
 
   return (
