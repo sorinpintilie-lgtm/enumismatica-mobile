@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
@@ -12,13 +12,15 @@ interface AuthGuardProps {
 const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    if (!user && !isNavigating && navigation) {
       // Redirect to login if user is not authenticated
+      setIsNavigating(true);
       navigation.replace('Login');
     }
-  }, [user, navigation]);
+  }, [user, navigation, isNavigating]);
 
   // Don't render children if user is not authenticated
   if (!user) {
