@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
 });
 
 const LoginScreen: React.FC = () => {
-  const { twoFactorRequired, refreshAuth } = useAuth();
+  const { user, twoFactorRequired, refreshAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -364,7 +364,13 @@ const LoginScreen: React.FC = () => {
       // If 2FA is required, it will set twoFactorRequired to true
       // and the LoginScreen will show the 2FA form
       await startSessionOnServer();
-      // Navigation will be handled by AuthContext
+      await refreshAuth();
+      if (!twoFactorRequired) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
     }
   };
 
@@ -477,7 +483,13 @@ const LoginScreen: React.FC = () => {
     if (error) {
       setError(error);
     } else if (user) {
-      // Navigation will be handled by AuthContext
+      await refreshAuth();
+      if (!twoFactorRequired) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
     }
   };
 
