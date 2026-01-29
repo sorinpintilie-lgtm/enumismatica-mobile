@@ -10,6 +10,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const videoRef = useRef<Video>(null);
   const [videoError, setVideoError] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
   const handleVideoError = () => {
     console.log('[SplashScreen] Video error, falling back to static image');
@@ -17,6 +18,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   };
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (status.isLoaded && !videoReady) {
+      setVideoReady(true);
+    }
     if (status.isLoaded && status.didJustFinish && !hasPlayed) {
       console.log('[SplashScreen] Video finished');
       setHasPlayed(true);
@@ -61,7 +65,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       <Video
         ref={videoRef}
         source={require('../assets/videosplash.mp4')}
-        style={styles.video}
+        style={[styles.video, !videoReady && { opacity: 0 }]}
         resizeMode={ResizeMode.CONTAIN}
         shouldPlay
         isLooping={false}
@@ -71,6 +75,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         onError={handleVideoError}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
       />
+
+      {!videoReady && (
+        <View style={styles.placeholder}>
+          <ActivityIndicator size="large" color="#e7b73c" />
+        </View>
+      )}
 
       <View style={styles.topContent}>
         <Text style={styles.topTagline}>Magazin • Licitații • Colecții</Text>
@@ -126,6 +136,12 @@ const styles = StyleSheet.create({
     bottom: 60,
     alignItems: 'center',
     gap: 10,
+  },
+  placeholder: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
   },
   footerText: {
     fontSize: 14,
