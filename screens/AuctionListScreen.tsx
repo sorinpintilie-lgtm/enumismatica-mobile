@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuctions } from '../hooks/useAuctions';
 import { useProducts } from '../hooks/useProducts';
+import { useAuth } from '../context/AuthContext';
 import { Auction, Product } from '@shared/types';
 import { RootStackParamList } from '../navigationTypes';
 import { WatchlistButton } from '../components/WatchlistButton';
@@ -613,6 +614,8 @@ const AuctionCard: React.FC<{ auction: Auction; product?: Product | null }> = ({
 };
 
 const AuctionListScreen: React.FC = () => {
+  const { user } = useAuth();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { auctions, loading: auctionsLoading, error: auctionsError } = useAuctions('active');
   const { products, loading: productsLoading } = useProducts();
   const [statusFilter, setStatusFilter] = useState<'active' | 'ended' | 'all'>('active');
@@ -736,6 +739,14 @@ const AuctionListScreen: React.FC = () => {
     return filtered;
   }, [auctions, productMap, filters, statusFilter]);
 
+  // Limit items for unauthenticated users
+  const displayAuctions = useMemo(() => {
+    if (!user) {
+      return filteredAuctions.slice(0, 10);
+    }
+    return filteredAuctions;
+  }, [filteredAuctions, user]);
+
   const resetFilters = () => {
     setFilters({
       searchTerm: '',
@@ -791,7 +802,7 @@ const AuctionListScreen: React.FC = () => {
           {/* Results summary */}
           <Text style={styles.resultsSummary}>
             Se afișează{' '}
-            <Text style={styles.resultsHighlight}>{filteredAuctions.length}</Text> din{' '}
+            <Text style={styles.resultsHighlight}>{displayAuctions.length}</Text> din{' '}
             <Text style={styles.resultsHighlight}>{auctions.length}</Text> licitații
           </Text>
 
@@ -890,7 +901,7 @@ const AuctionListScreen: React.FC = () => {
           {/* Filter Button */}
           <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(true)}>
             <Text style={styles.filtersButtonText}>
-              Filtre avansate ({filteredAuctions.length} din {auctions.length})
+              Filtre avansate ({displayAuctions.length} din {auctions.length})
             </Text>
           </TouchableOpacity>
         </View>
@@ -913,9 +924,9 @@ const AuctionListScreen: React.FC = () => {
               )}
             </View>
           </View>
-        ) : (
+         ) : (
           <FlatList
-            data={filteredAuctions}
+            data={displayAuctions}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => {
               const product = productMap.get(item.productId) as Product | null | undefined;
@@ -926,6 +937,29 @@ const AuctionListScreen: React.FC = () => {
             contentContainerStyle={styles.listContent}
             columnWrapperStyle={styles.columnWrapper}
           />
+        )}
+
+        {/* Login/Register Prompt for unauthenticated users */}
+        {!user && displayAuctions.length >= 10 && (
+          <View style={{ padding: 16, alignItems: 'center' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
+              Autentifică-te sau înregistrează-te pentru a vedea toate licitațiile
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Autentificare</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.emptyButton, { backgroundColor: '#3B82F6' }]}
+                onPress={() => navigation.navigate('Register')}
+              >
+                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Înregistrare</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         {/* Filter Modal */}

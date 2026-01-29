@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   logo: {
-    width: 320,
-    height: 80,
+    width: 240,
+    height: 60,
   },
 });
 

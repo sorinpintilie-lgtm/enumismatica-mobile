@@ -22,6 +22,7 @@ import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import { romanianCoinOptions } from '../utils/romanianCoinData';
 import { WatchlistButton } from '../components/WatchlistButton';
+import { useAuth } from '../context/AuthContext';
 
 // Sort options aligned with web E-shop page (products only use a subset)
 type SortOption = 'best-match' | 'price-asc' | 'price-desc' | 'newly-listed';
@@ -522,6 +523,8 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 };
 
 const ProductCatalogScreen: React.FC = () => {
+  const { user } = useAuth();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [headerMeasuredHeight, setHeaderMeasuredHeight] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -602,8 +605,16 @@ const ProductCatalogScreen: React.FC = () => {
   });
 
   const totalInCatalog = products.length;
-
-  const filteredProducts = useMemo(() => {
+  
+  // Limit items for unauthenticated users
+  const displayProducts = useMemo(() => {
+    if (!user) {
+      return allFilteredProducts.slice(0, 10);
+    }
+    return allFilteredProducts;
+  }, [allFilteredProducts, user]);
+  
+  const allFilteredProducts = useMemo(() => {
     let filtered = [...products];
 
     // Search by name / description / country / denomination
@@ -824,7 +835,7 @@ const ProductCatalogScreen: React.FC = () => {
           {/* Results summary, aligned with web page copy */}
           <Text style={styles.resultsSummary}>
             Se afișează{' '}
-            <Text style={styles.resultsHighlight}>{filteredProducts.length}</Text> din{' '}
+            <Text style={styles.resultsHighlight}>{displayProducts.length}</Text> din{' '}
             <Text style={styles.resultsHighlight}>{totalInCatalog}</Text> piese
           </Text>
 
@@ -924,14 +935,14 @@ const ProductCatalogScreen: React.FC = () => {
           {/* Filter Button */}
           <TouchableOpacity style={styles.filtersButton} onPress={() => setShowFilters(true)}>
             <Text style={styles.filtersButtonText}>
-              Filtre avansate ({filteredProducts.length} din {totalInCatalog})
+              Filtre avansate ({displayProducts.length} din {totalInCatalog})
             </Text>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Products Grid - 2 columns, similar density to web grid */}
         <Animated.FlatList
-          data={filteredProducts}
+          data={displayProducts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ProductCard product={item} />}
           numColumns={2}
@@ -939,7 +950,7 @@ const ProductCatalogScreen: React.FC = () => {
           onScroll={handleScroll}
           scrollEventThrottle={16}
           contentContainerStyle={
-            filteredProducts.length === 0
+            displayProducts.length === 0
               ? [
                   {
                     paddingTop: headerMeasuredHeight + 16,
@@ -968,7 +979,30 @@ const ProductCatalogScreen: React.FC = () => {
             </View>
           }
         />
-
+ 
+        {/* Login/Register Prompt for unauthenticated users */}
+        {!user && displayProducts.length >= 10 && (
+          <View style={{ padding: 16, alignItems: 'center' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
+              Autentifică-te sau înregistrează-te pentru a vedea toate piesele
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Autentificare</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.emptyButton, { backgroundColor: '#3B82F6' }]}
+                onPress={() => navigation.navigate('Register')}
+              >
+                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Înregistrare</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+ 
         {/* Filter Modal */}
         <Modal
           visible={showFilters}

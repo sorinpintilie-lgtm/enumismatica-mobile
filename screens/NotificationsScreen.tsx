@@ -128,7 +128,22 @@ export default function NotificationsScreen() {
           <Text style={styles.subtitle}>Trebuie să fie autentificat.</Text>
         </View>
         <View style={styles.center}>
+          <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} />
           <Text style={styles.emptyText}>Conectați-vă pentru a vedea notificările.</Text>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+            <TouchableOpacity
+              style={[styles.loginButton, { backgroundColor: colors.primary }]}
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.loginButtonText}>Autentificare</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.loginButton, { backgroundColor: '#3B82F6' }]}
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Text style={styles.loginButtonText}>Înregistrare</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -268,6 +283,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  loginButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#e7b73c',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
+  loginButtonText: {
+    color: '#000940',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 
