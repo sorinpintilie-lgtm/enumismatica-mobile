@@ -32,7 +32,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
-              navigation.navigate('MainTabs');
+              navigation.navigate('MainTabs', { screen: 'Dashboard' });
             }
           }}
           onLogin={() => {
