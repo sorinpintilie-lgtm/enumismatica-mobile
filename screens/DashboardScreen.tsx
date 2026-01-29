@@ -27,22 +27,6 @@ const DashboardScreen: React.FC = () => {
     navigation.navigate('Login');
   };
 
-  if (!user) {
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, padding: 16 }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ marginTop: 16, color: colors.textSecondary, textAlign: 'center' }}>Loading dashboard, please wait...</Text>
-          <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 14, textAlign: 'center' }}>Authenticating and loading your data</Text>
-        </View>
-      );
-    }
-
-  // Filter auctions where user is the owner or current bidder and auction is active
-  const userAuctions = auctions.filter(auction =>
-    (auction.ownerId === user.uid || auction.currentBidderId === user.uid) && 
-    auction.status === 'active'
-  );
-
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
 
@@ -255,6 +239,94 @@ const DashboardScreen: React.FC = () => {
       marginTop: 16,
     },
   });
+
+  if (!user) {
+      return (
+        <ScrollView
+          style={dashboardStyles.scrollContainer}
+          contentContainerStyle={dashboardStyles.scrollContent}
+        >
+          <View style={dashboardStyles.content}>
+            {/* Header */}
+            <View style={dashboardStyles.header}>
+              <View>
+                <Text style={dashboardStyles.headerTitle}>Bine ați venit!</Text>
+                <Text style={dashboardStyles.headerSubtitle}>Descoperiți lumea numismatică</Text>
+              </View>
+            </View>
+
+            {/* Welcome Section */}
+            <View style={dashboardStyles.section}>
+              <Text style={dashboardStyles.sectionTitle}>Despre eNumismatica</Text>
+              <Text style={[dashboardStyles.loadingText, { textAlign: 'left', marginBottom: 16 }]}>
+                eNumismatica este platforma ta pentru vânzarea și licitarea monedelor rare. 
+                Alătură-te comunității noastre de numismați și descoperiți piese unice.
+              </Text>
+
+              {/* Login/Register Buttons */}
+              <View style={{ gap: 12 }}>
+                <TouchableOpacity
+                  style={[dashboardStyles.actionButton, { paddingVertical: 14 }]}
+                  onPress={() => navigation.navigate('Login')}
+                >
+                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Autentificare</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6', paddingVertical: 14 }]}
+                  onPress={() => navigation.navigate('Register')}
+                >
+                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Înregistrare</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Features Section */}
+            <View style={dashboardStyles.section}>
+              <Text style={dashboardStyles.sectionTitle}>Funcționalități</Text>
+              <View style={dashboardStyles.actionGrid}>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="storefront-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Magazin</Text>
+                </View>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="pricetag-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Licitații</Text>
+                </View>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="albums-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Colecție</Text>
+                </View>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="chatbubbles-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Mesaje</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Parteneri Section */}
+            <View style={dashboardStyles.section}>
+              <Text style={dashboardStyles.sectionTitle}>Parteneri</Text>
+              <View style={dashboardStyles.actionGrid}>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="people-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
+                </View>
+                <View style={dashboardStyles.actionGridButton}>
+                  <Ionicons name="business-outline" size={28} color={colors.primary} />
+                  <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      );
+    }
+
+  // Filter auctions where user is the owner or current bidder and auction is active
+  const userAuctions = auctions.filter(auction =>
+    (auction.ownerId === user.uid || auction.currentBidderId === user.uid) &&
+    auction.status === 'active'
+  );
 
   return (
       <ScrollView

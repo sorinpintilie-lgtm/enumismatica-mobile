@@ -8,7 +8,7 @@ const Header: React.FC = () => {
   return (
     <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
       <Image
-        source={require('../assets/eNumismatica.ro_logo.png')}
+        source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
         style={styles.logo}
         resizeMode="contain"
       />
@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     backgroundColor: '#00020d',
     paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   logo: {
-    width: 220,
-    height: 60,
+    width: 320,
+    height: 80,
   },
 });
 

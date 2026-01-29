@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   Share,
+  Linking,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import PhotoGallery from '../components/PhotoGallery';
@@ -147,14 +148,13 @@ const ProductDetailsScreen: React.FC = () => {
 
   const handleShareProduct = async () => {
     if (!product) return;
-    const url = `https://enumismatica.ro/product/${product.id}`;
-    const message = `${product.name} - ${formatEUR(product.price)}\n${url}`;
+    const deepLinkUrl = `enumismatica://product/${product.id}`;
+    const message = `${product.name} - ${formatEUR(product.price)}\n\n${deepLinkUrl}`;
 
     try {
       await Share.share({
         message,
         title: product.name,
-        url,
       });
     } catch (error) {
       console.error('Failed to share product:', error);

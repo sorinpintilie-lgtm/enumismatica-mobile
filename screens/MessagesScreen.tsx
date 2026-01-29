@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView, Keyboard, Dimensions } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -37,11 +37,39 @@ const MessagesScreen: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const messagesContainerRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
 
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
+
+  // Keyboard height tracking
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        // Scroll to bottom when keyboard opens
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollToEnd({ animated: true });
+          }
+        }, 100);
+      }
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -172,7 +200,7 @@ const MessagesScreen: React.FC = () => {
     <WebContainer>
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         enabled={!isWeb}
       >
@@ -271,7 +299,7 @@ const MessagesScreen: React.FC = () => {
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
-                    contentContainerStyle={styles.messagesContent}
+                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
@@ -430,7 +458,7 @@ const MessagesScreen: React.FC = () => {
                 <ScrollView
                   ref={messagesContainerRef}
                   style={styles.messagesArea}
-                  contentContainerStyle={styles.messagesContent}
+                  contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="on-drag"
                   onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
@@ -638,6 +666,7 @@ const styles = StyleSheet.create({
   },
   chatContent: {
     flex: 1,
+    flexDirection: 'column',
   },
   chatHeader: {
     padding: 16,
@@ -652,6 +681,7 @@ const styles = StyleSheet.create({
   },
   messagesArea: {
     flex: 1,
+    flexGrow: 1,
   },
   messagesContent: {
     padding: 16,
@@ -727,6 +757,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderTopWidth: 1,
     gap: 8,
+    backgroundColor: colors.cardBackground,
   },
   input: {
     flex: 1,
@@ -758,6 +789,7 @@ const styles = StyleSheet.create({
   },
   mobileChatContainer: {
     flex: 1,
+    flexDirection: 'column',
   },
 });
 

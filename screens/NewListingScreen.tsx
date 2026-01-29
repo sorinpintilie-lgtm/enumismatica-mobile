@@ -13,9 +13,11 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
+import { Ionicons } from '@expo/vector-icons';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from '@shared/firebaseConfig';
 import { db } from '@shared/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
@@ -98,6 +100,45 @@ type NewListingRouteProp = RouteProp<RootStackParamList, 'NewListing'>;
 type Nav = StackNavigationProp<RootStackParamList>;
 
 type ListingType = 'direct' | 'auction';
+
+// Info icon component with modal
+const InfoIcon: React.FC<{ title: string; description: string }> = ({ title, description }) => {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <>
+      <TouchableOpacity
+        onPress={() => setVisible(true)}
+        style={styles.infoIcon}
+        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+      >
+        <Ionicons name="information-circle-outline" size={18} color="#9ca3af" />
+      </TouchableOpacity>
+      <Modal
+        visible={visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{title}</Text>
+              <TouchableOpacity onPress={() => setVisible(false)} style={styles.modalClose}>
+                <Ionicons name="close" size={24} color="#e5e7eb" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalDescription}>{description}</Text>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+};
 
 const NewListingScreen: React.FC = () => {
   const route = useRoute<NewListingRouteProp>();
@@ -679,7 +720,13 @@ const NewListingScreen: React.FC = () => {
       {/* Price / auction fields */}
       {mode === 'direct' ? (
         <>
-          <Text style={styles.label}>Preț fix (EUR) *</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Preț fix (EUR) *</Text>
+            <InfoIcon
+              title="Preț fix"
+              description="Prețul la care piesa este disponibilă pentru cumpărare imediată. Acesta este prețul final pe care cumpărătorul îl va plăti."
+            />
+          </View>
           <TextInput
             style={styles.input}
             keyboardType="numeric"
@@ -691,7 +738,13 @@ const NewListingScreen: React.FC = () => {
         </>
       ) : (
         <>
-          <Text style={styles.label}>Preț de start licitație (EUR) *</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Preț de start licitație (EUR) *</Text>
+            <InfoIcon
+              title="Preț de start licitație"
+              description="Prețul minim de la care începe licitația. Licitațiile vor porni de la acest preț sau mai sus."
+            />
+          </View>
           <TextInput
             style={styles.input}
             keyboardType="numeric"
@@ -701,7 +754,13 @@ const NewListingScreen: React.FC = () => {
             onChangeText={setReservePrice}
           />
 
-          <Text style={styles.label}>Preț minim acceptat (EUR)</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Preț minim acceptat (EUR)</Text>
+            <InfoIcon
+              title="Preț minim acceptat"
+              description="Prețul minim pe care ești dispus să vinzi piesa. Dacă licitația nu atinge acest preț, piesa nu se va vinde. Implicit este egal cu prețul de start."
+            />
+          </View>
           <TextInput
             style={styles.input}
             keyboardType="numeric"
@@ -711,7 +770,13 @@ const NewListingScreen: React.FC = () => {
             onChangeText={setMinAcceptPrice}
           />
 
-          <Text style={styles.label}>Preț "Cumpără acum" (EUR, opțional)</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Preț "Cumpără acum" (EUR, opțional)</Text>
+            <InfoIcon
+              title="Preț Cumpără acum"
+              description="Prețul la care un cumpărător poate cumpăra piesa imediat, întrerupând licitația. Dacă nu este setat, licitația va continua până la sfârșitul duratei."
+            />
+          </View>
           <TextInput
             style={styles.input}
             keyboardType="numeric"
@@ -721,7 +786,13 @@ const NewListingScreen: React.FC = () => {
             onChangeText={setBuyNowPrice}
           />
 
-          <Text style={styles.label}>Durată licitație *</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Durată licitație *</Text>
+            <InfoIcon
+              title="Durată licitație"
+              description="Perioada de timp în care licitația va fi activă. Poți alege între 3 sau 5 zile."
+            />
+          </View>
           <View style={styles.durationRow}>
             <TouchableOpacity
               style={[
@@ -848,7 +919,13 @@ const NewListingScreen: React.FC = () => {
       )}
 
       {/* Rarity */}
-      <Text style={styles.label}>Raritate</Text>
+      <View style={styles.labelWithInfo}>
+        <Text style={styles.label}>Raritate</Text>
+        <InfoIcon
+          title="Raritate"
+          description="Indică cât de rară este piesa. Acest lucru poate influența valoarea piesei pe piața numismatică."
+        />
+      </View>
       <View style={styles.pillRow}>
         {RARITIES.map((r) => (
           <TouchableOpacity
@@ -874,7 +951,13 @@ const NewListingScreen: React.FC = () => {
       {/* Grade */}
       {category === 'Monede' && (
         <>
-          <Text style={styles.label}>Grad / stare</Text>
+          <View style={styles.labelWithInfo}>
+            <Text style={styles.label}>Grad / stare</Text>
+            <InfoIcon
+              title="Grad / stare"
+              description="Indică starea de conservare a piesei. Sistemul standard de notare include grade precum VF (Very Fine), XF (Extremely Fine), AU (Almost Uncirculated), MS (Mint State), etc."
+            />
+          </View>
           <TextInput
             style={styles.input}
             value={grade}
@@ -918,8 +1001,14 @@ const NewListingScreen: React.FC = () => {
           >
             {hasCertification && <Text style={styles.checkboxCheck}>✓</Text>}
           </View>
-          <View>
-            <Text style={styles.toggleTitle}>Am certificare profesională</Text>
+          <View style={{ flex: 1 }}>
+            <View style={styles.labelWithInfo}>
+              <Text style={styles.toggleTitle}>Am certificare profesională</Text>
+              <InfoIcon
+                title="Certificare profesională"
+                description="Certificarea de la companii precum NGC sau PCGS garantează autenticitatea și starea piesei, crescând încrederea cumpărătorilor."
+              />
+            </View>
             <Text style={styles.toggleSubtitle}>
               Bifează dacă piesa este certificată de NGC sau PCGS.
             </Text>
@@ -1008,8 +1097,14 @@ const NewListingScreen: React.FC = () => {
           >
             {acceptsOffers && <Text style={styles.checkboxCheck}>✓</Text>}
           </View>
-          <View>
-            <Text style={styles.toggleTitle}>Accept ofertă de la cumpărători</Text>
+          <View style={{ flex: 1 }}>
+            <View style={styles.labelWithInfo}>
+              <Text style={styles.toggleTitle}>Accept ofertă de la cumpărători</Text>
+              <InfoIcon
+                title="Acceptă oferte"
+                description="Permite cumpărătorilor să trimită oferte pentru piesă. Poți accepta sau respinge ofertele primite."
+              />
+            </View>
             <Text style={styles.toggleSubtitle}>
               Permite cumpărătorilor să trimită oferte pentru piesă.
             </Text>
@@ -1111,6 +1206,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#e5e7eb',
+  },
+  labelWithInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 4,
   },
   input: {
     borderRadius: 12,
@@ -1329,6 +1430,45 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '700',
+    lineHeight: 20,
+  },
+  infoIcon: {
+    marginLeft: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: 400,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.3)',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#e5e7eb',
+    flex: 1,
+  },
+  modalClose: {
+    padding: 4,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#d1d5db',
     lineHeight: 20,
   },
 });

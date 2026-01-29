@@ -9,12 +9,15 @@ import {
   ActivityIndicator,
   RefreshControl,
   FlatList,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../hooks/useCart';
 
 interface RawProduct {
   title: string;
@@ -50,6 +53,8 @@ interface TransformedProduct {
 
 export default function MonetariaStatuluiScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
+  const { addToCart } = useCart(user?.uid);
   const [products, setProducts] = useState<TransformedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +142,19 @@ export default function MonetariaStatuluiScreen() {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
     // In a real app, you would reload the data from the API
     setRefreshing(false);
+  };
+
+  const handleAddToCart = async (productId: string, productName: string) => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a adăuga produse în coș.');
+      return;
+    }
+    try {
+      await addToCart(productId);
+      Alert.alert('Succes', `${productName} a fost adăugat în coș!`);
+    } catch (error: any) {
+      Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');
+    }
   };
 
   // Calculate dynamic filter options based on current selections
@@ -389,7 +407,10 @@ export default function MonetariaStatuluiScreen() {
                   </Text>
                   <Text style={styles.productPrice}>{item.price}</Text>
                 </View>
-                <TouchableOpacity style={styles.addToCartButton}>
+                <TouchableOpacity 
+                  style={styles.addToCartButton}
+                  onPress={() => handleAddToCart(item.id, item.title)}
+                >
                   <Text style={styles.addToCartButtonText}>Adaugă în coș</Text>
                 </TouchableOpacity>
               </TouchableOpacity>

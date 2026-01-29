@@ -10,9 +10,9 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import * as ExpoSplashScreen from 'expo-splash-screen';
 import SplashScreen from './components/SplashScreen';
 import Header from './components/Header';
+import AuthGuard from './components/AuthGuard';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
@@ -110,11 +110,6 @@ function WebRootLayoutFix() {
 
   return null;
 }
-
-// Prevent splash screen from auto-hiding
-ExpoSplashScreen.preventAutoHideAsync().catch(() => {
-  // Ignore errors if preventAutoHideAsync fails
-});
 
 const TAB_CONFIG: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
   ProductCatalog: { label: 'Magazin', icon: 'storefront-outline' },
@@ -354,14 +349,6 @@ function AppContent() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!loading) {
-      ExpoSplashScreen.hideAsync().catch(() => {
-        // Ignore errors if hideAsync fails
-      });
-    }
-  }, [loading]);
-
   if (loading) {
     return <SplashScreen />; // Show static splash screen while loading
   }
@@ -370,73 +357,366 @@ function AppContent() {
     <View style={styles.rootAppContainer}>
       <WebRootLayoutFix />
       {user && <Header />}
-      <NavigationContainer>
-        {user ? (
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              cardStyle: { backgroundColor: '#F9FAFB' },
-            }}
-          >
-            <Stack.Screen 
-              name="MainTabs" 
-              component={MainTabs} 
-            />
-            {/* Settings & Security */}
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-            <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
-            <Stack.Screen name="TwoFA" component={TwoFAScreen} />
-            <Stack.Screen name="Sessions" component={SessionsScreen} />
-            <Stack.Screen name="TrustedDevices" component={TrustedDevicesScreen} />
-            <Stack.Screen name="AccountActions" component={AccountActionsScreen} />
-            <Stack.Screen name="NewListing" component={NewListingScreen} />
-            <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
-            <Stack.Screen name="AuctionDetails" component={AuctionDetailsScreen} />
-            <Stack.Screen name="BidHistory" component={BidHistoryScreen} />
-            <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
-            <Stack.Screen name="HelpArticle" component={HelpArticleScreen} />
-            <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
-            <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-            <Stack.Screen name="SalesHistory" component={SalesHistoryScreen} />
-            <Stack.Screen name="Collection" component={CollectionScreen} />
-            <Stack.Screen name="About" component={AboutScreen} />
-            <Stack.Screen name="Contact" component={ContactScreen} />
-            <Stack.Screen name="Pronumismatica" component={PronumismaticaScreen} />
-            <Stack.Screen name="MonetariaStatului" component={MonetariaStatuluiScreen} />
-            <Stack.Screen name="MonetariaStatuluiProductDetails" component={MonetariaStatuluiProductDetailsScreen} />
-            <Stack.Screen name="Contracts" component={ContractsScreen} />
-            <Stack.Screen name="Event" component={EventScreen} />
-            <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
-            <Stack.Screen name="Cart" component={CartScreen} />
-            <Stack.Screen name="Checkout" component={CheckoutScreen} />
-            <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
-            <Stack.Screen name="Notifications" component={NotificationsScreen} />
-            <Stack.Screen name="Messages" component={MessagesScreen} />
-            <Stack.Screen name="UserProducts" component={UserProductsScreen} />
-            <Stack.Screen name="UserAuctions" component={UserAuctionsScreen} />
-            {/* Admin screens */}
-            <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-            <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
-            <Stack.Screen name="AdminUserDetail" component={AdminUserDetailScreen} />
-            <Stack.Screen name="AdminVerification" component={AdminVerificationScreen} />
-            <Stack.Screen name="AdminActivityLogs" component={AdminActivityLogsScreen} />
-            <Stack.Screen name="AdminAnalytics" component={AdminAnalyticsScreen} />
-            <Stack.Screen name="AdminAuctions" component={AdminAuctionsScreen} />
-            <Stack.Screen name="AdminAuditTrail" component={AdminAuditTrailScreen} />
-            <Stack.Screen name="AdminConversations" component={AdminConversationsScreen} />
-            <Stack.Screen name="AdminHelp" component={AdminHelpScreen} />
-            <Stack.Screen name="AdminModerator" component={AdminModeratorScreen} />
-            <Stack.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
-            <Stack.Screen name="AdminTestBoost" component={AdminTestBoostScreen} />
-            <Stack.Screen name="AdminTransactions" component={AdminTransactionsScreen} />
-            {/* Auth screens */}
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-          </Stack.Navigator>
-        ) : (
-          <AuthStack />
-        )}
+      <NavigationContainer
+        linking={{
+          prefixes: ['enumismatica://'],
+          config: {
+            screens: {
+              ProductDetails: {
+                path: 'product/:productId',
+              },
+              AuctionDetails: {
+                path: 'auction/:auctionId',
+              },
+            },
+          },
+        }}
+      >
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            cardStyle: { backgroundColor: '#F9FAFB' },
+          }}
+        >
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabs}
+          />
+          {/* Settings & Security */}
+          <Stack.Screen name="Settings">
+            {() => (
+              <AuthGuard>
+                <SettingsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="ChangePassword">
+            {() => (
+              <AuthGuard>
+                <ChangePasswordScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="ChangeEmail">
+            {() => (
+              <AuthGuard>
+                <ChangeEmailScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="TwoFA">
+            {() => (
+              <AuthGuard>
+                <TwoFAScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Sessions">
+            {() => (
+              <AuthGuard>
+                <SessionsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="TrustedDevices">
+            {() => (
+              <AuthGuard>
+                <TrustedDevicesScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AccountActions">
+            {() => (
+              <AuthGuard>
+                <AccountActionsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="NewListing">
+            {() => (
+              <AuthGuard>
+                <NewListingScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="ProductDetails">
+            {() => (
+              <AuthGuard>
+                <ProductDetailsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AuctionDetails">
+            {() => (
+              <AuthGuard>
+                <AuctionDetailsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="BidHistory">
+            {() => (
+              <AuthGuard>
+                <BidHistoryScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="HelpCenter">
+            {() => (
+              <AuthGuard>
+                <HelpCenterScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="HelpArticle">
+            {() => (
+              <AuthGuard>
+                <HelpArticleScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="OrderHistory">
+            {() => (
+              <AuthGuard>
+                <OrderHistoryScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="OrderDetails">
+            {() => (
+              <AuthGuard>
+                <OrderDetailsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="SalesHistory">
+            {() => (
+              <AuthGuard>
+                <SalesHistoryScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Collection">
+            {() => (
+              <AuthGuard>
+                <CollectionScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="About">
+            {() => (
+              <AuthGuard>
+                <AboutScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Contact">
+            {() => (
+              <AuthGuard>
+                <ContactScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Pronumismatica">
+            {() => (
+              <AuthGuard>
+                <PronumismaticaScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="MonetariaStatului">
+            {() => (
+              <AuthGuard>
+                <MonetariaStatuluiScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="MonetariaStatuluiProductDetails">
+            {() => (
+              <AuthGuard>
+                <MonetariaStatuluiProductDetailsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Contracts">
+            {() => (
+              <AuthGuard>
+                <ContractsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Event">
+            {() => (
+              <AuthGuard>
+                <EventScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Bookmarks">
+            {() => (
+              <AuthGuard>
+                <BookmarksScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Watchlist">
+            {() => (
+              <AuthGuard>
+                <WatchlistScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Cart">
+            {() => (
+              <AuthGuard>
+                <CartScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Checkout">
+            {() => (
+              <AuthGuard>
+                <CheckoutScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="SellerProfile">
+            {() => (
+              <AuthGuard>
+                <SellerProfileScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Notifications">
+            {() => (
+              <AuthGuard>
+                <NotificationsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Messages">
+            {() => (
+              <AuthGuard>
+                <MessagesScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="UserProducts">
+            {() => (
+              <AuthGuard>
+                <UserProductsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="UserAuctions">
+            {() => (
+              <AuthGuard>
+                <UserAuctionsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          {/* Admin screens */}
+          <Stack.Screen name="AdminDashboard">
+            {() => (
+              <AuthGuard>
+                <AdminDashboardScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminUsers">
+            {() => (
+              <AuthGuard>
+                <AdminUsersScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminUserDetail">
+            {() => (
+              <AuthGuard>
+                <AdminUserDetailScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminVerification">
+            {() => (
+              <AuthGuard>
+                <AdminVerificationScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminActivityLogs">
+            {() => (
+              <AuthGuard>
+                <AdminActivityLogsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminAnalytics">
+            {() => (
+              <AuthGuard>
+                <AdminAnalyticsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminAuctions">
+            {() => (
+              <AuthGuard>
+                <AdminAuctionsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminAuditTrail">
+            {() => (
+              <AuthGuard>
+                <AdminAuditTrailScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminConversations">
+            {() => (
+              <AuthGuard>
+                <AdminConversationsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminHelp">
+            {() => (
+              <AuthGuard>
+                <AdminHelpScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminModerator">
+            {() => (
+              <AuthGuard>
+                <AdminModeratorScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminNotifications">
+            {() => (
+              <AuthGuard>
+                <AdminNotificationsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminTestBoost">
+            {() => (
+              <AuthGuard>
+                <AdminTestBoostScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminTransactions">
+            {() => (
+              <AuthGuard>
+                <AdminTransactionsScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          {/* Auth screens */}
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+        </Stack.Navigator>
       </NavigationContainer>
     </View>
   );

@@ -14,10 +14,11 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList, TabParamList } from '../navigationTypes';
 import { WatchlistItem } from '@shared/types';
-import { getUserWatchlist, removeFromWatchlist, clearWatchlist } from '@shared/watchlistService';
+import { removeFromWatchlist, clearWatchlist } from '@shared/watchlistService';
 import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import InlineBackButton from '../components/InlineBackButton';
+import { useWatchlist } from '../hooks/useWatchlist';
 
 const styles = StyleSheet.create({
   screen: {
@@ -375,52 +376,27 @@ const WatchlistItemCard: React.FC<{ item: WatchlistItem; onRemove: (itemId: stri
 const WatchlistScreen: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { watchlist, loading, error, fetchWatchlist, removeFromWatchlist: removeFromWatchlistHook, clearWatchlist: clearWatchlistHook } = useWatchlist();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'products' | 'auctions'>('products');
-
-  const fetchWatchlist = async () => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await getUserWatchlist(user.uid);
-      if (result.success && result.items) {
-        setWatchlist(result.items);
-      } else {
-        setError(result.error || 'Failed to fetch watchlist');
-      }
-    } catch (err) {
-      console.error('Error fetching watchlist:', err);
-      setError('Failed to fetch watchlist');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
+  
   const handleRemoveItem = async (itemId: string) => {
     if (!user) return;
-
+    
     try {
-      const result = await removeFromWatchlist(user.uid, itemId);
-      if (result.success) {
-        await fetchWatchlist();
-      } else {
-        Alert.alert('Error', result.error || 'Failed to remove from watchlist');
+      const result = await removeFromWatchlistHook(itemId);
+      if (!result.success) {
+        Alert.alert('Eroare', result.error || 'Nu s-a putut elimina din lista de urmărire');
       }
     } catch (err) {
       console.error('Error removing from watchlist:', err);
-      Alert.alert('Error', 'Failed to remove from watchlist');
+      Alert.alert('Eroare', 'Nu s-a putut elimina din lista de urmărire');
     }
   };
-
+  
   const handleClearWatchlist = async () => {
     if (!user) return;
-
+    
     Alert.alert(
       'Golește watchlist',
       'Sigur doriți să ștergeți toate elementele din watchlist?',
@@ -431,32 +407,25 @@ const WatchlistScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await clearWatchlist(user.uid);
-              if (result.success) {
-                await fetchWatchlist();
-              } else {
-                Alert.alert('Error', result.error || 'Failed to clear watchlist');
+              const result = await clearWatchlistHook();
+              if (!result.success) {
+                Alert.alert('Eroare', result.error || 'Nu s-a putut goli lista de urmărire');
               }
             } catch (err) {
               console.error('Error clearing watchlist:', err);
-              Alert.alert('Error', 'Failed to clear watchlist');
+              Alert.alert('Eroare', 'Nu s-a putut goli lista de urmărire');
             }
           }
         }
       ]
     );
   };
-
+  
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchWatchlist();
   };
-
-  // Fetch watchlist on mount and when screen comes into focus
-  useEffect(() => {
-    fetchWatchlist();
-  }, [user]);
-
+  
   // Refresh watchlist when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {

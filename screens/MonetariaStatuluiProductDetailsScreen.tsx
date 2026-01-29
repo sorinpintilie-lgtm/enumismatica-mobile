@@ -14,6 +14,8 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
+import { useAuth } from '../context/AuthContext';
+import { useCart } from '../hooks/useCart';
 
 interface RawProduct {
   title: string;
@@ -60,6 +62,8 @@ export default function MonetariaStatuluiProductDetailsScreen() {
   const navigation = useNavigation<MonetariaStatuluiProductDetailsScreenNavigationProp>();
   const route = useRoute();
   const { productId } = route.params as RouteParams;
+  const { user } = useAuth();
+  const { addToCart } = useCart(user?.uid);
   
   const [product, setProduct] = useState<TransformedProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,6 +139,23 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
     loadProduct();
   }, [productId]);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a adăuga produse în coș.');
+      return;
+    }
+    if (!product) {
+      Alert.alert('Eroare', 'Produsul nu este disponibil.');
+      return;
+    }
+    try {
+      await addToCart(product.id);
+      Alert.alert('Succes', `${product.title} a fost adăugat în coș!`);
+    } catch (error: any) {
+      Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');
+    }
+  };
 
   if (loading) {
     return (
@@ -226,7 +247,7 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
         {/* Add to Cart Button */}
         <View style={styles.addToCartSection}>
-          <TouchableOpacity style={styles.addToCartButton} onPress={() => Alert.alert('Funcție în dezvoltare', 'Adăugarea în coș va fi disponibilă în viitoarele versiuni')}>
+          <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
             <Text style={styles.addToCartButtonText}>Adaugă în coș</Text>
           </TouchableOpacity>
         </View>

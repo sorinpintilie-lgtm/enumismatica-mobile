@@ -10,6 +10,7 @@ import {
   FlatList,
   StyleSheet,
   Share,
+  Linking,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -124,14 +125,13 @@ const AuctionDetailsScreen: React.FC = () => {
 
   const handleShareAuction = async () => {
     if (!auction) return;
-    const url = `https://enumismatica.ro/auction/${auction.id}`;
-    const message = `Licitație #${auction.id.slice(-6)} - ${formatEUR(currentBid)}\n${url}`;
+    const deepLinkUrl = `enumismatica://auction/${auction.id}`;
+    const message = `Licitație #${auction.id.slice(-6)} - ${formatEUR(currentBid)}\n\n${deepLinkUrl}`;
 
     try {
       await Share.share({
         message,
         title: `Licitație #${auction.id.slice(-6)}`,
-        url,
       });
     } catch (error) {
       console.error('Failed to share auction:', error);
