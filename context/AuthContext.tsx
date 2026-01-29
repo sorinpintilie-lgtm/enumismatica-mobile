@@ -96,8 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!currentUser) {
         setUser(null);
         setTwoFactorRequired(false);
-        // Don't set loading to false immediately - let minimumLoadingTime handle it
-        clearTimeout(minimumLoadingTime);
+        // Let minimumLoadingTime handle loading state for unauthenticated users
         return;
       }
 
