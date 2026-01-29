@@ -55,7 +55,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     <View style={styles.container}>
       <Video
         ref={videoRef}
-        source={require('../assets/splashvideoani.mov')}
+        source={require('../assets/videosplash.mp4')}
         style={styles.video}
         resizeMode={ResizeMode.COVER}
         shouldPlay
