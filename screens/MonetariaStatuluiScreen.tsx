@@ -139,8 +139,59 @@ export default function MonetariaStatuluiScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     // Reload data
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-    // In a real app, you would reload the data from the API
+    try {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://enumismatica.ro'}/monetaria-data.json`);
+      if (!response.ok) throw new Error('Failed to load data');
+      const data = await response.json();
+      if (!data || !data.products || !Array.isArray(data.products)) {
+        throw new Error('Invalid data format: missing products array');
+      }
+
+      const transformedProducts = data.products.map((p: RawProduct) => {
+        const specs = p.specifications || '';
+        const lines = specs.split('|').map((line: string) => line.trim());
+
+        let productDiameter = '';
+        let productWeight = '';
+        let productMaterial = '';
+        let productQuality = '';
+
+        lines.forEach((line: string) => {
+          if (line.includes('Diametru:')) {
+            productDiameter = line.split('Diametru:')[1]?.trim() || '';
+          }
+          if (line.includes('Greutate:')) {
+            productWeight = line.split('Greutate:')[1]?.trim() || '';
+          }
+          if (line.includes('Material:')) {
+            productMaterial = line.split('Material:')[1]?.trim() || '';
+          }
+          if (line.includes('Calitate:')) {
+            productQuality = line.split('Calitate:')[1]?.trim() || '';
+          }
+        });
+
+        return {
+          ...p,
+          id: p.product_id,
+          title: p.title || 'Piesă fără titlu',
+          description: p.full_description,
+          price: p.price,
+          category: p.category,
+          image: `/Monetaria_statului/romanian_mint_products/${p.category_slug}/${p.image_files}`,
+          link: `/monetaria-statului/${p.product_id}`,
+          diameter: productDiameter,
+          weight: productWeight,
+          mint: productMaterial,
+          era: productQuality,
+        } as TransformedProduct;
+      });
+
+      setProducts(transformedProducts);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    }
     setRefreshing(false);
   };
 
@@ -150,7 +201,11 @@ export default function MonetariaStatuluiScreen() {
       return;
     }
     try {
-      await addToCart(productId);
+      const productData = products.find((p) => p.id === productId);
+      await addToCart(productId, {
+        isMintProduct: true,
+        mintProductData: productData || null,
+      });
       Alert.alert('Succes', `${productName} a fost adăugat în coș!`);
     } catch (error: any) {
       Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');

@@ -511,11 +511,11 @@ const CountdownTimer: React.FC<{ endTime: Date }> = ({ endTime }) => {
       const now = new Date().getTime();
       const distance = endTime.getTime() - now;
 
-      if (distance < 0) {
-        setTimeLeft('ENDED');
-        clearInterval(timer);
-        return;
-      }
+        if (distance < 0) {
+          setTimeLeft('ÎNCHEIATĂ');
+          clearInterval(timer);
+          return;
+        }
 
       const days = Math.floor(distance / (1000 * 60 * 60 * 24));
       const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -612,7 +612,7 @@ const AuctionCard: React.FC<{ auction: Auction; product?: Product | null }> = ({
         </View>
       </View>
 
-      <Text style={[styles.cardPrice, { fontSize: 14 }]}>Vezi detalii & licitează →</Text>
+      <Text style={[styles.cardPrice, { fontSize: 14 }]}>Detalii și licitare →</Text>
     </TouchableOpacity>
   );
 };
@@ -782,7 +782,7 @@ const AuctionListScreen: React.FC = () => {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingTitle}>Se încarcă licitațiile...</Text>
-        <Text style={styles.loadingSubtitle}>Te rugăm să aștepți câteva momente</Text>
+        <Text style={styles.loadingSubtitle}>Încărcarea poate dura câteva momente</Text>
       </View>
     );
   }
@@ -800,9 +800,7 @@ const AuctionListScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Licitații</Text>
-          <Text style={styles.headerSubtitle}>
-            Vezi licitațiile active și timp rămas pentru fiecare monedă.
-          </Text>
+          <Text style={styles.headerSubtitle}>Licitațiile active sunt afișate împreună cu timpul rămas.</Text>
 
           {/* Results summary */}
           <Text style={styles.resultsSummary}>
@@ -839,7 +837,7 @@ const AuctionListScreen: React.FC = () => {
           {/* Search Bar */}
           <TextInput
             style={styles.searchInput}
-            placeholder="Caută licitații..."
+            placeholder="Căutare licitații..."
             placeholderTextColor={colors.textSecondary}
             value={filters.searchTerm}
             onChangeText={(text) => setFilters({ ...filters, searchTerm: text })}
@@ -917,14 +915,14 @@ const AuctionListScreen: React.FC = () => {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
                 {filters.searchTerm
-                  ? 'Nicio licitație nu se potrivește căutării.'
+                  ? 'Nicio licitație nu corespunde căutării.'
                   : statusFilter === 'active'
                   ? 'Nu există licitații active în acest moment.'
                   : 'Nu există licitații disponibile.'}
               </Text>
               {filters.searchTerm && (
                 <TouchableOpacity style={styles.emptyButton} onPress={resetFilters}>
-                  <Text style={styles.emptyButtonText}>Resetează filtrele</Text>
+                  <Text style={styles.emptyButtonText}>Resetare filtre</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -948,21 +946,21 @@ const AuctionListScreen: React.FC = () => {
         {!user && displayAuctions.length >= 10 && (
           <View style={{ padding: 16, alignItems: 'center' }}>
             <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
-              Autentifică-te sau înregistrează-te pentru a vedea toate licitațiile
+              Autentificarea sau înregistrarea sunt necesare pentru a vedea toate licitațiile
             </Text>
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
               onPress={() => setAuthPromptVisible(true)}
             >
-              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Vezi toate licitațiile</Text>
+              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate licitațiile</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <AuthPromptModal
           visible={authPromptVisible}
-          title="Participă la licitații"
-          message="Autentifică-te sau creează un cont pentru a licita în timp real, a urmări obiectele preferate și a primi alerte când se apropie finalul."
+          title="Participare la licitații"
+          message="Autentificarea sau crearea unui cont permite licitarea în timp real, urmărirea obiectelor preferate și alerte înainte de final."
           benefits={[
             'Licitează în timp real și primești notificări',
             'Salvezi licitațiile urmărite',

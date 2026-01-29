@@ -46,19 +46,19 @@ export default function CheckoutScreen() {
 
   const validateForm = () => {
     if (!shippingInfo.name.trim()) {
-      Alert.alert('Eroare', 'Vă rugăm introduceți numele dvs.');
+      Alert.alert('Eroare', 'Este necesară introducerea numelui.');
       return false;
     }
     if (!shippingInfo.address.trim()) {
-      Alert.alert('Eroare', 'Vă rugăm introduceți adresa');
+      Alert.alert('Eroare', 'Este necesară introducerea adresei.');
       return false;
     }
     if (!shippingInfo.city.trim()) {
-      Alert.alert('Eroare', 'Vă rugăm introduceți orașul');
+      Alert.alert('Eroare', 'Este necesară introducerea orașului.');
       return false;
     }
     if (!shippingInfo.postalCode.trim()) {
-      Alert.alert('Eroare', 'Vă rugăm introduceți codul poștal');
+      Alert.alert('Eroare', 'Este necesară introducerea codului poștal.');
       return false;
     }
     return true;
@@ -84,7 +84,7 @@ export default function CheckoutScreen() {
 
       Alert.alert(
         'Succes',
-        'Comanda dvs. a fost plasată cu succes!',
+        'Comanda a fost plasată cu succes!',
         [
           {
 						text: 'OK',
@@ -98,7 +98,7 @@ export default function CheckoutScreen() {
     } catch (error) {
       Alert.alert(
         'Eroare',
-        'A apărut o eroare la procesarea comenzii. Vă rugăm încercați din nou.'
+        'A apărut o eroare la procesarea comenzii. Se recomandă reîncercarea.'
       );
     } finally {
       setIsLoading(false);
@@ -113,8 +113,8 @@ export default function CheckoutScreen() {
           style={styles.cartEmptyButton}
           onPress={() => (navigation as any).navigate('MainTabs', { screen: 'ProductCatalog' })}
         >
-          <Text style={styles.cartEmptyButtonText}>Continuă cumpărăturile</Text>
-        </TouchableOpacity>
+        <Text style={styles.cartEmptyButtonText}>Cumpărături</Text>
+      </TouchableOpacity>
       </View>
     );
   }
@@ -232,7 +232,7 @@ export default function CheckoutScreen() {
             <Text style={styles.label}>Instrucțiuni transfer bancar</Text>
             <View style={styles.infoBox}>
               <Text style={styles.infoBoxText}>
-                Veți primi instrucțiuni detaliate pentru transferul bancar după plasarea comenzii.
+                Instrucțiunile pentru transfer bancar sunt trimise după plasarea comenzii.
               </Text>
             </View>
           </View>
@@ -272,7 +272,7 @@ export default function CheckoutScreen() {
         disabled={isLoading}
       >
         <Text style={styles.checkoutButtonText}>
-          {isLoading ? 'Procesare...' : 'Plasează comanda'}
+          {isLoading ? 'Procesare...' : 'Plasare comandă'}
         </Text>
       </TouchableOpacity>
     </ScrollView>

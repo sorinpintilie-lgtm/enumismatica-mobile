@@ -252,8 +252,8 @@ const DashboardScreen: React.FC = () => {
             {/* Header */}
             <View style={dashboardStyles.header}>
               <View>
-                <Text style={dashboardStyles.headerTitle}>Bine ați venit!</Text>
-                <Text style={dashboardStyles.headerSubtitle}>Descoperiți lumea numismatică</Text>
+                <Text style={dashboardStyles.headerTitle}>Bun venit!</Text>
+                <Text style={dashboardStyles.headerSubtitle}>Descoperirea lumii numismatice începe aici</Text>
               </View>
             </View>
 
@@ -261,8 +261,8 @@ const DashboardScreen: React.FC = () => {
             <View style={dashboardStyles.section}>
               <Text style={dashboardStyles.sectionTitle}>Despre eNumismatica</Text>
               <Text style={[dashboardStyles.loadingText, { textAlign: 'left', marginBottom: 16 }]}>
-                eNumismatica este platforma ta pentru vânzarea și licitarea monedelor rare. 
-                Alătură-te comunității noastre de numismați și descoperiți piese unice.
+                eNumismatica este platforma pentru vânzarea și licitarea monedelor rare.
+                Comunitatea reunește numismați și colecționari interesați de piese unice.
               </Text>
 
               {/* Login/Register Buttons */}
@@ -271,7 +271,7 @@ const DashboardScreen: React.FC = () => {
                   style={[dashboardStyles.actionButton, { paddingVertical: 14 }]}
                   onPress={() => setAuthPromptVisible(true)}
                 >
-                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Continuă ca vizitator</Text>
+                  <Text style={[dashboardStyles.actionButtonText, { fontSize: 16 }]}>Mod vizitator</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6', paddingVertical: 14 }]}
@@ -284,8 +284,8 @@ const DashboardScreen: React.FC = () => {
 
             <AuthPromptModal
               visible={authPromptVisible}
-              title="Explorează mai mult"
-              message="Creează un cont sau autentifică-te pentru a accesa colecțiile, mesajele, istoricul comenzilor și funcțiile avansate."
+              title="Acces extins"
+              message="Autentificarea sau crearea unui cont oferă acces la colecții, mesaje, istoricul comenzilor și funcții avansate."
               benefits={[
                 'Mesaje și notificări în timp real',
                 'Colecție personală și watchlist',
@@ -359,8 +359,8 @@ const DashboardScreen: React.FC = () => {
           {/* Header */}
           <View style={dashboardStyles.header}>
             <View>
-              <Text style={dashboardStyles.headerTitle}>Panou de Control</Text>
-              <Text style={dashboardStyles.headerSubtitle}>Bine ați revenit, {user.email}</Text>
+              <Text style={dashboardStyles.headerTitle}>Panou de control</Text>
+              <Text style={dashboardStyles.headerSubtitle}>Cont activ: {user.email}</Text>
             </View>
           </View>
 
@@ -410,14 +410,14 @@ const DashboardScreen: React.FC = () => {
 
         {/* Quick Actions - 2x2 Grid (4 items, removed Mesaje and Colecția Mea) */}
         <View style={dashboardStyles.section}>
-          <Text style={dashboardStyles.sectionTitle}>Acțiuni Rapide</Text>
+          <Text style={dashboardStyles.sectionTitle}>Acțiuni rapide</Text>
           <View style={dashboardStyles.actionGrid}>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}
               onPress={() => navigation.navigate('Cart')}
             >
               <Ionicons name="cart" size={28} color={colors.primary} />
-              <Text style={dashboardStyles.actionGridText}>Coșul Meu</Text>
+              <Text style={dashboardStyles.actionGridText}>Coș</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}
@@ -445,14 +445,14 @@ const DashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('Watchlist')}
             >
               <Ionicons name="bookmark" size={28} color={colors.primary} />
-              <Text style={dashboardStyles.actionGridText}>Watchlist</Text>
+              <Text style={dashboardStyles.actionGridText}>Listă de urmărire</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}
               onPress={() => navigation.navigate('HelpCenter')}
             >
               <Ionicons name="help-circle" size={28} color={colors.primary} />
-              <Text style={dashboardStyles.actionGridText}>Help Center</Text>
+              <Text style={dashboardStyles.actionGridText}>Centru de ajutor</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -460,19 +460,19 @@ const DashboardScreen: React.FC = () => {
         {/* My Products Section */}
         <View style={[dashboardStyles.section, { marginBottom: 24 }]}>
           <View style={dashboardStyles.sectionHeader}>
-            <Text style={dashboardStyles.sectionTitle}>Produsele Mele</Text>
+            <Text style={dashboardStyles.sectionTitle}>Produse listate</Text>
             <TouchableOpacity style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6' }]}>
-              <Text style={dashboardStyles.actionButtonText}>Adauga Produs</Text>
+              <Text style={dashboardStyles.actionButtonText}>Adăugare produs</Text>
             </TouchableOpacity>
           </View>
 
           {productsLoading ? (
                       <View style={{ alignItems: 'center', padding: 16 }}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={[dashboardStyles.loadingText, { marginTop: 8 }]}>Loading products...</Text>
+                        <Text style={[dashboardStyles.loadingText, { marginTop: 8 }]}>Se încarcă produsele...</Text>
                       </View>
                     ) : products.length === 0 ? (
-                      <Text style={dashboardStyles.loadingText}>Nu ai produse listate încă.</Text>
+                      <Text style={dashboardStyles.loadingText}>Nu există produse listate încă.</Text>
                     ) : (
             <View style={{ gap: 12 }}>
               {products.slice(0, 5).map((product) => (
@@ -485,13 +485,13 @@ const DashboardScreen: React.FC = () => {
                     style={dashboardStyles.viewButton}
                     onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
                   >
-                    <Text style={dashboardStyles.viewButtonText}>Vezi</Text>
+                    <Text style={dashboardStyles.viewButtonText}>Detalii</Text>
                   </TouchableOpacity>
                 </View>
               ))}
               {products.length > 5 && (
                 <Text style={[dashboardStyles.loadingText, { fontSize: 12 }]}>
-                  Încă {products.length - 5} produse...
+                  Încă {products.length - 5} produse disponibile.
                 </Text>
               )}
             </View>
@@ -501,37 +501,37 @@ const DashboardScreen: React.FC = () => {
         {/* My Auction Activity Section */}
         <View style={dashboardStyles.section}>
           <View style={dashboardStyles.sectionHeader}>
-            <Text style={dashboardStyles.sectionTitle}>Activitatea Mea la Licitatii</Text>
+            <Text style={dashboardStyles.sectionTitle}>Activitate la licitații</Text>
             <TouchableOpacity
               style={[dashboardStyles.viewAllButton]}
               onPress={() => navigation.navigate('AuctionList', {})}
             >
-              <Text style={dashboardStyles.viewAllButtonText}>Vezi Toate</Text>
+              <Text style={dashboardStyles.viewAllButtonText}>Listă completă</Text>
             </TouchableOpacity>
           </View>
 
           {auctionsLoading ? (
                       <View style={{ alignItems: 'center', padding: 16 }}>
                         <ActivityIndicator size="small" color={colors.primary} />
-                        <Text style={[dashboardStyles.loadingText, { marginTop: 8 }]}>Loading auctions...</Text>
+                        <Text style={[dashboardStyles.loadingText, { marginTop: 8 }]}>Se încarcă licitațiile...</Text>
                       </View>
                     ) : userAuctions.length === 0 ? (
-                      <Text style={dashboardStyles.loadingText}>Nicio licitatie activa.</Text>
+                      <Text style={dashboardStyles.loadingText}>Nu există licitații active.</Text>
                     ) : (
             <View style={{ gap: 12 }}>
               {userAuctions.slice(0, 5).map((auction) => (
                 <View key={auction.id} style={dashboardStyles.productItem}>
                   <View>
-                    <Text style={dashboardStyles.productName}>Licitatie #{auction.id.slice(-6)}</Text>
+                    <Text style={dashboardStyles.productName}>Licitație #{auction.id.slice(-6)}</Text>
                     <Text style={dashboardStyles.productPrice}>
-                      Oferta curenta: {formatEUR(auction.currentBid || auction.reservePrice)}
+                      Ofertă curentă: {formatEUR(auction.currentBid || auction.reservePrice)}
                     </Text>
                   </View>
                   <TouchableOpacity
                     style={[dashboardStyles.viewButton, { backgroundColor: '#3B82F6' }]}
                     onPress={() => navigation.navigate('AuctionDetails', { auctionId: auction.id })}
                   >
-                    <Text style={dashboardStyles.viewButtonText}>Vezi</Text>
+                    <Text style={dashboardStyles.viewButtonText}>Detalii</Text>
                   </TouchableOpacity>
                 </View>
               ))}

@@ -8,9 +8,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/eNumismatica_trapezoid_no_black_margins.png",
       "resizeMode": "contain",
-      "backgroundColor": "#020617"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,

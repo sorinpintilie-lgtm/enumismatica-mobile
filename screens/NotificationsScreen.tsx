@@ -55,7 +55,7 @@ export default function NotificationsScreen() {
       }
     } catch (error) {
       console.error('[NotificationsScreen] Failed to open notification:', error);
-      showToast({ type: 'error', title: 'Eroare', message: 'Nu am putut deschide notificarea.' });
+      showToast({ type: 'error', title: 'Eroare', message: 'Notificarea nu a putut fi deschisă.' });
     } finally {
       clearBusy(n.id);
     }
@@ -67,7 +67,7 @@ export default function NotificationsScreen() {
       await markAsRead(notificationId);
     } catch (error) {
       console.error('[NotificationsScreen] Failed to mark as read:', error);
-      showToast({ type: 'error', title: 'Eroare', message: 'Nu am putut marca notificarea ca citită.' });
+      showToast({ type: 'error', title: 'Eroare', message: 'Notificarea nu a putut fi marcată ca citită.' });
     } finally {
       clearBusy(notificationId);
     }
@@ -79,7 +79,7 @@ export default function NotificationsScreen() {
       await markAllAsRead();
     } catch (error) {
       console.error('[NotificationsScreen] Failed to mark all as read:', error);
-      showToast({ type: 'error', title: 'Eroare', message: 'Nu am putut marca toate notificările ca citite.' });
+      showToast({ type: 'error', title: 'Eroare', message: 'Notificările nu au putut fi marcate ca citite.' });
     } finally {
       setBulkBusy(false);
     }
@@ -114,7 +114,7 @@ export default function NotificationsScreen() {
       await batch.commit();
     } catch (error) {
       console.error('[NotificationsScreen] Failed to clear notifications:', error);
-      showToast({ type: 'error', title: 'Eroare', message: 'Nu am putut șterge notificările.' });
+      showToast({ type: 'error', title: 'Eroare', message: 'Notificările nu au putut fi șterse.' });
     } finally {
       setBulkBusy(false);
     }
@@ -125,11 +125,11 @@ export default function NotificationsScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Notificări</Text>
-          <Text style={styles.subtitle}>Trebuie să fie autentificat.</Text>
+          <Text style={styles.subtitle}>Autentificarea este necesară.</Text>
         </View>
         <View style={styles.center}>
           <Ionicons name="notifications-off-outline" size={48} color={colors.textSecondary} />
-          <Text style={styles.emptyText}>Conectați-vă pentru a vedea notificările.</Text>
+          <Text style={styles.emptyText}>Autentificare pentru acces la notificări.</Text>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
             <TouchableOpacity
               style={[styles.loginButton, { backgroundColor: colors.primary }]}

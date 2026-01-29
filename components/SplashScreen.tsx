@@ -47,14 +47,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     return (
       <View style={styles.container}>
         <Image
-          source={require('../assets/eNumismatica.ro_logo.png')}
+          source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.tagline}>Vânzare și licitații de monede rare</Text>
+        <Text style={styles.tagline}>Vânzarea și licitațiile de monede rare</Text>
         <View style={styles.footer}>
           <ActivityIndicator size="large" color="#e7b73c" />
-          <Text style={styles.footerText}>Încarcă aplicația...</Text>
+          <Text style={styles.footerText}>Se încarcă aplicația...</Text>
         </View>
       </View>
     );
@@ -88,7 +88,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       <View style={styles.footer}>
         <ActivityIndicator size="large" color="#e7b73c" />
-        <Text style={styles.footerText}>Se încarcă experiența ta numismatică...</Text>
+        <Text style={styles.footerText}>Se încarcă experiența numismatică...</Text>
       </View>
     </View>
   );

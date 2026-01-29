@@ -67,25 +67,47 @@ const CartScreen: React.FC = () => {
     [items, products],
   );
 
+  const parseMintPrice = (price: unknown) => {
+    if (typeof price === 'number') return price;
+    if (typeof price !== 'string') return null;
+    const cleaned = price.replace(/[\s\u00A0]/g, '').replace(/\./g, '').replace(',', '.');
+    const numeric = Number(cleaned.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(numeric) ? numeric : null;
+  };
+
   const totalValue = useMemo(
     () =>
-      lines.reduce((sum, { product }) => {
+      lines.reduce((sum, { item, product }) => {
+        if (item.isMintProduct) {
+          const mintPrice = parseMintPrice(item.mintProductData?.price);
+          return sum + (mintPrice ?? 0);
+        }
         if (!product || typeof product.price !== 'number') return sum;
         return sum + product.price;
       }, 0),
     [lines],
   );
 
-  const handleCheckoutItem = async (productId: string, cartItemId: string) => {
+  const handleCheckoutItem = async (item: {
+    productId: string;
+    id: string;
+    isMintProduct?: boolean;
+    mintProductData?: any;
+  }) => {
     if (!user) {
       Alert.alert('Autentificare necesară', 'Trebuie să fie autentificat pentru a cumpăra.');
       return;
     }
 
     try {
-      setPlacingOrderFor(productId);
-      await createDirectOrderForProduct(productId, user.uid);
-      await removeItem(cartItemId);
+      setPlacingOrderFor(item.productId);
+      await createDirectOrderForProduct(
+        item.productId,
+        user.uid,
+        item.isMintProduct,
+        item.mintProductData,
+      );
+      await removeItem(item.id);
 
       Alert.alert(
         'Comandă creată',
@@ -218,7 +240,7 @@ const CartScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.buyButton}
                     disabled={placingOrderFor === item.productId}
-                    onPress={() => handleCheckoutItem(item.productId, item.id)}
+                    onPress={() => handleCheckoutItem(item)}
                   >
                     {placingOrderFor === item.productId ? (
                       <ActivityIndicator size="small" color={colors.primaryText} />

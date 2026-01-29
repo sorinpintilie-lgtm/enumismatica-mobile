@@ -21,7 +21,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
         <AuthPromptModal
           visible={promptVisible}
           title="Autentificare necesară"
-          message="Pentru a accesa această secțiune ai nevoie de un cont. Autentifică-te sau creează unul nou pentru a continua."
+          message="Pentru acces la această secțiune este necesar un cont. Autentificarea sau crearea unui cont nou permite continuarea."
           benefits={[
             'Acces complet la funcții și colecții',
             'Mesaje și notificări în timp real',

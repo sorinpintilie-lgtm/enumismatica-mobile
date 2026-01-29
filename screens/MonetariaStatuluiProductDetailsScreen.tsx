@@ -150,7 +150,10 @@ export default function MonetariaStatuluiProductDetailsScreen() {
       return;
     }
     try {
-      await addToCart(product.id);
+      await addToCart(product.id, {
+        isMintProduct: true,
+        mintProductData: product,
+      });
       Alert.alert('Succes', `${product.title} a fost adăugat în coș!`);
     } catch (error: any) {
       Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');

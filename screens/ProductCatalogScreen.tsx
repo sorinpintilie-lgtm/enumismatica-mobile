@@ -803,7 +803,7 @@ const ProductCatalogScreen: React.FC = () => {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingTitle}>Se încarcă piesele din E-shop...</Text>
-        <Text style={styles.loadingSubtitle}>Te rugăm să aștepți câteva momente</Text>
+        <Text style={styles.loadingSubtitle}>Încărcarea poate dura câteva momente</Text>
       </View>
     );
   }
@@ -830,9 +830,7 @@ const ProductCatalogScreen: React.FC = () => {
           ]}
         >
           <Text style={styles.headerTitle}>E-shop</Text>
-          <Text style={styles.headerSubtitle}>
-            Explorează colecția noastră de {totalInCatalog} piese
-          </Text>
+          <Text style={styles.headerSubtitle}>Colecția include {totalInCatalog} piese</Text>
 
           {/* Results summary, aligned with web page copy */}
           <Text style={styles.resultsSummary}>
@@ -970,12 +968,12 @@ const ProductCatalogScreen: React.FC = () => {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>
                 {filters.searchTerm
-                  ? 'Nu s-au găsit piese pentru căutarea ta.'
+                  ? 'Nu s-au găsit piese pentru această căutare.'
                   : 'Nu există piese disponibile momentan.'}
               </Text>
               {filters.searchTerm && (
                 <TouchableOpacity style={styles.emptyButton} onPress={resetFilters}>
-                  <Text style={styles.emptyButtonText}>Șterge filtrele</Text>
+                  <Text style={styles.emptyButtonText}>Resetare filtre</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -986,21 +984,21 @@ const ProductCatalogScreen: React.FC = () => {
         {!user && displayProducts.length >= 10 && (
           <View style={{ padding: 16, alignItems: 'center' }}>
             <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
-              Autentifică-te sau înregistrează-te pentru a vedea toate piesele
+              Autentificarea sau înregistrarea sunt necesare pentru a vedea toate piesele
             </Text>
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: colors.primary }]}
               onPress={() => setAuthPromptVisible(true)}
             >
-              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Vezi toate piesele</Text>
+              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <AuthPromptModal
           visible={authPromptVisible}
-          title="Vezi întregul catalog"
-          message="Creează un cont sau autentifică-te pentru a explora toate piesele din E-shop, a salva favorite și a primi notificări personalizate."
+          title="Acces la întregul catalog"
+          message="Autentificarea sau crearea unui cont permite explorarea tuturor pieselor din E-shop, salvarea favoritelor și notificări personalizate."
           benefits={[
             'Acces complet la catalog și licitații',
             'Liste de favorite și alerte de preț',

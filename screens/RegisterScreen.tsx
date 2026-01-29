@@ -8,11 +8,11 @@ import { RootStackParamList } from '../navigationTypes';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 
 const registerSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Adresă de email invalidă'),
+  password: z.string().min(6, 'Parola trebuie să aibă cel puțin 6 caractere'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: 'Parolele nu coincid',
   path: ["confirmPassword"],
 });
 
@@ -28,7 +28,7 @@ const RegisterScreen: React.FC = () => {
       registerSchema.parse({ email, password, confirmPassword });
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
-        Alert.alert('Validation Error', validationError.issues[0].message);
+        Alert.alert('Eroare de validare', validationError.issues[0].message);
       }
       return;
     }
@@ -37,7 +37,7 @@ const RegisterScreen: React.FC = () => {
     const { user, error } = await signUpWithEmail(email, password);
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error);
+      Alert.alert('Eroare', error);
     } else if (user) {
       // AuthContext + AppNavigator will automatically move to the authenticated stack.
     }
@@ -48,7 +48,7 @@ const RegisterScreen: React.FC = () => {
     const { user, error } = await signInWithGoogle();
     setLoading(false);
     if (error) {
-      Alert.alert('Error', error);
+      Alert.alert('Eroare', error);
     } else if (user) {
       // AuthContext + AppNavigator will automatically move to the authenticated stack.
     }
@@ -84,9 +84,7 @@ const RegisterScreen: React.FC = () => {
           <Text style={sharedStyles.title}>
             Înregistrare
           </Text>
-          <Text style={sharedStyles.subtitle}>
-            Creează un cont nou pe eNumismatica
-          </Text>
+          <Text style={sharedStyles.subtitle}>Crearea unui cont nou pe eNumismatica</Text>
         </View>
 
         <View style={sharedStyles.formCard}>
@@ -111,7 +109,7 @@ const RegisterScreen: React.FC = () => {
 
           <TextInput
             style={sharedStyles.input}
-            placeholder="Confirmă Parola"
+            placeholder="Confirmare parolă"
             placeholderTextColor={colors.textSecondary}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -133,16 +131,12 @@ const RegisterScreen: React.FC = () => {
             onPress={handleGoogleLogin}
             disabled={loading}
           >
-            <Text style={sharedStyles.secondaryButtonText}>
-              Continuă cu Google
-            </Text>
+            <Text style={sharedStyles.secondaryButtonText}>Înregistrare cu Google</Text>
           </TouchableOpacity>
 
           <View style={sharedStyles.linkContainer}>
             <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
-              <Text style={sharedStyles.linkText}>
-                Ai deja un cont? Autentifică-te
-              </Text>
+              <Text style={sharedStyles.linkText}>Cont existent? Autentificare</Text>
             </TouchableOpacity>
           </View>
         </View>

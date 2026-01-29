@@ -380,7 +380,7 @@ const LoginScreen: React.FC = () => {
 
     try {
       if (!auth.currentUser) {
-        throw new Error('Sesiune invalidă. Se rugă să se autentifice din nou.');
+        throw new Error('Sesiune invalidă. Se recomandă reautentificarea.');
       }
 
       const token = await auth.currentUser.getIdToken();
@@ -438,7 +438,7 @@ const LoginScreen: React.FC = () => {
 
       // Navigation will be handled by AuthContext
     } catch (err: any) {
-      setTwoFactorError(err.message || 'Cod invalid. Se rugă să încerce din nou.');
+      setTwoFactorError(err.message || 'Cod invalid. Se recomandă reîncercarea.');
       // Send login attempt notification on failed 2FA
       const currentUser = auth.currentUser;
       if (currentUser) {
@@ -486,7 +486,7 @@ const LoginScreen: React.FC = () => {
     setResetSuccess('');
 
     if (!resetEmail) {
-      setResetError('Se rugă să se introducă adresa de email.');
+      setResetError('Este necesară introducerea adresei de email.');
       return;
     }
 
@@ -546,9 +546,7 @@ const LoginScreen: React.FC = () => {
         <Text style={styles.title}>
           Autentificare
         </Text>
-        <Text style={styles.subtitle}>
-          Conectați-vă la contul eNumismatica
-        </Text>
+      <Text style={styles.subtitle}>Autentificare în contul eNumismatica</Text>
       </View>
 
       {/* Login Form */}
@@ -588,9 +586,7 @@ const LoginScreen: React.FC = () => {
           onPress={handleEmailLogin}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>
-            {loading ? 'Se conectează...' : 'Conectare'}
-          </Text>
+          <Text style={styles.buttonText}>{loading ? 'Se autentifică...' : 'Autentificare'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -598,17 +594,15 @@ const LoginScreen: React.FC = () => {
           onPress={handleGoogleLogin}
           disabled={loading}
         >
-          <Text style={styles.secondaryButtonText}>
-            Continuă cu Google
-          </Text>
+          <Text style={styles.secondaryButtonText}>Autentificare cu Google</Text>
         </TouchableOpacity>
 
         <View style={styles.linkContainer}>
           <TouchableOpacity onPress={() => setShowResetPassword(true)}>
-            <Text style={styles.linkText}>A uitat parola?</Text>
+            <Text style={styles.linkText}>Parolă uitată?</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
-            <Text style={styles.linkText}>Înregistrează-te</Text>
+            <Text style={styles.linkText}>Înregistrare</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -619,10 +613,10 @@ const LoginScreen: React.FC = () => {
     <View style={{ width: '100%', maxWidth: 400 }}>
       <View style={{ marginBottom: 32 }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: 'white', marginBottom: 8 }}>
-          Autentificare cu Doi Factori
+          Autentificare în doi pași
         </Text>
         <Text style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-          Introduceți codul din aplicația de autentificare
+          Se introduce codul din aplicația de autentificare
         </Text>
       </View>
 
@@ -708,9 +702,7 @@ const LoginScreen: React.FC = () => {
             trackColor={{ false: '#475569', true: '#e7b73c' }}
             thumbColor={rememberDevice ? '#000940' : '#f1f5f9'}
           />
-          <Text style={{ color: 'white', marginLeft: 8, fontSize: 14 }}>
-            Ține minte acest dispozitiv (30 zile)
-          </Text>
+          <Text style={{ color: 'white', marginLeft: 8, fontSize: 14 }}>Memorare dispozitiv (30 zile)</Text>
         </View>
 
         {twoFactorError ? (
@@ -736,7 +728,7 @@ const LoginScreen: React.FC = () => {
           disabled={loading || (useBackupCode ? twoFactorCode.trim().length < 8 : twoFactorCode.trim().length !== 6)}
         >
           <Text style={{ color: '#000940', textAlign: 'center', fontWeight: '600' }}>
-            {loading ? 'Se verifică...' : 'Verifică Codul'}
+            {loading ? 'Se verifică...' : 'Verificare cod'}
           </Text>
         </TouchableOpacity>
 
@@ -751,9 +743,7 @@ const LoginScreen: React.FC = () => {
           onPress={handleBackToLogin}
           disabled={loading}
         >
-          <Text style={{ color: '#e7b73c', textAlign: 'center', fontWeight: '600' }}>
-            Înapoi la Autentificare
-          </Text>
+          <Text style={{ color: '#e7b73c', textAlign: 'center', fontWeight: '600' }}>Înapoi la autentificare</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -792,7 +782,7 @@ const LoginScreen: React.FC = () => {
           elevation: 10
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>Resetează Parola</Text>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white' }}>Resetare parolă</Text>
             <TouchableOpacity
               onPress={() => {
                 setShowResetPassword(false);
@@ -806,7 +796,7 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <Text style={{ color: '#94a3b8', marginBottom: 24, fontSize: 14 }}>
-            Introduceți adresa de email și se va trimite instrucțiuni pentru resetarea parolei.
+            Se introduce adresa de email și se trimite un mesaj cu instrucțiuni de resetare a parolei.
           </Text>
 
           <TextInput
@@ -856,10 +846,10 @@ const LoginScreen: React.FC = () => {
             onPress={handlePasswordReset}
             disabled={resetLoading}
           >
-            <Text style={{ color: '#000940', textAlign: 'center', fontWeight: '600' }}>
-              {resetLoading ? 'Se trimite...' : 'Trimite Email de Resetare'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={{ color: '#000940', textAlign: 'center', fontWeight: '600' }}>
+            {resetLoading ? 'Se trimite...' : 'Trimitere email de resetare'}
+          </Text>
+        </TouchableOpacity>
         </View>
       </View>
     </Modal>

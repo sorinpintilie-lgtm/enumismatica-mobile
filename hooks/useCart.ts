@@ -61,6 +61,8 @@ export function useCart(userId?: string) {
                 ? raw.quantity
                 : 1,
             addedAt: raw.addedAt?.toDate ? raw.addedAt.toDate() : new Date(),
+            isMintProduct: Boolean(raw.isMintProduct),
+            mintProductData: raw.mintProductData ?? null,
           });
         });
         setItems(data);
@@ -80,7 +82,10 @@ export function useCart(userId?: string) {
   }, [userId]);
 
   const addToCart = useCallback(
-    async (productId: string) => {
+    async (
+      productId: string,
+      options?: { isMintProduct?: boolean; mintProductData?: any }
+    ) => {
       if (!userId) {
         throw new Error('Trebuie să fii autentificat pentru a adăuga produse în coș.');
       }
@@ -98,6 +103,8 @@ export function useCart(userId?: string) {
         // We always store quantity = 1 on mobile – no quantity management.
         quantity: 1,
         addedAt: serverTimestamp(),
+        isMintProduct: options?.isMintProduct ?? false,
+        mintProductData: options?.mintProductData ?? null,
       });
     },
     [userId],
