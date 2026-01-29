@@ -534,7 +534,10 @@ const CountdownTimer: React.FC<{ endTime: Date }> = ({ endTime }) => {
   }, [endTime]);
 
   return (
-    <Text className={`text-sm font-medium ${timeLeft === 'ENDED' ? 'text-gray-500' : 'text-red-600'}`}>
+    <Text style={[
+      { fontSize: 14, fontWeight: '500' },
+      timeLeft === 'ENDED' ? { color: '#6b7280' } : { color: '#dc2626' }
+    ]}>
       {timeLeft}
     </Text>
   );

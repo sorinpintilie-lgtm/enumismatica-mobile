@@ -605,15 +605,7 @@ const ProductCatalogScreen: React.FC = () => {
   });
 
   const totalInCatalog = products.length;
-  
-  // Limit items for unauthenticated users
-  const displayProducts = useMemo(() => {
-    if (!user) {
-      return allFilteredProducts.slice(0, 10);
-    }
-    return allFilteredProducts;
-  }, [allFilteredProducts, user]);
-  
+
   const allFilteredProducts = useMemo(() => {
     let filtered = [...products];
 
@@ -754,6 +746,14 @@ const ProductCatalogScreen: React.FC = () => {
 
     return filtered;
   }, [products, filters]);
+
+  // Limit items for unauthenticated users
+  const displayProducts = useMemo(() => {
+    if (!user) {
+      return allFilteredProducts.slice(0, 10);
+    }
+    return allFilteredProducts;
+  }, [allFilteredProducts, user]);
 
   // Animated header visibility - smooth transition based on visibility state
   const headerTranslateY = useRef(new Animated.Value(0)).current;
