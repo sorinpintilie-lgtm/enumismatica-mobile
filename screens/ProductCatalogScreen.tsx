@@ -23,6 +23,7 @@ import { formatEUR } from '../utils/currency';
 import { romanianCoinOptions } from '../utils/romanianCoinData';
 import { WatchlistButton } from '../components/WatchlistButton';
 import { useAuth } from '../context/AuthContext';
+import AuthPromptModal from '../components/AuthPromptModal';
 
 // Sort options aligned with web E-shop page (products only use a subset)
 type SortOption = 'best-match' | 'price-asc' | 'price-desc' | 'newly-listed';
@@ -527,6 +528,7 @@ const ProductCatalogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [headerMeasuredHeight, setHeaderMeasuredHeight] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [authPromptVisible, setAuthPromptVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
 
@@ -986,22 +988,34 @@ const ProductCatalogScreen: React.FC = () => {
             <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
               Autentifică-te sau înregistrează-te pentru a vedea toate piesele
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                onPress={() => navigation.navigate('Login')}
-              >
-                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Autentificare</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: '#3B82F6' }]}
-                onPress={() => navigation.navigate('Register')}
-              >
-                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Înregistrare</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+              onPress={() => setAuthPromptVisible(true)}
+            >
+              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Vezi toate piesele</Text>
+            </TouchableOpacity>
           </View>
         )}
+
+        <AuthPromptModal
+          visible={authPromptVisible}
+          title="Vezi întregul catalog"
+          message="Creează un cont sau autentifică-te pentru a explora toate piesele din E-shop, a salva favorite și a primi notificări personalizate."
+          benefits={[
+            'Acces complet la catalog și licitații',
+            'Liste de favorite și alerte de preț',
+            'Comenzi și plăți securizate',
+          ]}
+          onClose={() => setAuthPromptVisible(false)}
+          onLogin={() => {
+            setAuthPromptVisible(false);
+            navigation.navigate('Login');
+          }}
+          onRegister={() => {
+            setAuthPromptVisible(false);
+            navigation.navigate('Register');
+          }}
+        />
  
         {/* Filter Modal */}
         <Modal

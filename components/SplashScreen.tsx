@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
 type SplashScreenProps = {
@@ -20,22 +20,26 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     if (status.isLoaded && status.didJustFinish && !hasPlayed) {
       console.log('[SplashScreen] Video finished');
       setHasPlayed(true);
-      // Notify parent that splash screen is finished
       if (onFinish) {
         onFinish();
       }
     }
   };
 
-  // Stop video after it plays once
   useEffect(() => {
     if (hasPlayed && videoRef.current) {
       videoRef.current?.stopAsync();
     }
   }, [hasPlayed]);
 
+  useEffect(() => {
+    if (videoError && onFinish) {
+      const timer = setTimeout(() => onFinish(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [videoError, onFinish]);
+
   if (videoError) {
-    // Fallback to static image if video fails
     return (
       <View style={styles.container}>
         <Image
@@ -45,6 +49,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         />
         <Text style={styles.tagline}>Vânzare și licitații de monede rare</Text>
         <View style={styles.footer}>
+          <ActivityIndicator size="large" color="#e7b73c" />
           <Text style={styles.footerText}>Încarcă aplicația...</Text>
         </View>
       </View>
@@ -57,17 +62,23 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         ref={videoRef}
         source={require('../assets/videosplash.mp4')}
         style={styles.video}
-        resizeMode={ResizeMode.COVER}
+        resizeMode={ResizeMode.CONTAIN}
         shouldPlay
         isLooping={false}
         isMuted
         useNativeControls={false}
-        progressUpdateIntervalMillis={1000}
+        progressUpdateIntervalMillis={250}
         onError={handleVideoError}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
       />
+
+      <View style={styles.topContent}>
+        <Text style={styles.topTagline}>Magazin • Licitații • Colecții</Text>
+      </View>
+
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Încarcă aplicația...</Text>
+        <ActivityIndicator size="large" color="#e7b73c" />
+        <Text style={styles.footerText}>Se încarcă experiența ta numismatică...</Text>
       </View>
     </View>
   );
@@ -86,6 +97,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#000000',
   },
+  topContent: {
+    position: 'absolute',
+    top: 60,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  topTagline: {
+    fontSize: 12,
+    color: 'rgba(231, 183, 60, 0.75)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
   logo: {
     width: '70%',
     height: 200,
@@ -102,11 +125,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 60,
     alignItems: 'center',
+    gap: 10,
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(231, 183, 60, 0.6)',
-    letterSpacing: 1,
+    color: 'rgba(231, 183, 60, 0.7)',
+    letterSpacing: 0.5,
   },
 });
 

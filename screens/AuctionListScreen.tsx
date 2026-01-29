@@ -17,6 +17,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuctions } from '../hooks/useAuctions';
 import { useProducts } from '../hooks/useProducts';
 import { useAuth } from '../context/AuthContext';
+import AuthPromptModal from '../components/AuthPromptModal';
 import { Auction, Product } from '@shared/types';
 import { RootStackParamList } from '../navigationTypes';
 import { WatchlistButton } from '../components/WatchlistButton';
@@ -619,6 +620,7 @@ const AuctionCard: React.FC<{ auction: Auction; product?: Product | null }> = ({
 const AuctionListScreen: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const [authPromptVisible, setAuthPromptVisible] = useState(false);
   const { auctions, loading: auctionsLoading, error: auctionsError } = useAuctions('active');
   const { products, loading: productsLoading } = useProducts();
   const [statusFilter, setStatusFilter] = useState<'active' | 'ended' | 'all'>('active');
@@ -948,22 +950,34 @@ const AuctionListScreen: React.FC = () => {
             <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
               Autentifică-te sau înregistrează-te pentru a vedea toate licitațiile
             </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                onPress={() => navigation.navigate('Login')}
-              >
-                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Autentificare</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.emptyButton, { backgroundColor: '#3B82F6' }]}
-                onPress={() => navigation.navigate('Register')}
-              >
-                <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Înregistrare</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+              onPress={() => setAuthPromptVisible(true)}
+            >
+              <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Vezi toate licitațiile</Text>
+            </TouchableOpacity>
           </View>
         )}
+
+        <AuthPromptModal
+          visible={authPromptVisible}
+          title="Participă la licitații"
+          message="Autentifică-te sau creează un cont pentru a licita în timp real, a urmări obiectele preferate și a primi alerte când se apropie finalul."
+          benefits={[
+            'Licitează în timp real și primești notificări',
+            'Salvezi licitațiile urmărite',
+            'Acces complet la istoricul ofertelor',
+          ]}
+          onClose={() => setAuthPromptVisible(false)}
+          onLogin={() => {
+            setAuthPromptVisible(false);
+            navigation.navigate('Login');
+          }}
+          onRegister={() => {
+            setAuthPromptVisible(false);
+            navigation.navigate('Register');
+          }}
+        />
 
         {/* Filter Modal */}
         <Modal

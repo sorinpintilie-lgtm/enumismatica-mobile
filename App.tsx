@@ -350,13 +350,13 @@ function AppContent() {
   }, []);
 
   if (loading) {
-    return <SplashScreen onFinish={() => console.log('[App] Splash screen finished')} />; // Show static splash screen while loading
+    return <SplashScreen onFinish={() => console.log('[App] Splash screen finished')} />; // Show splash screen while loading
   }
 
   return (
     <View style={styles.rootAppContainer}>
       <WebRootLayoutFix />
-      {user && <Header />}
+      <Header />
       <NavigationContainer
         linking={{
           prefixes: ['enumismatica://'],
