@@ -48,6 +48,8 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
         shouldPlay
         isLooping
         isMuted
+        useNativeControls={false}
+        progressUpdateIntervalMillis={1000}
         onError={handleVideoError}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
       />
