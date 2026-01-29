@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
@@ -9,6 +9,7 @@ type SplashScreenProps = {
 const SplashScreen: React.FC<SplashScreenProps> = () => {
   const videoRef = useRef<Video>(null);
   const [videoError, setVideoError] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
 
   const handleVideoError = () => {
     console.log('[SplashScreen] Video error, falling back to static image');
@@ -16,10 +17,18 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
   };
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (status.isLoaded && status.didJustFinish) {
+    if (status.isLoaded && status.didJustFinish && !hasPlayed) {
       console.log('[SplashScreen] Video finished');
+      setHasPlayed(true);
     }
   };
+
+  // Stop video after it plays once
+  useEffect(() => {
+    if (hasPlayed && videoRef.current) {
+      videoRef.current?.stopAsync();
+    }
+  }, [hasPlayed]);
 
   if (videoError) {
     // Fallback to static image if video fails
@@ -44,9 +53,9 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
         ref={videoRef}
         source={require('../assets/splashvideoani.mov')}
         style={styles.video}
-        resizeMode={ResizeMode.CONTAIN}
+        resizeMode={ResizeMode.COVER}
         shouldPlay
-        isLooping
+        isLooping={false}
         isMuted
         useNativeControls={false}
         progressUpdateIntervalMillis={1000}
@@ -63,7 +72,7 @@ const SplashScreen: React.FC<SplashScreenProps> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
