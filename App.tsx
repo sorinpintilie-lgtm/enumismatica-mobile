@@ -183,7 +183,7 @@ const SellSheetModal: React.FC<SellSheetModalProps> = ({ visible, onClose }) => 
             >
               <Text style={styles.sheetActionTitle}>Listează produs (preț fix)</Text>
               <Text style={styles.sheetActionSubtitle}>
-                Setezi un preț fix, produsul apare în Magazin.
+                Se setează un preț fix, iar produsul este publicat în Magazin.
               </Text>
             </TouchableOpacity>
 
@@ -194,7 +194,7 @@ const SellSheetModal: React.FC<SellSheetModalProps> = ({ visible, onClose }) => 
             >
               <Text style={styles.sheetActionTitle}>Trimite la licitație</Text>
               <Text style={styles.sheetActionSubtitle}>
-                Creezi o licitație cu durată și preț de pornire.
+                Se pornește o licitație, cu preț de pornire și termen de încheiere.
               </Text>
             </TouchableOpacity>
           </ScrollView>
