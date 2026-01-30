@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -16,6 +17,7 @@ import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart';
+import { Ionicons } from '@expo/vector-icons';
 
 interface RawProduct {
   title: string;
@@ -63,8 +65,9 @@ export default function MonetariaStatuluiProductDetailsScreen() {
   const route = useRoute();
   const { productId } = route.params as RouteParams;
   const { user } = useAuth();
-  const { addToCart } = useCart(user?.uid);
-  
+  const { addToCart, items: cartItems } = useCart(user?.uid);
+  const cartCount = cartItems?.length ?? 0;
+
   const [product, setProduct] = useState<TransformedProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,8 +172,23 @@ export default function MonetariaStatuluiProductDetailsScreen() {
       Alert.alert('Eroare', 'Produsul nu este disponibil.');
       return;
     }
-    // Navigate to checkout with the product
+    // Navigate to checkout with product
     navigation.navigate('Checkout', { productId: product.id });
+  };
+
+  const handleShareProduct = async () => {
+    if (!product) return;
+    const deepLinkUrl = `enumismatica://monetaria-statului/${product.id}`;
+    const message = `${product.title} - ${product.price}\n\n${deepLinkUrl}`;
+
+    try {
+      await Share.share({
+        message,
+        title: product.title,
+      });
+    } catch (error) {
+      console.error('Failed to share product:', error);
+    }
   };
 
   if (loading) {
@@ -205,6 +223,34 @@ export default function MonetariaStatuluiProductDetailsScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={{ marginBottom: 16 }}>
           <InlineBackButton />
+          <View style={styles.header}>
+            <View style={{ flex: 1 }} />
+            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity
+                style={styles.cartIconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Distribuie produsul"
+                onPress={handleShareProduct}
+              >
+                <Ionicons name="share-social-outline" size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cartIconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Deschide coșul"
+                onPress={() => navigation.navigate('Cart')}
+              >
+                <Ionicons name="cart-outline" size={20} color={colors.primary} />
+                {cartCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText} numberOfLines={1}>
+                      {cartCount > 99 ? '99+' : String(cartCount)}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
           <Text style={[styles.title, { marginTop: 12, textAlign: 'left' }]}>Detalii Produs</Text>
         </View>
 
@@ -332,6 +378,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cartIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.navy800,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.red500,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 2, 13, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: '800',
+    lineHeight: 12,
+  },
   productImageContainer: {
     aspectRatio: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -417,9 +504,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   addToCartButton: {
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
+    borderColor: 'rgba(231, 183, 60, 0.6)',
   },
   actionButtonText: {
     color: colors.primaryText,

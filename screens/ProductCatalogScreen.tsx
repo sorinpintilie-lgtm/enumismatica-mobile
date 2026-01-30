@@ -953,6 +953,13 @@ const ProductCatalogScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          onEndReached={() => {
+            // Automatically load more when user scrolls near the bottom
+            if (user && hasMore && !loading) {
+              loadMore();
+            }
+          }}
+          onEndReachedThreshold={0.3}
           contentContainerStyle={
             displayProducts.length === 0
               ? [
@@ -995,19 +1002,12 @@ const ProductCatalogScreen: React.FC = () => {
                   <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
                 </TouchableOpacity>
               </View>
-            ) : user && hasMore ? (
+            ) : user && hasMore && loading ? (
               <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
-                <TouchableOpacity
-                  style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                  onPress={() => loadMore()}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#000940" />
-                  ) : (
-                    <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Încarcă mai multe</Text>
-                  )}
-                </TouchableOpacity>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8 }}>
+                  Se încarcă mai multe piese...
+                </Text>
               </View>
             ) : null
           }

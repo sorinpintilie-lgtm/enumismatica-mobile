@@ -268,7 +268,7 @@ export default function MonetariaStatuluiScreen() {
 
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
   const startIndex = (currentPage - 1) * productsPerPage;
-  const endIndex = startIndex + productsPerPage;
+  const endIndex = Math.min(startIndex + productsPerPage, filteredProducts.length);
   const currentProducts = filteredProducts.slice(startIndex, endIndex);
 
   if (loading) {
@@ -318,7 +318,11 @@ export default function MonetariaStatuluiScreen() {
               style={styles.cartButton}
               onPress={() => navigation.navigate('Cart')}
             >
-              <Ionicons name="cart" size={24} color={colors.primary} />
+              <Image
+                source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
+                style={styles.cartButtonLogo}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -747,9 +751,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   addToCartButton: {
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)',
+    borderColor: 'rgba(231, 183, 60, 0.6)',
   },
   actionButtonText: {
     color: colors.primaryText,
@@ -836,5 +840,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(231, 183, 60, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(231, 183, 60, 0.4)',
+  },
+  cartButtonLogo: {
+    width: 24,
+    height: 24,
+    marginBottom: 8,
   },
 });

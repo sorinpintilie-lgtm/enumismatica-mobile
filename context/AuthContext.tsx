@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@shared/auth';
-import { registerPushTokenForUser } from '../services/pushTokenService';
+import { registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushTokenService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [previousUserId, setPreviousUserId] = useState<string | null>(null);
 
   const check2FAStatus = useCallback(async (currentUser: User | null) => {
     if (!currentUser) {
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTwoFactorRequired(false);
 
           if (currentUser?.uid) {
+            console.log('[AuthContext] Registering push token for user (2FA verified):', currentUser.uid);
             registerPushTokenForUser(currentUser.uid).catch((error) => {
               console.error('[AuthContext] Failed to register push token:', error);
             });
@@ -61,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTwoFactorRequired(false);
 
         if (currentUser?.uid) {
+          console.log('[AuthContext] Registering push token for user (no 2FA):', currentUser.uid);
           registerPushTokenForUser(currentUser.uid).catch((error) => {
             console.error('[AuthContext] Failed to register push token:', error);
           });
@@ -73,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTwoFactorRequired(false);
 
       if (currentUser?.uid) {
+        console.log('[AuthContext] Registering push token for user (error case):', currentUser.uid);
         registerPushTokenForUser(currentUser.uid).catch((error) => {
           console.error('[AuthContext] Failed to register push token:', error);
         });
@@ -94,12 +98,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(currentUser);
 
       if (!currentUser) {
+        // User logged out - remove device token from previous user
+        if (previousUserId) {
+          console.log('[AuthContext] Unregistering push token for user:', previousUserId);
+          unregisterPushTokenForUser(previousUserId).catch((error) => {
+            console.error('[AuthContext] Failed to unregister push token:', error);
+          });
+          setPreviousUserId(null);
+        }
         setUser(null);
         setTwoFactorRequired(false);
         // Let minimumLoadingTime handle loading state for unauthenticated users
         return;
       }
 
+      // User logged in - register device token for new user
+      if (previousUserId && previousUserId !== currentUser.uid) {
+        // Switched users - remove device token from previous user
+        console.log('[AuthContext] Switching users, unregistering push token for previous user:', previousUserId);
+        unregisterPushTokenForUser(previousUserId).catch((error) => {
+          console.error('[AuthContext] Failed to unregister push token:', error);
+        });
+      }
+
+      setPreviousUserId(currentUser.uid);
+      console.log('[AuthContext] Set previousUserId to:', currentUser.uid);
       await check2FAStatus(currentUser);
 
       // Clear timeout if authentication completes before minimum time
@@ -112,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribe();
       clearTimeout(minimumLoadingTime);
     };
-  }, [check2FAStatus]);
+  }, [check2FAStatus, previousUserId]);
 
   return (
     <AuthContext.Provider value={{ user, loading, twoFactorRequired, refreshAuth }}>
