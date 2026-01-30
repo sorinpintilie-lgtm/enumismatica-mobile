@@ -49,24 +49,14 @@ export async function requestNotificationPermissions() {
 // Get push token
 export async function getPushToken() {
   if (Platform.OS === 'web') {
-    console.log('[notificationService] Push notifications not supported on web');
+    console.log('Push notifications not supported on web');
     return '';
   }
   const projectId = Constants.expoConfig?.extra?.eas?.projectId
     ?? Constants.easConfig?.projectId;
-
-  console.log('[notificationService] Getting Expo push token with projectId:', projectId);
-
   const token = await Notifications.getExpoPushTokenAsync({
     projectId,
   });
-
-  if (token.data) {
-    console.log('[notificationService] Expo push token received:', token.data.substring(0, 20) + '...');
-  } else {
-    console.log('[notificationService] No Expo push token received');
-  }
-
   return token.data;
 }
 
