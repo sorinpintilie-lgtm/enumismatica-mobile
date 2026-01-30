@@ -80,6 +80,14 @@ export default function CheckoutScreen() {
     fields: ['name', 'images', 'price', 'createdAt', 'updatedAt'],
   });
 
+  const parseMintPrice = (price: unknown): number => {
+    if (typeof price === 'number') return price;
+    if (typeof price !== 'string') return 0;
+    const cleaned = price.replace(/[\s\u00A0]/g, '').replace(/\./g, '').replace(',', '.');
+    const numeric = Number(cleaned.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
   // Determine which products to checkout
   const checkoutProducts = useMemo(() => {
     const result: CheckoutProduct[] = [];
@@ -178,14 +186,6 @@ export default function CheckoutScreen() {
       }));
     }
   }, [user]);
-
-  const parseMintPrice = (price: unknown): number => {
-    if (typeof price === 'number') return price;
-    if (typeof price !== 'string') return 0;
-    const cleaned = price.replace(/[\s\u00A0]/g, '').replace(/\./g, '').replace(',', '.');
-    const numeric = Number(cleaned.replace(/[^\d.-]/g, ''));
-    return Number.isFinite(numeric) ? numeric : 0;
-  };
 
   const handleInputChange = (field: keyof ShippingInfo, value: string) => {
     setShippingInfo(prev => ({ ...prev, [field]: value }));

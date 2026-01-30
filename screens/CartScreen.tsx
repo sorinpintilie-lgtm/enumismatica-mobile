@@ -98,7 +98,12 @@ const CartScreen: React.FC = () => {
     }
 
     // Navigate to checkout with single product
-    navigation.navigate('Checkout', { productId: item.productId });
+    // For Monetaria Statului products, pass the full item data
+    if (item.isMintProduct) {
+      navigation.navigate('Checkout', { cartItems: [item] });
+    } else {
+      navigation.navigate('Checkout', { productId: item.productId });
+    }
   };
 
   const handleClearCart = () => {
