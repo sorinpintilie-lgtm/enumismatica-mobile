@@ -581,8 +581,8 @@ const ProductCatalogScreen: React.FC = () => {
   const { products, loading, error, loadMore, hasMore } = useProducts({
     pageSize: 20,
     fields: productFields,
-    listingType: 'direct', // Only direct-sale products in the E-shop
-    loadAllAtOnce: false, // Load in batches
+    listingType: 'direct', // Only direct-sale products in E-shop
+    loadAllAtOnce: true, // Load all products at once to avoid scroll jumping
   });
 
   const [showFilters, setShowFilters] = useState(false);
@@ -960,6 +960,10 @@ const ProductCatalogScreen: React.FC = () => {
             }
           }}
           onEndReachedThreshold={0.3}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10,
+          }}
           contentContainerStyle={
             displayProducts.length === 0
               ? [
@@ -1032,7 +1036,7 @@ const ProductCatalogScreen: React.FC = () => {
             navigation.navigate('Register');
           }}
         />
- 
+
         {/* Filter Modal */}
         <Modal
           visible={showFilters}
@@ -1196,211 +1200,211 @@ const ProductCatalogScreen: React.FC = () => {
 
                {/* Romanian Coin Filters - Only show when country is Romania */}
                {filters.country === 'România' && (
-                 <View style={{ marginTop: 16 }}>
-                   <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(231, 183, 60, 0.25)', paddingTop: 16, marginBottom: 16 }}>
-                     <Text style={styles.filterLabel}>Filtre Monede Românești</Text>
-                   </View>
-                   
-                   {/* Face Value Filter */}
-                   <Text style={styles.filterLabel}>Valoare Nominală</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.faceValues.slice(0, 10).map((value) => {
-                       const active = filters.faceValue === value;
-                       return (
-                         <TouchableOpacity
-                           key={value}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, faceValue: value })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {value}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.faceValues.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.faceValues.length - 10} valori
-                       </Text>
-                     )}
-                   </View>
+                  <View style={{ marginTop: 16 }}>
+                    <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(231, 183, 60, 0.25)', paddingTop: 16, marginBottom: 16 }}>
+                      <Text style={styles.filterLabel}>Filtre Monede Românești</Text>
+                    </View>
+                    
+                    {/* Face Value Filter */}
+                    <Text style={styles.filterLabel}>Valoare Nominală</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.faceValues.slice(0, 10).map((value) => {
+                        const active = filters.faceValue === value;
+                        return (
+                          <TouchableOpacity
+                            key={value}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, faceValue: value })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {value}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.faceValues.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.faceValues.length - 10} valori
+                        </Text>
+                      )}
+                    </View>
 
-                   {/* Issue Year Filter */}
-                   <Text style={styles.filterLabel}>An Emisiune</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.issueYears.slice(0, 10).map((year) => {
-                       const active = filters.issueYear === year;
-                       return (
-                         <TouchableOpacity
-                           key={year}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, issueYear: year })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {year}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.issueYears.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.issueYears.length - 10} ani
-                       </Text>
-                     )}
-                   </View>
+                    {/* Issue Year Filter */}
+                    <Text style={styles.filterLabel}>An Emisiune</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.issueYears.slice(0, 10).map((year) => {
+                        const active = filters.issueYear === year;
+                        return (
+                          <TouchableOpacity
+                            key={year}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, issueYear: year })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {year}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.issueYears.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.issueYears.length - 10} ani
+                        </Text>
+                      )}
+                    </View>
 
-                   {/* Diameter Filter */}
-                   <Text style={styles.filterLabel}>Diametru</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.diameters.slice(0, 10).map((diameter) => {
-                       const active = filters.diameter === diameter;
-                       return (
-                         <TouchableOpacity
-                           key={diameter}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, diameter })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {diameter}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.diameters.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.diameters.length - 10} dimensiuni
-                       </Text>
-                     )}
-                   </View>
+                    {/* Diameter Filter */}
+                    <Text style={styles.filterLabel}>Diametru</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.diameters.slice(0, 10).map((diameter) => {
+                        const active = filters.diameter === diameter;
+                        return (
+                          <TouchableOpacity
+                            key={diameter}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, diameter })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {diameter}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.diameters.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.diameters.length - 10} dimensiuni
+                        </Text>
+                      )}
+                    </View>
 
-                   {/* Weight Filter */}
-                   <Text style={styles.filterLabel}>Greutate</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.weights.slice(0, 10).map((weight) => {
-                       const active = filters.weight === weight;
-                       return (
-                         <TouchableOpacity
-                           key={weight}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, weight })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {weight}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.weights.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.weights.length - 10} greutăți
-                       </Text>
-                     )}
-                   </View>
+                    {/* Weight Filter */}
+                    <Text style={styles.filterLabel}>Greutate</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.weights.slice(0, 10).map((weight) => {
+                        const active = filters.weight === weight;
+                        return (
+                          <TouchableOpacity
+                            key={weight}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, weight })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {weight}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.weights.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.weights.length - 10} greutăți
+                        </Text>
+                      )}
+                    </View>
 
-                   {/* Mint Filter */}
-                   <Text style={styles.filterLabel}>Monetărie</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.mints.slice(0, 10).map((mint) => {
-                       const active = filters.mint === mint;
-                       return (
-                         <TouchableOpacity
-                           key={mint}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, mint })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {mint}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.mints.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.mints.length - 10} monetării
-                       </Text>
-                     )}
-                   </View>
+                    {/* Mint Filter */}
+                    <Text style={styles.filterLabel}>Monetărie</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.mints.slice(0, 10).map((mint) => {
+                        const active = filters.mint === mint;
+                        return (
+                          <TouchableOpacity
+                            key={mint}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, mint })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {mint}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.mints.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.mints.length - 10} monetării
+                        </Text>
+                      )}
+                    </View>
 
-                   {/* Era Filter */}
-                   <Text style={styles.filterLabel}>Epocă</Text>
-                   <View style={styles.filterChipsRow}>
-                     {romanianCoinOptions.eras.slice(0, 10).map((era) => {
-                       const active = filters.era === era;
-                       return (
-                         <TouchableOpacity
-                           key={era}
-                           style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                           onPress={() => setFilters({ ...filters, era })}
-                         >
-                           <Text
-                             style={
-                               active
-                                 ? [styles.filterChipText, styles.filterChipTextActive]
-                                 : styles.filterChipText
-                             }
-                           >
-                             {era}
-                           </Text>
-                         </TouchableOpacity>
-                       );
-                     })}
-                     {romanianCoinOptions.eras.length > 10 && (
-                       <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                         ... și alte {romanianCoinOptions.eras.length - 10} epoci
-                       </Text>
-                     )}
-                   </View>
-                 </View>
+                    {/* Era Filter */}
+                    <Text style={styles.filterLabel}>Epocă</Text>
+                    <View style={styles.filterChipsRow}>
+                      {romanianCoinOptions.eras.slice(0, 10).map((era) => {
+                        const active = filters.era === era;
+                        return (
+                          <TouchableOpacity
+                            key={era}
+                            style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                            onPress={() => setFilters({ ...filters, era })}
+                          >
+                            <Text
+                              style={
+                                active
+                                  ? [styles.filterChipText, styles.filterChipTextActive]
+                                  : styles.filterChipText
+                              }
+                            >
+                              {era}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {romanianCoinOptions.eras.length > 10 && (
+                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                          ... și alte {romanianCoinOptions.eras.length - 10} epoci
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                )}
 
                {/* Action Buttons */}
                <View style={styles.modalActionsRow}>
-                 <TouchableOpacity style={styles.modalResetButton} onPress={resetFilters}>
-                   <Text style={styles.modalResetText}>Resetează</Text>
-                 </TouchableOpacity>
-                 <TouchableOpacity
-                   style={styles.modalApplyButton}
-                   onPress={() => setShowFilters(false)}
-                 >
-                   <Text style={styles.modalApplyText}>Aplică filtrele</Text>
-                 </TouchableOpacity>
-                </View>
-             </ScrollView>
-           </View>
-         </SafeAreaView>
-       </Modal>
-     </View>
-   );
+                  <TouchableOpacity style={styles.modalResetButton} onPress={resetFilters}>
+                    <Text style={styles.modalResetText}>Resetează</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalApplyButton}
+                    onPress={() => setShowFilters(false)}
+                  >
+                    <Text style={styles.modalApplyText}>Aplică filtrele</Text>
+                  </TouchableOpacity>
+                 </View>
+              </ScrollView>
+            </View>
+          </SafeAreaView>
+        </Modal>
+      </View>
+    );
 };
 
 export default ProductCatalogScreen;

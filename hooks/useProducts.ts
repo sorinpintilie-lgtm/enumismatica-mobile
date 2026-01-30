@@ -8,6 +8,7 @@ import {
   doc,
   limit,
   startAfter,
+  getDocs,
   type QueryDocumentSnapshot,
   type DocumentData,
 } from '@shared/firebaseConfig';
@@ -62,7 +63,7 @@ export function useProducts(
     return fieldsKey.split('|').filter(Boolean);
   }, [fieldsKey]);
 
-  const loadProducts = useCallback((startAfterDoc?: QueryDocumentSnapshot<DocumentData>) => {
+  const loadProducts = useCallback(() => {
     // Clean up previous listener
     if (unsubscribeRef.current) unsubscribeRef.current();
 
@@ -88,15 +89,13 @@ export function useProducts(
     }
 
     // Order and limit (must come after all where clauses)
+    // Load extra documents to account for sold/pulled-back items that will be filtered out
+    // This ensures we get at least pageSize valid products
     q = query(
       q,
       orderBy('createdAt', 'desc'),
-      ...(loadAllAtOnce ? [] : [limit(pageSize)]),
+      ...(loadAllAtOnce ? [] : [limit(pageSize + 5)]), // Load 5 extra to account for filtered items
     );
-
-    if (startAfterDoc) {
-      q = query(q, startAfter(startAfterDoc));
-    }
 
     if (debug) {
       console.log('[useProducts] subscribing', {
@@ -104,7 +103,6 @@ export function useProducts(
         pageSize,
         fields: normalizedFields,
         fieldsKey,
-        startAfter: startAfterDoc ? startAfterDoc.id : null,
       });
     }
 
@@ -176,18 +174,12 @@ export function useProducts(
           productsData.push(productData as Product);
         });
 
-        if (startAfterDoc) {
-          // Append to existing products for pagination
-          setProducts(prev => [...prev, ...productsData]);
-        } else {
-          // Replace products for initial load
-          setProducts(productsData);
-        }
+        // Replace products for initial load
+        setProducts(productsData);
 
         // Check if there are more products to load
-        // Use querySnapshot.size (before filtering) to determine if there are more pages
-        // If Firestore returned pageSize documents, there might be more (even if some were filtered out)
-        setHasMore(querySnapshot.size === pageSize);
+        // If we got fewer documents than requested (pageSize + 5), we've reached the end
+        setHasMore(querySnapshot.size >= pageSize + 5);
         if (productsData.length > 0) {
           setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
         }
@@ -211,7 +203,131 @@ export function useProducts(
 
     unsubscribeRef.current = unsubscribe;
     return unsubscribe;
-  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields]);
+  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType, loadAllAtOnce]);
+
+  // Separate function for pagination using getDocs to avoid scroll jumping
+  const loadMoreProducts = useCallback(async () => {
+    if (!hasMore || !lastVisible || loading) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Base query: only approved products that are not sold
+      let q = query(
+        collection(db, 'products'),
+        where('status', '==', 'approved'),
+      );
+
+      // Apply ownerId filter BEFORE orderBy (Firestore requirement)
+      if (ownerId) {
+        q = query(q, where('ownerId', '==', ownerId));
+      }
+
+      // Apply listing type filter unless we explicitly want all listing types
+      if (listingType !== 'all') {
+        q = query(
+          q,
+          where('listingType', '==', listingType),
+        );
+      }
+
+      // Order and limit (must come after all where clauses)
+      // Load extra documents to account for sold/pulled-back items that will be filtered out
+      // This ensures we get at least pageSize valid products
+      q = query(
+        q,
+        orderBy('createdAt', 'desc'),
+        limit(pageSize + 5), // Load 5 extra to account for filtered items
+      );
+
+      q = query(q, startAfter(lastVisible));
+
+      if (debug) {
+        console.log('[useProducts] loading more (getDocs)', {
+          ownerId: ownerId ?? null,
+          pageSize,
+          fields: normalizedFields,
+          fieldsKey,
+          startAfter: lastVisible.id,
+        });
+      }
+
+      const querySnapshot = await getDocs(q);
+
+      if (debug) {
+        const sample = querySnapshot.docs[0];
+        const sampleData = sample?.data?.() as any;
+        console.log('[useProducts] getDocs snapshot', {
+          size: querySnapshot.size,
+          empty: querySnapshot.empty,
+          firstId: sample?.id ?? null,
+          firstKeys: sampleData ? Object.keys(sampleData).slice(0, 30) : [],
+        });
+      }
+
+      const productsData: Product[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Skip sold items (isSold == true)
+        if (data.isSold === true) {
+          if (debug) {
+            console.log('[useProducts] Skipping sold product:', doc.id);
+          }
+          return;
+        }
+
+        // Skip pulled-back items (isPulledBack == true)
+        if (data.isPulledBack === true) {
+          if (debug) {
+            console.log('[useProducts] Skipping pulled-back product:', doc.id);
+          }
+          return;
+        }
+        
+        const productData: any = { id: doc.id };
+
+        // Only include requested fields for performance
+        normalizedFields.forEach((field) => {
+          if (data[field] !== undefined) {
+            productData[field] = data[field];
+          }
+        });
+
+        // Always include dates for proper typing
+        if (normalizedFields.includes('createdAt')) {
+          productData.createdAt = data.createdAt?.toDate() || new Date();
+        }
+        if (normalizedFields.includes('updatedAt')) {
+          productData.updatedAt = data.updatedAt?.toDate() || new Date();
+        }
+
+        productsData.push(productData as Product);
+      });
+
+      // Append to existing products for pagination
+      setProducts(prev => [...prev, ...productsData]);
+
+      // Check if there are more products to load
+      // If we got fewer documents than requested (pageSize + 5), we've reached the end
+      setHasMore(querySnapshot.size >= pageSize + 5);
+      if (productsData.length > 0) {
+        setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
+      }
+      setLoading(false);
+    } catch (err: any) {
+      if (debug) {
+        console.error('[useProducts] getDocs error', {
+          message: err?.message,
+          code: err?.code,
+          name: err?.name,
+        });
+      }
+      setError(err.message);
+      setLoading(false);
+    }
+  }, [hasMore, lastVisible, loading, ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType]);
 
   useEffect(() => {
     const unsubscribe = loadProducts();
@@ -222,10 +338,8 @@ export function useProducts(
   }, [loadProducts]);
 
   const loadMore = useCallback(() => {
-    if (hasMore && lastVisible && !loading) {
-      loadProducts(lastVisible);
-    }
-  }, [hasMore, lastVisible, loading, loadProducts]);
+    loadMoreProducts();
+  }, [loadMoreProducts]);
 
   return { products, loading, error, hasMore, loadMore };
 }
