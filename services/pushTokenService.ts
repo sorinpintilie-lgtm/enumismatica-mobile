@@ -18,7 +18,8 @@ export async function registerPushTokenForUser(userId: string) {
   const expoPushToken = await getPushToken();
   if (!expoPushToken) return;
 
-  const deviceDocId = `${Platform.OS}:${expoPushToken}`;
+  // Use a simpler document ID to avoid issues with special characters
+  const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
   const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
 
   const payload: DeviceRegistration = {
