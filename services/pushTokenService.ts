@@ -9,14 +9,30 @@ type DeviceRegistration = {
 };
 
 export async function registerPushTokenForUser(userId: string) {
-  if (!userId) return;
-  if (Platform.OS === 'web') return;
+  if (!userId) {
+    console.log('[pushTokenService] No userId provided');
+    return;
+  }
+  if (Platform.OS === 'web') {
+    console.log('[pushTokenService] Web platform, skipping push token registration');
+    return;
+  }
+
+  console.log('[pushTokenService] Registering push token for user:', userId, 'on platform:', Platform.OS);
 
   const granted = await requestNotificationPermissions();
-  if (!granted) return;
+  if (!granted) {
+    console.log('[pushTokenService] Notification permissions not granted');
+    return;
+  }
 
   const expoPushToken = await getPushToken();
-  if (!expoPushToken) return;
+  if (!expoPushToken) {
+    console.log('[pushTokenService] No expoPushToken received');
+    return;
+  }
+
+  console.log('[pushTokenService] Expo push token received:', expoPushToken.substring(0, 20) + '...');
 
   const deviceDocId = `${Platform.OS}:${expoPushToken}`;
   const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
@@ -27,5 +43,9 @@ export async function registerPushTokenForUser(userId: string) {
     updatedAt: serverTimestamp(),
   };
 
+  console.log('[pushTokenService] Saving device with ID:', deviceDocId.substring(0, 30) + '...');
+
   await setDoc(deviceRef, payload, { merge: true });
+
+  console.log('[pushTokenService] Device saved successfully');
 }
