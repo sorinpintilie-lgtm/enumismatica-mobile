@@ -184,7 +184,10 @@ export function useProducts(
           setProducts(productsData);
         }
 
-        setHasMore(productsData.length === pageSize);
+        // Check if there are more products to load
+        // Use querySnapshot.size (before filtering) to determine if there are more pages
+        // If Firestore returned pageSize documents, there might be more (even if some were filtered out)
+        setHasMore(querySnapshot.size === pageSize);
         if (productsData.length > 0) {
           setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
         }
