@@ -1394,12 +1394,13 @@ const ProductCatalogScreen: React.FC = () => {
                  >
                    <Text style={styles.modalApplyText}>Aplică filtrele</Text>
                  </TouchableOpacity>
-               </View>
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
-      </View>
-  );
+                </View>
+             </ScrollView>
+           </View>
+         </SafeAreaView>
+       </Modal>
+     </View>
+   );
 };
 
 export default ProductCatalogScreen;
