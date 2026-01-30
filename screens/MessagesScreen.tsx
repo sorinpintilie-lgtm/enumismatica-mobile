@@ -285,7 +285,7 @@ const MessagesScreen: React.FC = () => {
                 <KeyboardAvoidingView
                   style={styles.chatContent}
                   behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 110 : 0}
                   enabled={!isWeb}
                 >
                   {/* Chat Header */}
@@ -342,7 +342,7 @@ const MessagesScreen: React.FC = () => {
                   </ScrollView>
 
                   {/* Input Area */}
-                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor }]}>
+                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor, paddingBottom: keyboardHeight > 0 ? keyboardHeight / 2 : 12 }]}>
                     <TextInput
                       ref={inputRef}
                       style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
@@ -448,7 +448,12 @@ const MessagesScreen: React.FC = () => {
               </View>
             ) : (
               // Chat View
-              <View style={styles.mobileChatContainer}>
+              <KeyboardAvoidingView
+                style={styles.mobileChatContainer}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                enabled={!isWeb}
+              >
                 <View style={[styles.chatHeader, { borderBottomColor: colors.borderColor }]}>
                   <InlineBackButton onPress={() => setSelectedConversationId(null)} />
                   <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
@@ -456,19 +461,15 @@ const MessagesScreen: React.FC = () => {
                   </Text>
                 </View>
 
-                <KeyboardAvoidingView
-                  style={styles.mobileMessagesWrapper}
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-                  enabled={!isWeb}
-                >
+                <View style={styles.mobileMessagesWrapper}>
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
                     contentContainerStyle={styles.messagesContent}
                     keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
+                    keyboardDismissMode="interactive"
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
+                    nestedScrollEnabled={true}
                   >
                     {messages.length === 0 ? (
                       <View style={styles.messagesEmpty}>
@@ -507,7 +508,7 @@ const MessagesScreen: React.FC = () => {
                     )}
                   </ScrollView>
 
-                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor }]}>
+                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor, paddingBottom: keyboardHeight > 0 ? keyboardHeight / 2 : 12 }]}>
                     <TextInput
                       ref={inputRef}
                       style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
@@ -520,6 +521,7 @@ const MessagesScreen: React.FC = () => {
                       returnKeyType="send"
                       blurOnSubmit={true}
                       onSubmitEditing={handleSendMessage}
+                      enablesReturnKeyAutomatically={true}
                     />
                     <TouchableOpacity
                       style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
@@ -533,8 +535,8 @@ const MessagesScreen: React.FC = () => {
                       )}
                     </TouchableOpacity>
                   </View>
-                </KeyboardAvoidingView>
-              </View>
+                </View>
+              </KeyboardAvoidingView>
             )}
           </View>
         )}
