@@ -2,6 +2,8 @@ import * as admin from "firebase-admin";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 
+// Initialize Firebase Admin SDK
+// Uses default credentials which are automatically available in Cloud Functions environment
 admin.initializeApp();
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -26,6 +28,9 @@ interface ExpoPushMessage {
   to: string;
   title: string;
   body: string;
+  channelId?: string; // Android notification channel ID
+  sound?: string; // Sound to play
+  priority?: 'default' | 'normal' | 'high'; // Notification priority
   data: {
     conversationId: string | null;
     auctionId: string | null;
@@ -168,6 +173,7 @@ export const sendNotificationPush = onDocumentCreated(
       type: data.type,
       title,
       body,
+      pushed: data.pushed,
     });
 
     const devicesSnap = await admin
@@ -179,10 +185,12 @@ export const sendNotificationPush = onDocumentCreated(
 
     if (devicesSnap.empty) {
       logger.info("No devices for push", {userId: params.userId});
+      logger.info("User has no registered devices - push notification cannot be sent");
       return;
     }
 
     logger.info(`Found ${devicesSnap.size} devices for user ${params.userId}`);
+    logger.info("Device IDs:", devicesSnap.docs.map(doc => doc.id));
 
     const messages: ExpoPushMessage[] = [];
 
@@ -202,6 +210,9 @@ export const sendNotificationPush = onDocumentCreated(
         to: device.expoPushToken,
         title,
         body,
+        channelId: 'default', // Android notification channel ID
+        sound: 'default', // Sound to play
+        priority: 'high', // Notification priority
         data: {
           conversationId: data.conversationId || null,
           auctionId: data.auctionId || null,
@@ -215,6 +226,13 @@ export const sendNotificationPush = onDocumentCreated(
     });
 
     logger.info(`Sending ${messages.length} push notifications to Expo`);
+    logger.info("Push message preview:", messages.map(msg => ({
+      to: msg.to.substring(0, 20) + '...',
+      title: msg.title,
+      body: msg.body.substring(0, 50) + '...',
+      channelId: msg.channelId,
+      priority: msg.priority,
+    })));
 
     await sendExpoPushNotifications(messages);
 

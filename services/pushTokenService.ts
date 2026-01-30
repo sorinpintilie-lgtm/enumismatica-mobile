@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { db, doc, setDoc, serverTimestamp } from '@shared/firebaseConfig';
+import { db, doc, setDoc, deleteDoc, serverTimestamp } from '@shared/firebaseConfig';
 import { getPushToken, requestNotificationPermissions } from './notificationService';
 
 type DeviceRegistration = {
@@ -9,14 +9,28 @@ type DeviceRegistration = {
 };
 
 export async function registerPushTokenForUser(userId: string) {
-  if (!userId) return;
-  if (Platform.OS === 'web') return;
+  if (!userId) {
+    console.log('[pushTokenService] No userId provided, skipping registration');
+    return;
+  }
+  if (Platform.OS === 'web') {
+    console.log('[pushTokenService] Web platform, skipping registration');
+    return;
+  }
+
+  console.log('[pushTokenService] Starting push token registration for user:', userId);
 
   const granted = await requestNotificationPermissions();
-  if (!granted) return;
+  if (!granted) {
+    console.log('[pushTokenService] Notification permissions not granted');
+    return;
+  }
 
   const expoPushToken = await getPushToken();
-  if (!expoPushToken) return;
+  if (!expoPushToken) {
+    console.log('[pushTokenService] No expoPushToken retrieved');
+    return;
+  }
 
   // Use a simpler document ID to avoid issues with special characters
   const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
@@ -28,5 +42,43 @@ export async function registerPushTokenForUser(userId: string) {
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(deviceRef, payload, { merge: true });
+  console.log('[pushTokenService] Registering device:', deviceDocId);
+  console.log('[pushTokenService] Device payload:', {
+    platform: Platform.OS,
+    tokenLength: expoPushToken.length,
+    tokenPrefix: expoPushToken.substring(0, 20),
+  });
+
+  try {
+    await setDoc(deviceRef, payload, { merge: true });
+    console.log('[pushTokenService] Successfully registered device token for user:', userId);
+    console.log('[pushTokenService] Device document path:', `users/${userId}/devices/${deviceDocId}`);
+  } catch (error) {
+    console.error('[pushTokenService] Failed to register device token:', error);
+    console.error('[pushTokenService] Error details:', {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      userId,
+      deviceDocId,
+    });
+  }
+}
+
+export async function unregisterPushTokenForUser(userId: string) {
+  if (!userId) return;
+  if (Platform.OS === 'web') return;
+
+  const expoPushToken = await getPushToken();
+  if (!expoPushToken) return;
+
+  // Use the same document ID format as registration
+  const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
+  const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
+
+  try {
+    await deleteDoc(deviceRef);
+    console.log('[pushTokenService] Successfully removed device token for user:', userId);
+  } catch (error) {
+    console.error('[pushTokenService] Failed to remove device token:', error);
+  }
 }

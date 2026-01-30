@@ -17,12 +17,17 @@ if (Platform.OS !== 'web') {
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync('default', {
       name: 'Default',
+      description: 'Notificări implicite pentru eNumismatica',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#e7b73c',
       sound: 'default',
-    }).catch(() => {
-      // ignore channel errors
+      enableVibrate: true,
+      showBadge: false,
+    }).then(() => {
+      console.log('[notificationService] Android notification channel created successfully');
+    }).catch((error) => {
+      console.error('[notificationService] Failed to create Android notification channel:', error);
     });
   }
 }
@@ -30,17 +35,24 @@ if (Platform.OS !== 'web') {
 // Request notification permissions
 export async function requestNotificationPermissions() {
   if (Platform.OS === 'web') {
-    console.log('Push notifications not supported on web');
+    console.log('[notificationService] Push notifications not supported on web');
     return false;
   }
+
+  console.log('[notificationService] Requesting notification permissions for platform:', Platform.OS);
 
   // On Android, we need to request permissions properly
   if (Platform.OS === 'android') {
     const { status } = await Notifications.getPermissionsAsync();
+    console.log('[notificationService] Android current permission status:', status);
+
     if (status !== 'granted') {
+      console.log('[notificationService] Requesting Android notification permissions...');
       const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      console.log('[notificationService] Android new permission status:', newStatus);
+
       if (newStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
+        console.log('[notificationService] Failed to get push token for push notification!');
         return false;
       }
     }
@@ -49,6 +61,7 @@ export async function requestNotificationPermissions() {
 
   // On iOS, just check if permissions are granted
   const { status } = await Notifications.getPermissionsAsync();
+  console.log('[notificationService] iOS permission status:', status);
   return status === 'granted';
 }
 
@@ -58,12 +71,28 @@ export async function getPushToken() {
     console.log('Push notifications not supported on web');
     return '';
   }
+
   const projectId = Constants.expoConfig?.extra?.eas?.projectId
     ?? Constants.easConfig?.projectId;
-  const token = await Notifications.getExpoPushTokenAsync({
-    projectId,
-  });
-  return token.data;
+
+  console.log('[notificationService] Getting push token for platform:', Platform.OS);
+  console.log('[notificationService] Project ID:', projectId);
+
+  if (!projectId) {
+    console.error('[notificationService] No project ID found in app config');
+    return '';
+  }
+
+  try {
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+    console.log('[notificationService] Push token retrieved:', token.data ? `${token.data.substring(0, 20)}...` : 'null');
+    return token.data;
+  } catch (error) {
+    console.error('[notificationService] Error getting push token:', error);
+    return '';
+  }
 }
 
 // Schedule auction reminder notification (simplified - just send immediate for now)
