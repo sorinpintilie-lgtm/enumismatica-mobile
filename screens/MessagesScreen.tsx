@@ -198,12 +198,7 @@ const MessagesScreen: React.FC = () => {
 
   return (
     <WebContainer>
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-        enabled={!isWeb}
-      >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {isLargeScreen ? (
           // Desktop/Web layout - split view
           <View style={styles.desktopContainer}>
@@ -243,7 +238,7 @@ const MessagesScreen: React.FC = () => {
                       <TouchableOpacity
                         key={conversation.id}
                         onPress={() => setSelectedConversationId(conversation.id)}
-                        style={[styles.conversationItem, 
+                        style={[styles.conversationItem,
                           isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
                           isAdminChat ? styles.conversationItemAdmin : null
                         ]}
@@ -287,7 +282,12 @@ const MessagesScreen: React.FC = () => {
                   </Text>
                 </View>
               ) : (
-                <View style={styles.chatContent}>
+                <KeyboardAvoidingView
+                  style={styles.chatContent}
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+                  enabled={!isWeb}
+                >
                   {/* Chat Header */}
                   <View style={[styles.chatHeader, { borderBottomColor: colors.borderColor }]}>
                     <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
@@ -299,7 +299,7 @@ const MessagesScreen: React.FC = () => {
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
-                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
+                    contentContainerStyle={styles.messagesContent}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
@@ -368,7 +368,7 @@ const MessagesScreen: React.FC = () => {
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>
+                </KeyboardAvoidingView>
               )}
             </View>
           </View>
@@ -413,7 +413,7 @@ const MessagesScreen: React.FC = () => {
                         <TouchableOpacity
                           key={conversation.id}
                           onPress={() => setSelectedConversationId(conversation.id)}
-                          style={[styles.conversationItem, 
+                          style={[styles.conversationItem,
                             isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
                             isAdminChat ? styles.conversationItemAdmin : null
                           ]}
@@ -456,11 +456,16 @@ const MessagesScreen: React.FC = () => {
                   </Text>
                 </View>
 
-                <View style={styles.mobileMessagesWrapper}>
+                <KeyboardAvoidingView
+                  style={styles.mobileMessagesWrapper}
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+                  enabled={!isWeb}
+                >
                   <ScrollView
                     ref={messagesContainerRef}
                     style={styles.messagesArea}
-                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
+                    contentContainerStyle={styles.messagesContent}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
                     onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
@@ -528,12 +533,12 @@ const MessagesScreen: React.FC = () => {
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>
+                </KeyboardAvoidingView>
               </View>
             )}
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </WebContainer>
   );
 };
