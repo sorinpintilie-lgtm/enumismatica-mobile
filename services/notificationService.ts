@@ -33,17 +33,23 @@ export async function requestNotificationPermissions() {
     console.log('Push notifications not supported on web');
     return false;
   }
-  const permissions = await Notifications.getPermissionsAsync();
 
-  if (permissions.status !== 'granted') {
-    const newPermissions = await Notifications.requestPermissionsAsync();
-    if (newPermissions.status !== 'granted') {
-      console.log('Failed to get push token for push notification!');
-      return false;
+  // On Android, we need to request permissions properly
+  if (Platform.OS === 'android') {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      if (newStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return false;
+      }
     }
+    return true;
   }
 
-  return true;
+  // On iOS, just check if permissions are granted
+  const { status } = await Notifications.getPermissionsAsync();
+  return status === 'granted';
 }
 
 // Get push token
