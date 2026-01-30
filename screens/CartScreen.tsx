@@ -8,7 +8,7 @@ import { useCart } from '../hooks/useCart';
 import { useProducts } from '../hooks/useProducts';
 import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
-import { formatEUR } from '../utils/currency';
+import { formatEUR, formatRON } from '../utils/currency';
 
 const CartScreen: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -166,11 +166,19 @@ const CartScreen: React.FC = () => {
       {!isEmpty && !loading && (
         <View style={styles.cartContent}>
           {lines.map(({ item, product }) => {
-            const label = product?.name || `Produs ${item.productId}`;
-            const price =
-              product && typeof product.price === 'number'
-                ? formatEUR(product.price)
-                : 'Preț indisponibil';
+            // Handle Monetaria Statului products differently
+            const isMintProduct = item.isMintProduct;
+            const label = isMintProduct
+              ? (item.mintProductData?.title || 'Produs Monetaria Statului')
+              : (product?.name || `Produs ${item.productId}`);
+            
+            const price = isMintProduct
+              ? (parseMintPrice(item.mintProductData?.price) !== null
+                  ? formatRON(parseMintPrice(item.mintProductData?.price) || 0)
+                  : 'Preț indisponibil')
+              : (product && typeof product.price === 'number'
+                  ? formatEUR(product.price)
+                  : 'Preț indisponibil');
 
             return (
               <View
@@ -179,7 +187,12 @@ const CartScreen: React.FC = () => {
               >
                 <View style={styles.itemRow}>
                   <View style={styles.itemImageWrap}>
-                    {product?.images && product.images.length > 0 ? (
+                    {isMintProduct && item.mintProductData?.image ? (
+                      <Image
+                        source={{ uri: item.mintProductData.image }}
+                        style={styles.itemImage}
+                      />
+                    ) : product?.images && product.images.length > 0 ? (
                       <Image
                         source={{ uri: product.images[0] }}
                         style={styles.itemImage}
@@ -269,7 +282,7 @@ const CartScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.checkoutButton}
-            onPress={() => navigation.navigate('Checkout', { productIds: items.map(item => item.productId) })}
+            onPress={() => navigation.navigate('Checkout', { cartItems: items })}
           >
             <Text style={styles.checkoutButtonText}>
               Finalizează cumpărarea

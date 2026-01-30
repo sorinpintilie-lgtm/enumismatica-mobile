@@ -17,7 +17,7 @@ import { useCart } from '../hooks/useCart';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../hooks/useProducts';
 import { createDirectOrderForProduct } from '@shared/orderService';
-import { formatEUR } from '../utils/currency';
+import { formatEUR, formatRON } from '../utils/currency';
 import { colors, sharedStyles } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +57,7 @@ export default function CheckoutScreen() {
   // Get products from route params or cart
   const routeProductId = route.params?.productId;
   const routeProductIds = route.params?.productIds;
+  const routeCartItems = route.params?.cartItems;
 
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('shipping');
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
@@ -82,7 +83,7 @@ export default function CheckoutScreen() {
   // Determine which products to checkout
   const checkoutProducts = useMemo(() => {
     const result: CheckoutProduct[] = [];
-
+    
     // If single product from route
     if (routeProductId) {
       const product = products.find(p => p.id === routeProductId);
@@ -106,6 +107,31 @@ export default function CheckoutScreen() {
             price: product.price,
             images: product.images || [],
           });
+        }
+      });
+    }
+    // If cart items from route (for Monetaria Statului products)
+    else if (routeCartItems && routeCartItems.length > 0) {
+      routeCartItems.forEach(item => {
+        if (item.isMintProduct) {
+          result.push({
+            id: item.productId,
+            name: item.mintProductData?.title || 'Produs Monetaria Statului',
+            price: parseMintPrice(item.mintProductData?.price) || 0,
+            images: [],
+            isMintProduct: true,
+            mintProductData: item.mintProductData,
+          });
+        } else {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            result.push({
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              images: product.images || [],
+            });
+          }
         }
       });
     }
@@ -136,7 +162,7 @@ export default function CheckoutScreen() {
     }
 
     return result;
-  }, [routeProductId, routeProductIds, cartItems, products]);
+  }, [routeProductId, routeProductIds, routeCartItems, cartItems, products]);
 
   const totalAmount = useMemo(() => {
     return checkoutProducts.reduce((sum, p) => sum + p.price, 0);
@@ -652,7 +678,9 @@ function ReviewStep({
               <Text style={styles.reviewProductName} numberOfLines={2}>
                 {product.name}
               </Text>
-              <Text style={styles.reviewProductPrice}>{formatEUR(product.price)}</Text>
+              <Text style={styles.reviewProductPrice}>
+                {product.isMintProduct ? formatRON(product.price) : formatEUR(product.price)}
+              </Text>
             </View>
           </View>
         ))}
@@ -686,7 +714,9 @@ function ReviewStep({
       {/* Total */}
       <View style={styles.reviewTotal}>
         <Text style={styles.reviewTotalLabel}>Total de plată</Text>
-        <Text style={styles.reviewTotalValue}>{formatEUR(totalAmount)}</Text>
+        <Text style={styles.reviewTotalValue}>
+          {products.some(p => p.isMintProduct) ? formatRON(totalAmount) : formatEUR(totalAmount)}
+        </Text>
       </View>
     </View>
   );

@@ -37,6 +37,8 @@ export type RootStackParamList = {
     productId?: string;
     /** Optional list of products for cart checkout */
     productIds?: string[];
+    /** Optional cart items for checkout with Monetaria Statului products */
+    cartItems?: any[];
   };
   NewListing: { listingType: 'direct' | 'auction'; productId?: string };
   About: undefined;
