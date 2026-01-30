@@ -54,6 +54,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     }
   }, [hasPlayed]);
 
+  // Load app data immediately when splash screen mounts
+  useEffect(() => {
+    console.log('[SplashScreen] Starting app data preload on mount');
+    loadAppData();
+  }, []);
+
   useEffect(() => {
     if (videoError) {
       // If video error, load data immediately after short delay
