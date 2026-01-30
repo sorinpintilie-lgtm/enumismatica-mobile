@@ -346,28 +346,28 @@ const DashboardScreen: React.FC = () => {
             <View style={dashboardStyles.section}>
               <Text style={dashboardStyles.sectionTitle}>Parteneri</Text>
               <View style={dashboardStyles.actionGrid}>
-                <TouchableOpacity
-                  style={dashboardStyles.actionGridButton}
-                  onPress={() => setAuthPromptVisible(true)}
-                >
-                  <Image
-                    source={require('../assets/eNumismatica.ro_logo.png')}
-                    style={dashboardStyles.partnerLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={dashboardStyles.actionGridButton}
-                  onPress={() => setAuthPromptVisible(true)}
-                >
-                  <Image
-                    source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
-                    style={dashboardStyles.partnerLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
-                </TouchableOpacity>
+                 <TouchableOpacity
+                   style={dashboardStyles.actionGridButton}
+                   onPress={() => setAuthPromptVisible(true)}
+                 >
+                   <Image
+                     source={require('../assets/pronumilogo.png')}
+                     style={dashboardStyles.partnerLogo}
+                     resizeMode="contain"
+                   />
+                   <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity
+                   style={dashboardStyles.actionGridButton}
+                   onPress={() => setAuthPromptVisible(true)}
+                 >
+                   <Image
+                     source={require('../assets/logomonetariastatului.png')}
+                     style={dashboardStyles.partnerLogo}
+                     resizeMode="contain"
+                   />
+                   <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
+                 </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -579,7 +579,7 @@ const DashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('Pronumismatica')}
             >
               <Image
-                source={require('../assets/eNumismatica.ro_logo.png')}
+                source={require('../assets/pronumilogo.png')}
                 style={dashboardStyles.partnerLogo}
                 resizeMode="contain"
               />
@@ -590,7 +590,7 @@ const DashboardScreen: React.FC = () => {
               onPress={() => navigation.navigate('MonetariaStatului')}
             >
               <Image
-                source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
+                source={require('../assets/logomonetariastatului.png')}
                 style={dashboardStyles.partnerLogo}
                 resizeMode="contain"
               />

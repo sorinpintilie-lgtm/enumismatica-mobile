@@ -200,7 +200,7 @@ const MessagesScreen: React.FC = () => {
     <WebContainer>
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         enabled={!isWeb}
       >
@@ -351,9 +351,9 @@ const MessagesScreen: React.FC = () => {
                       placeholder="Scrie un mesaj..."
                       placeholderTextColor={colors.textSecondary}
                       editable={!sending}
-                      multiline
                       maxLength={500}
                       returnKeyType="send"
+                      blurOnSubmit={true}
                       onSubmitEditing={handleSendMessage}
                     />
                     <TouchableOpacity
@@ -456,76 +456,78 @@ const MessagesScreen: React.FC = () => {
                   </Text>
                 </View>
 
-                <ScrollView
-                  ref={messagesContainerRef}
-                  style={styles.messagesArea}
-                  contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="on-drag"
-                  onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
-                >
-                  {messages.length === 0 ? (
-                    <View style={styles.messagesEmpty}>
-                      <Text style={[styles.messagesEmptyText, { color: colors.textSecondary }]}>Niciun mesaj încă</Text>
-                      <Text style={[styles.messagesEmptySubtext, { color: textTertiary }]}>Începe conversația trimițând un mesaj!</Text>
-                    </View>
-                  ) : (
-                    messages.map((message) => {
-                      const isOwnMessage = message.senderId === user?.uid;
-                      const isRead = message.readBy && message.readBy.length > 1;
+                <View style={styles.mobileMessagesWrapper}>
+                  <ScrollView
+                    ref={messagesContainerRef}
+                    style={styles.messagesArea}
+                    contentContainerStyle={[styles.messagesContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 16 : 16 }]}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
+                  >
+                    {messages.length === 0 ? (
+                      <View style={styles.messagesEmpty}>
+                        <Text style={[styles.messagesEmptyText, { color: colors.textSecondary }]}>Niciun mesaj încă</Text>
+                        <Text style={[styles.messagesEmptySubtext, { color: textTertiary }]}>Începe conversația trimițând un mesaj!</Text>
+                      </View>
+                    ) : (
+                      messages.map((message) => {
+                        const isOwnMessage = message.senderId === user?.uid;
+                        const isRead = message.readBy && message.readBy.length > 1;
 
-                      return (
-                        <View
-                          key={message.id}
-                          style={[styles.messageBubbleContainer, isOwnMessage ? styles.messageBubbleContainerOwn : styles.messageBubbleContainerOther]}
-                        >
-                          <View style={[styles.messageBubble, isOwnMessage ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
-                            <Text style={[styles.messageSender, { color: textTertiary }]}>
-                              {message.senderName || 'Utilizator'}
-                            </Text>
-                            <Text style={[styles.messageText, { color: isOwnMessage ? colors.primaryText : colors.textPrimary }]}>
-                              {message.message}
-                            </Text>
-                            <View style={styles.messageFooter}>
-                              <Text style={[styles.messageTimestamp, { color: textTertiary }]}>
-                                {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ro })}
+                        return (
+                          <View
+                            key={message.id}
+                            style={[styles.messageBubbleContainer, isOwnMessage ? styles.messageBubbleContainerOwn : styles.messageBubbleContainerOther]}
+                          >
+                            <View style={[styles.messageBubble, isOwnMessage ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
+                              <Text style={[styles.messageSender, { color: textTertiary }]}>
+                                {message.senderName || 'Utilizator'}
                               </Text>
-                              {isOwnMessage && isRead && (
-                                <Text style={[styles.messageReadReceipt, { color: colors.primary }]}>✓✓</Text>
-                              )}
+                              <Text style={[styles.messageText, { color: isOwnMessage ? colors.primaryText : colors.textPrimary }]}>
+                                {message.message}
+                              </Text>
+                              <View style={styles.messageFooter}>
+                                <Text style={[styles.messageTimestamp, { color: textTertiary }]}>
+                                  {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ro })}
+                                </Text>
+                                {isOwnMessage && isRead && (
+                                  <Text style={[styles.messageReadReceipt, { color: colors.primary }]}>✓✓</Text>
+                                )}
+                              </View>
                             </View>
                           </View>
-                        </View>
-                      );
-                    })
-                  )}
-                </ScrollView>
-
-                <View style={[styles.inputContainer, { borderTopColor: colors.borderColor }]}>
-                  <TextInput
-                    ref={inputRef}
-                    style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
-                    value={messageText}
-                    onChangeText={setMessageText}
-                    placeholder="Scrie un mesaj..."
-                    placeholderTextColor={colors.textSecondary}
-                    editable={!sending}
-                    multiline
-                    maxLength={500}
-                    returnKeyType="send"
-                    onSubmitEditing={handleSendMessage}
-                  />
-                  <TouchableOpacity
-                    style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
-                    onPress={handleSendMessage}
-                    disabled={!messageText.trim() || sending}
-                  >
-                    {sending ? (
-                      <ActivityIndicator size="small" color={colors.primaryText} />
-                    ) : (
-                      <Text style={[styles.sendButtonText, { color: colors.primaryText }]}>Trimite</Text>
+                        );
+                      })
                     )}
-                  </TouchableOpacity>
+                  </ScrollView>
+
+                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor }]}>
+                    <TextInput
+                      ref={inputRef}
+                      style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
+                      value={messageText}
+                      onChangeText={setMessageText}
+                      placeholder="Scrie un mesaj..."
+                      placeholderTextColor={colors.textSecondary}
+                      editable={!sending}
+                      maxLength={500}
+                      returnKeyType="send"
+                      blurOnSubmit={true}
+                      onSubmitEditing={handleSendMessage}
+                    />
+                    <TouchableOpacity
+                      style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
+                      onPress={handleSendMessage}
+                      disabled={!messageText.trim() || sending}
+                    >
+                      {sending ? (
+                        <ActivityIndicator size="small" color={colors.primaryText} />
+                      ) : (
+                        <Text style={[styles.sendButtonText, { color: colors.primaryText }]}>Trimite</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             )}
@@ -792,6 +794,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   mobileChatContainer: {
+    flex: 1,
+    flexDirection: 'column',
+  },
+  mobileMessagesWrapper: {
     flex: 1,
     flexDirection: 'column',
   },
