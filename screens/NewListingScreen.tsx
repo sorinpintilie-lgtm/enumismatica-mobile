@@ -344,7 +344,7 @@ const NewListingScreen: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!user) {
-      setError('Trebuie să fie autentificat pentru a adăuga o piesă.');
+      setError('Este necesară autentificarea pentru a adăuga o piesă.');
       navigation.navigate('Login');
       return;
     }
@@ -1003,7 +1003,7 @@ const NewListingScreen: React.FC = () => {
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.labelWithInfo}>
-              <Text style={styles.toggleTitle}>Am certificare profesională</Text>
+              <Text style={styles.toggleTitle}>Are certificare profesională</Text>
               <InfoIcon
                 title="Certificare profesională"
                 description="Certificarea de la companii precum NGC sau PCGS garantează autenticitatea și starea piesei, crescând încrederea cumpărătorilor."

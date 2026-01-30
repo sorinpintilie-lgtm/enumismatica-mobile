@@ -397,6 +397,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: '#00020d',
+  },
   card: {
     flex: 1,
     marginBottom: 16,
@@ -574,11 +578,11 @@ const ProductCatalogScreen: React.FC = () => {
     [],
   );
 
-  const { products, loading, error } = useProducts({
-    pageSize: 50,
+  const { products, loading, error, loadMore, hasMore } = useProducts({
+    pageSize: 20,
     fields: productFields,
     listingType: 'direct', // Only direct-sale products in the E-shop
-    loadAllAtOnce: true, // Load full catalog like web E-shop
+    loadAllAtOnce: false, // Load in batches
   });
 
   const [showFilters, setShowFilters] = useState(false);
@@ -991,6 +995,20 @@ const ProductCatalogScreen: React.FC = () => {
                   <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
                 </TouchableOpacity>
               </View>
+            ) : user && hasMore ? (
+              <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
+                <TouchableOpacity
+                  style={[styles.emptyButton, { backgroundColor: colors.primary }]}
+                  onPress={() => loadMore()}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#000940" />
+                  ) : (
+                    <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Încarcă mai multe</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             ) : null
           }
         />
@@ -1019,7 +1037,7 @@ const ProductCatalogScreen: React.FC = () => {
         <Modal
           visible={showFilters}
           animationType="slide"
-          transparent={false}
+          transparent={true}
           onRequestClose={() => setShowFilters(false)}
         >
           <SafeAreaView style={styles.modalScreen}>
@@ -1030,7 +1048,8 @@ const ProductCatalogScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent}>
+            <View style={styles.modalBackground}>
+              <ScrollView style={styles.modalContent}>
               {/* Country Filter */}
               <Text style={styles.filterLabel}>Țară</Text>
               <View style={styles.filterChipsRow}>

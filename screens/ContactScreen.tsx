@@ -226,7 +226,7 @@ const ContactScreen: React.FC = () => {
           <View style={contactStyles.header}>
             <Text style={contactStyles.headerTitle}>Contactează-ne</Text>
             <Text style={contactStyles.headerSubtitle}>
-              Ai întrebări despre colecția noastră numismatică? Ne-ar plăcea să auzim de la tine. Trimite-ne un mesaj și vom răspunde cât mai curând posibil.
+              Aveți întrebări despre colecția noastră numismatică? Ne-ar plăcea să auzim de la voi. Trimite-ne un mesaj și vom răspunde cât mai curând posibil.
             </Text>
           </View>
 

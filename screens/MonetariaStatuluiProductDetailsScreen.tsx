@@ -142,7 +142,7 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
   const handleAddToCart = async () => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a adăuga produse în coș.');
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a adăuga produse în coș.');
       return;
     }
     if (!product) {
@@ -158,6 +158,19 @@ export default function MonetariaStatuluiProductDetailsScreen() {
     } catch (error: any) {
       Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');
     }
+  };
+
+  const handleBuyNow = async () => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a cumpăra produse.');
+      return;
+    }
+    if (!product) {
+      Alert.alert('Eroare', 'Produsul nu este disponibil.');
+      return;
+    }
+    // Navigate to checkout with the product
+    navigation.navigate('Checkout', { productId: product.id });
   };
 
   if (loading) {
@@ -250,9 +263,14 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
         {/* Add to Cart Button */}
         <View style={styles.addToCartSection}>
-          <TouchableOpacity style={styles.addToCartButton} onPress={handleAddToCart}>
-            <Text style={styles.addToCartButtonText}>Adaugă în coș</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={[styles.actionButton, styles.buyNowButton]} onPress={handleBuyNow}>
+              <Text style={styles.actionButtonText}>Cumpără acum</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionButton, styles.addToCartButton]} onPress={handleAddToCart}>
+              <Text style={styles.actionButtonText}>Adaugă în coș</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -384,15 +402,26 @@ const styles = StyleSheet.create({
   addToCartSection: {
     alignItems: 'center',
   },
-  addToCartButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  actionButton: {
+    flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    minWidth: 200,
     alignItems: 'center',
   },
-  addToCartButtonText: {
+  buyNowButton: {
+    backgroundColor: colors.primary,
+  },
+  addToCartButton: {
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.5)',
+  },
+  actionButtonText: {
     color: colors.primaryText,
     fontSize: 16,
     fontWeight: '700',

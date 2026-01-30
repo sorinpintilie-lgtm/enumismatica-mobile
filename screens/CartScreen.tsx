@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -6,7 +6,6 @@ import { RootStackParamList } from '../navigationTypes';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { useProducts } from '../hooks/useProducts';
-import { createDirectOrderForProduct } from '@shared/orderService';
 import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
 import { formatEUR } from '../utils/currency';
@@ -14,7 +13,6 @@ import { formatEUR } from '../utils/currency';
 const CartScreen: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const [placingOrderFor, setPlacingOrderFor] = useState<string | null>(null);
 
   if (authLoading) {
     return (
@@ -95,33 +93,12 @@ const CartScreen: React.FC = () => {
     mintProductData?: any;
   }) => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fie autentificat pentru a cumpăra.');
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a cumpărare.');
       return;
     }
 
-    try {
-      setPlacingOrderFor(item.productId);
-      await createDirectOrderForProduct(
-        item.productId,
-        user.uid,
-        item.isMintProduct,
-        item.mintProductData,
-      );
-      await removeItem(item.id);
-
-      Alert.alert(
-        'Comandă creată',
-        'Comanda a fost înregistrată. Se poate vedea în istoricul comenzilor pe web.',
-      );
-    } catch (err: any) {
-      console.error('Failed to create order from cart', err);
-      Alert.alert(
-        'Eroare la cumpărare',
-        err?.message || 'Nu s-a putut finaliza cumpărarea acestui produs.',
-      );
-    } finally {
-      setPlacingOrderFor(null);
-    }
+    // Navigate to checkout with single product
+    navigation.navigate('Checkout', { productId: item.productId });
   };
 
   const handleClearCart = () => {
@@ -229,9 +206,13 @@ const CartScreen: React.FC = () => {
                 <View style={styles.itemActions}>
                   <TouchableOpacity
                     style={styles.viewButton}
-                    onPress={() =>
-                      navigation.navigate('ProductDetails', { productId: item.productId })
-                    }
+                    onPress={() => {
+                      if (item.isMintProduct) {
+                        navigation.navigate('MonetariaStatuluiProductDetails', { productId: item.productId });
+                      } else {
+                        navigation.navigate('ProductDetails', { productId: item.productId });
+                      }
+                    }}
                   >
                     <Text style={styles.viewButtonText}>
                       Vezi produsul
@@ -239,16 +220,11 @@ const CartScreen: React.FC = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.buyButton}
-                    disabled={placingOrderFor === item.productId}
                     onPress={() => handleCheckoutItem(item)}
                   >
-                    {placingOrderFor === item.productId ? (
-                      <ActivityIndicator size="small" color={colors.primaryText} />
-                    ) : (
-                      <Text style={styles.buyButtonText}>
-                        Cumpără acum
-                      </Text>
-                    )}
+                    <Text style={styles.buyButtonText}>
+                      Cumpără acum
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.removeButton}
@@ -293,7 +269,7 @@ const CartScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.checkoutButton}
-            onPress={() => navigation.navigate('Checkout')}
+            onPress={() => navigation.navigate('Checkout', { productIds: items.map(item => item.productId) })}
           >
             <Text style={styles.checkoutButtonText}>
               Finalizează cumpărarea

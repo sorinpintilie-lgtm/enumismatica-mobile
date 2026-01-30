@@ -1,11 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
   Image,
   Alert,
   Share,
@@ -27,9 +27,6 @@ import PullbackStatusIndicator from '../components/PullbackStatusIndicator';
 import { WatchlistButton } from '../components/WatchlistButton';
 import { isProductEligibleForPullbackData } from '@shared/pullbackEligibility';
 import OfferManagement from '../components/OfferManagement';
-import { createDirectOrderForProduct } from '@shared/orderService';
-import { createOrGetConversation } from '@shared/chatService';
-import { logEvent } from '../hooks/useActivityLogger';
 import OfferModal from '../components/OfferModal';
 import InlineBackButton from '../components/InlineBackButton';
 import { formatEUR } from '../utils/currency';
@@ -45,8 +42,6 @@ const ProductDetailsScreen: React.FC = () => {
 
   const scrollRef = useRef<ScrollView | null>(null);
   const [optimisticPulledBack, setOptimisticPulledBack] = useState(false);
-  const [showBuyConfirm, setShowBuyConfirm] = useState(false);
-  const [buying, setBuying] = useState(false);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showOfferManagement, setShowOfferManagement] = useState(false);
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -167,7 +162,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să fie autentificat pentru a cumpăra această piesă.',
+        'Este necesară autentificarea pentru a cumpăra această piesă.',
         [{ text: 'OK' }]
       );
       return;
@@ -176,7 +171,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți cumpăra propria piesă',
-        'Este deja proprietarul acestei piese.',
+        'Utilizatorul este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -191,54 +186,8 @@ const ProductDetailsScreen: React.FC = () => {
       return;
     }
 
-    setShowBuyConfirm(true);
-  };
-
-  const handleBuy = async () => {
-    if (!product || !user) return;
-
-    try {
-      setBuying(true);
-      const orderId = await createDirectOrderForProduct(product.id, user.uid);
-
-      // Admin activity log: direct shop purchase from product detail page
-      await logEvent(user, 'product_buy', {
-        productId: product.id,
-        productName: product.name,
-        price: product.price,
-        orderId,
-        source: 'product_detail',
-      });
-
-      // Ensure a private conversation exists between buyer and seller and redirect to it
-      if (product.ownerId && product.ownerId !== user.uid) {
-        try {
-          const conversationId = await createOrGetConversation(
-            user.uid,
-            product.ownerId,
-            undefined,
-            product.id,
-            false,
-          );
-          navigation.navigate('Messages', { conversationId: conversationId });
-        } catch (convError) {
-          console.error('Failed to open conversation after direct product purchase:', convError);
-        }
-      }
-
-      Alert.alert(
-        'Cumpărare reușită',
-        `S-a cumpărat această piesă. Comanda a fost înregistrată (ID: ${orderId}).`,
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      console.error('Failed to buy product:', error);
-      const message =
-        error instanceof Error ? error.message : 'A apărut o eroare la cumpărarea piesei.';
-      Alert.alert('Eroare la cumpărare', message, [{ text: 'OK' }]);
-    } finally {
-      setBuying(false);
-    }
+    // Navigate to checkout with the product
+    navigation.navigate('Checkout', { productId: product.id });
   };
 
   const { addToCart, items: cartItems } = useCart(user?.uid);
@@ -250,7 +199,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să fie autentificat pentru a adăuga în coș.',
+        'Este necesară autentificarea pentru a adăuga în coș.',
         [{ text: 'OK' }]
       );
       return;
@@ -259,7 +208,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți adăuga propria piesă în coș',
-        'Este deja proprietarul acestei piese.',
+        'Utilizatorul este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -293,7 +242,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (!user) {
       Alert.alert(
         'Autentificare necesară',
-        'Trebuie să fie autentificat pentru a face o ofertă.',
+        'Este necesară autentificarea pentru a face o ofertă.',
         [{ text: 'OK' }]
       );
       return;
@@ -302,7 +251,7 @@ const ProductDetailsScreen: React.FC = () => {
     if (product.ownerId === user.uid) {
       Alert.alert(
         'Nu poți face ofertă pe propria piesă',
-        'Este deja proprietarul acestei piese.',
+        'Utilizatorul este deja proprietarul acestei piese.',
         [{ text: 'OK' }]
       );
       return;
@@ -1058,12 +1007,12 @@ const ProductDetailsScreen: React.FC = () => {
                 {/* Row 1: Buy (75%) + Cart icon (25%) */}
                 <View style={styles.bentoRow}>
                   <TouchableOpacity
-                    style={[styles.bentoBuyButton, (product.isSold || buying) && { opacity: 0.6 }]}
+                    style={[styles.bentoBuyButton, product.isSold && { opacity: 0.6 }]}
                     onPress={handleBuyClick}
-                    disabled={product.isSold || buying}
+                    disabled={product.isSold}
                   >
                     <Text style={styles.actionButtonText}>
-                      {product.isSold ? 'Deja vândut' : buying ? 'Se procesează...' : 'Cumpără acum'}
+                      {product.isSold ? 'Deja vândut' : 'Cumpără acum'}
                     </Text>
                   </TouchableOpacity>
 
@@ -1166,42 +1115,6 @@ const ProductDetailsScreen: React.FC = () => {
           </View>
         )}
       </View>
-
-      {/* Buy Confirmation Modal */}
-      <Modal
-        isVisible={showBuyConfirm}
-        onBackdropPress={() => setShowBuyConfirm(false)}
-        onBackButtonPress={() => setShowBuyConfirm(false)}
-        backdropColor="rgba(0, 0, 0, 0.7)"
-        backdropOpacity={0.7}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-      >
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Confirmă cumpărarea</Text>
-          <Text style={styles.modalText}>
-            Este sigur că doriți să cumperi această piesă pentru {formatEUR(product.price)}?
-          </Text>
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.cancelButton]}
-              onPress={() => setShowBuyConfirm(false)}
-              disabled={buying}
-            >
-              <Text style={styles.modalButtonText}>Nu</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.confirmButton]}
-              onPress={handleBuy}
-              disabled={buying}
-            >
-              <Text style={styles.modalButtonText}>
-                {buying ? 'Se procesează...' : 'Da, cumpără'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* Offer Modal */}
       {showOfferModal && (

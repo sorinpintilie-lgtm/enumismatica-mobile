@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { useAuth } from '../context/AuthContext';
+import { preloadAppData, AppDataLoadProgress } from '../shared/appDataLoader';
 
 type SplashScreenProps = {
   onFinish?: () => void;
@@ -11,6 +13,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [videoError, setVideoError] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState<AppDataLoadProgress | null>(null);
+  const { user } = useAuth();
 
   const handleVideoError = () => {
     console.log('[SplashScreen] Video error, falling back to static image');
@@ -24,9 +28,23 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     if (status.isLoaded && status.didJustFinish && !hasPlayed) {
       console.log('[SplashScreen] Video finished');
       setHasPlayed(true);
-      if (onFinish) {
-        onFinish();
+      // Start loading app data after video finishes
+      loadAppData();
+    }
+  };
+
+  const loadAppData = async () => {
+    console.log('[SplashScreen] Starting app data preload');
+    await preloadAppData(
+      user?.uid || null,
+      (progress) => {
+        setLoadProgress(progress);
+        console.log(`[SplashScreen] Loading progress: ${progress.progress}% - ${progress.step}`);
       }
+    );
+    console.log('[SplashScreen] App data preload complete');
+    if (onFinish) {
+      onFinish();
     }
   };
 
@@ -37,11 +55,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   }, [hasPlayed]);
 
   useEffect(() => {
-    if (videoError && onFinish) {
-      const timer = setTimeout(() => onFinish(), 1500);
+    if (videoError) {
+      // If video error, load data immediately after short delay
+      const timer = setTimeout(() => {
+        loadAppData();
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [videoError, onFinish]);
+  }, [videoError]);
 
   if (videoError) {
     return (
@@ -54,7 +75,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         <Text style={styles.tagline}>Vânzarea și licitațiile de monede rare</Text>
         <View style={styles.footer}>
           <ActivityIndicator size="large" color="#e7b73c" />
-          <Text style={styles.footerText}>Se încarcă aplicația...</Text>
+          <Text style={styles.footerText}>
+            {loadProgress ? loadProgress.step : 'Se încarcă aplicația...'}
+          </Text>
+          {loadProgress && (
+            <Text style={styles.progressText}>{loadProgress.progress}%</Text>
+          )}
         </View>
       </View>
     );
@@ -82,13 +108,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </View>
       )}
 
-      <View style={styles.topContent}>
-        <Text style={styles.topTagline}>Magazin • Licitații • Colecții</Text>
-      </View>
-
       <View style={styles.footer}>
+        <Text style={styles.topTagline}>Magazin • Licitații • Colecții</Text>
         <ActivityIndicator size="large" color="#e7b73c" />
-        <Text style={styles.footerText}>Se încarcă experiența numismatică...</Text>
+        <Text style={styles.footerText}>
+          {loadProgress ? loadProgress.step : 'Se încarcă experiența numismatică...'}
+        </Text>
+        {loadProgress && (
+          <Text style={styles.progressText}>{loadProgress.progress}%</Text>
+        )}
       </View>
     </View>
   );
@@ -147,6 +175,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(231, 183, 60, 0.7)',
     letterSpacing: 0.5,
+  },
+  progressText: {
+    fontSize: 12,
+    color: 'rgba(231, 183, 60, 0.9)',
+    marginTop: 4,
+    fontWeight: '600',
   },
 });
 

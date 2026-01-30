@@ -32,7 +32,12 @@ export type RootStackParamList = {
   SalesHistory: undefined;
   Login: undefined;
   Register: undefined;
-  Checkout: undefined;
+  Checkout: {
+    /** Optional single product for "Buy Now" flow */
+    productId?: string;
+    /** Optional list of products for cart checkout */
+    productIds?: string[];
+  };
   NewListing: { listingType: 'direct' | 'auction'; productId?: string };
   About: undefined;
   Contact: undefined;

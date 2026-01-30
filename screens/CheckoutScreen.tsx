@@ -1,338 +1,861 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  StyleSheet,
+  ActivityIndicator,
+  Image,
+} from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../context/AuthContext';
+import { useProducts } from '../hooks/useProducts';
+import { createDirectOrderForProduct } from '@shared/orderService';
 import { formatEUR } from '../utils/currency';
 import { colors, sharedStyles } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
+import { Ionicons } from '@expo/vector-icons';
+
+type CheckoutRouteProp = RouteProp<RootStackParamList, 'Checkout'>;
+type CheckoutNavigationProp = StackNavigationProp<RootStackParamList>;
+
+// Checkout steps
+type CheckoutStep = 'shipping' | 'payment' | 'review' | 'confirmation';
+
+interface ShippingInfo {
+  name: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+}
+
+interface CheckoutProduct {
+  id: string;
+  name: string;
+  price: number;
+  images: string[];
+  isMintProduct?: boolean;
+  mintProductData?: any;
+}
 
 export default function CheckoutScreen() {
-	const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-	const { user } = useAuth();
-	const { items, clearCart } = useCart(user?.uid);
-	const cart = items as any[];
-  const [shippingInfo, setShippingInfo] = useState({
+  const navigation = useNavigation<CheckoutNavigationProp>();
+  const route = useRoute<CheckoutRouteProp>();
+  const { user } = useAuth();
+  const { items, clearCart } = useCart(user?.uid);
+  const cartItems = items as any[];
+
+  // Get products from route params or cart
+  const routeProductId = route.params?.productId;
+  const routeProductIds = route.params?.productIds;
+
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>('shipping');
+  const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     name: '',
     address: '',
     city: '',
     postalCode: '',
     country: 'Romania',
+    phone: '',
+    email: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank'>('card');
   const [isLoading, setIsLoading] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({});
 
+  // Fetch products
+  const { products } = useProducts({
+    pageSize: 200,
+    fields: ['name', 'images', 'price', 'createdAt', 'updatedAt'],
+  });
+
+  // Determine which products to checkout
+  const checkoutProducts = useMemo(() => {
+    const result: CheckoutProduct[] = [];
+
+    // If single product from route
+    if (routeProductId) {
+      const product = products.find(p => p.id === routeProductId);
+      if (product) {
+        result.push({
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          images: product.images || [],
+        });
+      }
+    }
+    // If multiple products from route
+    else if (routeProductIds && routeProductIds.length > 0) {
+      routeProductIds.forEach(id => {
+        const product = products.find(p => p.id === id);
+        if (product) {
+          result.push({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            images: product.images || [],
+          });
+        }
+      });
+    }
+    // Otherwise use cart items
+    else {
+      cartItems.forEach(item => {
+        if (item.isMintProduct) {
+          result.push({
+            id: item.productId,
+            name: item.mintProductData?.title || 'Produs Monetaria Statului',
+            price: parseMintPrice(item.mintProductData?.price) || 0,
+            images: [],
+            isMintProduct: true,
+            mintProductData: item.mintProductData,
+          });
+        } else {
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            result.push({
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              images: product.images || [],
+            });
+          }
+        }
+      });
+    }
+
+    return result;
+  }, [routeProductId, routeProductIds, cartItems, products]);
+
+  const totalAmount = useMemo(() => {
+    return checkoutProducts.reduce((sum, p) => sum + p.price, 0);
+  }, [checkoutProducts]);
+
+  // Initialize shipping info from user data
   useEffect(() => {
     if (user) {
       setShippingInfo(prev => ({
         ...prev,
         name: user.displayName || '',
+        email: user.email || '',
       }));
     }
   }, [user]);
 
-  const handleInputChange = (field: string, value: string) => {
-    setShippingInfo(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+  const parseMintPrice = (price: unknown): number => {
+    if (typeof price === 'number') return price;
+    if (typeof price !== 'string') return 0;
+    const cleaned = price.replace(/[\s\u00A0]/g, '').replace(/\./g, '').replace(',', '.');
+    const numeric = Number(cleaned.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(numeric) ? numeric : 0;
   };
 
-	const calculateTotal = () => {
-		return cart.reduce((total: number, item: any) => total + item.price * item.quantity, 0);
-	};
+  const handleInputChange = (field: keyof ShippingInfo, value: string) => {
+    setShippingInfo(prev => ({ ...prev, [field]: value }));
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
 
-  const validateForm = () => {
+  const validateShipping = (): boolean => {
+    const newErrors: Partial<Record<keyof ShippingInfo, string>> = {};
+
     if (!shippingInfo.name.trim()) {
-      Alert.alert('Eroare', 'Este necesară introducerea numelui.');
-      return false;
+      newErrors.name = 'Este necesară introducerea numelui.';
     }
     if (!shippingInfo.address.trim()) {
-      Alert.alert('Eroare', 'Este necesară introducerea adresei.');
-      return false;
+      newErrors.address = 'Este necesară introducerea adresei.';
     }
     if (!shippingInfo.city.trim()) {
-      Alert.alert('Eroare', 'Este necesară introducerea orașului.');
-      return false;
+      newErrors.city = 'Este necesară introducerea orașului.';
     }
     if (!shippingInfo.postalCode.trim()) {
-      Alert.alert('Eroare', 'Este necesară introducerea codului poștal.');
-      return false;
+      newErrors.postalCode = 'Este necesară introducerea codului poștal.';
     }
-    return true;
+    if (!shippingInfo.phone.trim()) {
+      newErrors.phone = 'Este necesară introducerea numărului de telefon.';
+    }
+    if (!shippingInfo.email.trim()) {
+      newErrors.email = 'Este necesară introducerea adresei de email.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingInfo.email)) {
+      newErrors.email = 'Adresa de email nu este validă.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleCheckout = async () => {
-    if (!validateForm()) return;
+  const handleNext = () => {
+    if (currentStep === 'shipping') {
+      if (validateShipping()) {
+        setCurrentStep('payment');
+      }
+    } else if (currentStep === 'payment') {
+      setCurrentStep('review');
+    } else if (currentStep === 'review') {
+      handlePlaceOrder();
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 'payment') {
+      setCurrentStep('shipping');
+    } else if (currentStep === 'review') {
+      setCurrentStep('payment');
+    } else if (currentStep === 'confirmation') {
+      navigation.navigate('OrderHistory');
+    }
+  };
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a plasa comanda.');
+      return;
+    }
 
     setIsLoading(true);
 
     try {
-      // Simulate checkout process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create orders for each product
+      const orderIds: string[] = [];
 
-      // In a real app, you would call your backend API here
-      // const response = await checkoutService.processCheckout({
-      //   userId: user?.uid,
-      //   items: cart,
-      //   shippingInfo,
-      //   paymentMethod,
-      //   total: calculateTotal(),
-      // });
+      for (const product of checkoutProducts) {
+        const orderId = await createDirectOrderForProduct(
+          product.id,
+          user.uid,
+          product.isMintProduct,
+          product.mintProductData,
+        );
+        orderIds.push(orderId);
+      }
 
-      Alert.alert(
-        'Succes',
-        'Comanda a fost plasată cu succes!',
-        [
-          {
-						text: 'OK',
-						onPress: () => {
-							clearCart();
-							(navigation as any).navigate('MainTabs', { screen: 'OrderHistory' });
-						},
-          },
-        ]
-      );
-    } catch (error) {
+      // Clear cart if we used cart items
+      if (!routeProductId && !routeProductIds) {
+        await clearCart();
+      }
+
+      setOrderId(orderIds[0]);
+      setCurrentStep('confirmation');
+    } catch (error: any) {
+      console.error('Failed to place order:', error);
       Alert.alert(
         'Eroare',
-        'A apărut o eroare la procesarea comenzii. Se recomandă reîncercarea.'
+        error?.message || 'A apărut o eroare la procesarea comenzii. Se recomandă reîncercarea.'
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (cart.length === 0) {
+  const handleViewOrderHistory = () => {
+    navigation.navigate('OrderHistory');
+  };
+
+  const steps = [
+    { key: 'shipping', label: 'Livrare' },
+    { key: 'payment', label: 'Plată' },
+    { key: 'review', label: 'Revizuire' },
+    { key: 'confirmation', label: 'Confirmare' },
+  ];
+
+  const getStepIndex = (step: CheckoutStep): number => {
+    return steps.findIndex(s => s.key === step);
+  };
+
+  const currentStepIndex = getStepIndex(currentStep);
+
+  // Empty state
+  if (checkoutProducts.length === 0) {
     return (
-      <View style={styles.cartEmptyContainer}>
-        <Text style={styles.cartEmptyTitle}>Coșul de cumpărături este gol</Text>
+      <View style={styles.emptyContainer}>
+        <Ionicons name="cart-outline" size={64} color={colors.textSecondary} />
+        <Text style={styles.emptyTitle}>Coșul de cumpărături este gol</Text>
         <TouchableOpacity
-          style={styles.cartEmptyButton}
-          onPress={() => (navigation as any).navigate('MainTabs', { screen: 'ProductCatalog' })}
+          style={styles.emptyButton}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'ProductCatalog' })}
         >
-        <Text style={styles.cartEmptyButtonText}>Cumpărături</Text>
-      </TouchableOpacity>
+          <Text style={styles.emptyButtonText}>Cumpărături</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.screenContent}>
-      <InlineBackButton />
-      <Text style={styles.headerTitle}>
-        Finalizare comandă
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <InlineBackButton />
+        <Text style={styles.headerTitle}>Finalizare comandă</Text>
+      </View>
+
+      {/* Stepper */}
+      <View style={styles.stepperContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stepperScroll}>
+          <View style={styles.stepper}>
+            {steps.map((step, index) => {
+              const isCompleted = index < currentStepIndex;
+              const isCurrent = index === currentStepIndex;
+              const isPending = index > currentStepIndex;
+
+              return (
+                <View key={step.key} style={styles.stepItem}>
+                  <View
+                    style={[
+                      styles.stepCircle,
+                      isCompleted && styles.stepCircleCompleted,
+                      isCurrent && styles.stepCircleCurrent,
+                      isPending && styles.stepCirclePending,
+                    ]}
+                  >
+                    {isCompleted ? (
+                      <Ionicons name="checkmark" size={16} color={colors.primaryText} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.stepNumber,
+                          isCurrent && styles.stepNumberCurrent,
+                          isPending && styles.stepNumberPending,
+                        ]}
+                      >
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      isCurrent && styles.stepLabelCurrent,
+                      isPending && styles.stepLabelPending,
+                    ]}
+                  >
+                    {step.label}
+                  </Text>
+                  {index < steps.length - 1 && (
+                    <View
+                      style={[
+                        styles.stepLine,
+                        isCompleted && styles.stepLineCompleted,
+                        isPending && styles.stepLinePending,
+                      ]}
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Content */}
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {currentStep === 'shipping' && (
+          <ShippingStep
+            shippingInfo={shippingInfo}
+            errors={errors}
+            onInputChange={handleInputChange}
+          />
+        )}
+
+        {currentStep === 'payment' && (
+          <PaymentStep
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+          />
+        )}
+
+        {currentStep === 'review' && (
+          <ReviewStep
+            products={checkoutProducts}
+            shippingInfo={shippingInfo}
+            paymentMethod={paymentMethod}
+            totalAmount={totalAmount}
+          />
+        )}
+
+        {currentStep === 'confirmation' && (
+          <ConfirmationStep orderId={orderId} />
+        )}
+      </ScrollView>
+
+      {/* Footer */}
+      {currentStep !== 'confirmation' && (
+        <View style={styles.footer}>
+          {currentStep !== 'shipping' && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              disabled={isLoading}
+            >
+              <Text style={styles.backButtonText}>Înapoi</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
+            onPress={handleNext}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.primaryText} />
+            ) : (
+              <Text style={styles.nextButtonText}>
+                {currentStep === 'review' ? 'Plasează comanda' : 'Continuă'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Shipping Step Component
+function ShippingStep({
+  shippingInfo,
+  errors,
+  onInputChange,
+}: {
+  shippingInfo: ShippingInfo;
+  errors: Partial<Record<keyof ShippingInfo, string>>;
+  onInputChange: (field: keyof ShippingInfo, value: string) => void;
+}) {
+  return (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Informații de livrare</Text>
+      <Text style={styles.stepDescription}>
+        Completați adresa de livrare pentru a primi produsele comandate.
       </Text>
 
-      {/* Shipping Information */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          Informații de livrare
-        </Text>
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Nume complet *</Text>
+        <TextInput
+          style={[styles.input, errors.name && styles.inputError]}
+          value={shippingInfo.name}
+          onChangeText={(text) => onInputChange('name', text)}
+          placeholder="Nume complet"
+          placeholderTextColor={colors.textSecondary}
+        />
+        {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+      </View>
 
-        <View style={styles.formControl}>
-          <Text style={styles.label}>Nume complet</Text>
-          <TextInput
-            style={styles.input}
-            value={shippingInfo.name}
-            onChangeText={(text) => handleInputChange('name', text)}
-            placeholder="Nume complet"
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Adresă *</Text>
+        <TextInput
+          style={[styles.input, errors.address && styles.inputError]}
+          value={shippingInfo.address}
+          onChangeText={(text) => onInputChange('address', text)}
+          placeholder="Stradă, număr, apartament"
+          placeholderTextColor={colors.textSecondary}
+        />
+        {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
+      </View>
 
-        <View style={styles.formControl}>
-          <Text style={styles.label}>Adresă</Text>
+      <View style={styles.formRow}>
+        <View style={[styles.formGroup, styles.formGroupHalf]}>
+          <Text style={styles.label}>Oraș *</Text>
           <TextInput
-            style={styles.input}
-            value={shippingInfo.address}
-            onChangeText={(text) => handleInputChange('address', text)}
-            placeholder="Adresă"
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
-
-        <View style={styles.formControl}>
-          <Text style={styles.label}>Oraș</Text>
-          <TextInput
-            style={styles.input}
+            style={[styles.input, errors.city && styles.inputError]}
             value={shippingInfo.city}
-            onChangeText={(text) => handleInputChange('city', text)}
+            onChangeText={(text) => onInputChange('city', text)}
             placeholder="Oraș"
             placeholderTextColor={colors.textSecondary}
           />
+          {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
         </View>
 
-        <View style={styles.rowGap}>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Cod poștal</Text>
-            <TextInput
-              style={styles.input}
-              value={shippingInfo.postalCode}
-              onChangeText={(text) => handleInputChange('postalCode', text)}
-              placeholder="Cod poștal"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="numeric"
-            />
+        <View style={[styles.formGroup, styles.formGroupHalf]}>
+          <Text style={styles.label}>Cod poștal *</Text>
+          <TextInput
+            style={[styles.input, errors.postalCode && styles.inputError]}
+            value={shippingInfo.postalCode}
+            onChangeText={(text) => onInputChange('postalCode', text)}
+            placeholder="Cod poștal"
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="numeric"
+          />
+          {errors.postalCode && <Text style={styles.errorText}>{errors.postalCode}</Text>}
+        </View>
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Țară</Text>
+        <TextInput
+          style={styles.input}
+          value={shippingInfo.country}
+          onChangeText={(text) => onInputChange('country', text)}
+          placeholder="Țară"
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Telefon *</Text>
+        <TextInput
+          style={[styles.input, errors.phone && styles.inputError]}
+          value={shippingInfo.phone}
+          onChangeText={(text) => onInputChange('phone', text)}
+          placeholder="Număr de telefon"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="phone-pad"
+        />
+        {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Email *</Text>
+        <TextInput
+          style={[styles.input, errors.email && styles.inputError]}
+          value={shippingInfo.email}
+          onChangeText={(text) => onInputChange('email', text)}
+          placeholder="Adresa de email"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+      </View>
+    </View>
+  );
+}
+
+// Payment Step Component
+function PaymentStep({
+  paymentMethod,
+  onPaymentMethodChange,
+}: {
+  paymentMethod: 'card' | 'bank';
+  onPaymentMethodChange: (method: 'card' | 'bank') => void;
+}) {
+  return (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Metodă de plată</Text>
+      <Text style={styles.stepDescription}>
+        Alegeți metoda de plată preferată pentru această comandă.
+      </Text>
+
+      <TouchableOpacity
+        style={[
+          styles.paymentOption,
+          paymentMethod === 'card' && styles.paymentOptionSelected,
+        ]}
+        onPress={() => onPaymentMethodChange('card')}
+      >
+        <View style={styles.paymentOptionLeft}>
+          <View style={styles.paymentIcon}>
+            <Ionicons name="card-outline" size={24} color={colors.primary} />
           </View>
-          <View style={styles.flex1}>
-            <Text style={styles.label}>Țară</Text>
-            <TextInput
-              style={styles.input}
-              value={shippingInfo.country}
-              onChangeText={(text) => handleInputChange('country', text)}
-              placeholder="Țară"
-              placeholderTextColor={colors.textSecondary}
-            />
+          <View>
+            <Text style={styles.paymentOptionTitle}>Card bancar</Text>
+            <Text style={styles.paymentOptionDescription}>
+              Plată securizată prin card
+            </Text>
           </View>
+        </View>
+        <View style={styles.paymentRadio}>
+          {paymentMethod === 'card' && (
+            <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.paymentOption,
+          paymentMethod === 'bank' && styles.paymentOptionSelected,
+        ]}
+        onPress={() => onPaymentMethodChange('bank')}
+      >
+        <View style={styles.paymentOptionLeft}>
+          <View style={styles.paymentIcon}>
+            <Ionicons name="business-outline" size={24} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.paymentOptionTitle}>Transfer bancar</Text>
+            <Text style={styles.paymentOptionDescription}>
+              Instrucțiuni de transfer după plasarea comenzii
+            </Text>
+          </View>
+        </View>
+        <View style={styles.paymentRadio}>
+          {paymentMethod === 'bank' && (
+            <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {paymentMethod === 'card' && (
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentInfoTitle}>Informații despre plată</Text>
+          <Text style={styles.paymentInfoText}>
+            Plata cu cardul se va procesa în siguranță prin intermediul platformei noastre de plăți.
+            Nu stocăm informațiile cardului dvs.
+          </Text>
+        </View>
+      )}
+
+      {paymentMethod === 'bank' && (
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentInfoTitle}>Instrucțiuni transfer bancar</Text>
+          <Text style={styles.paymentInfoText}>
+            După plasarea comenzii, veți primi instrucțiunile complete pentru transferul bancar,
+            inclusiv contul IBAN și detaliile necesare.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+// Review Step Component
+function ReviewStep({
+  products,
+  shippingInfo,
+  paymentMethod,
+  totalAmount,
+}: {
+  products: CheckoutProduct[];
+  shippingInfo: ShippingInfo;
+  paymentMethod: 'card' | 'bank';
+  totalAmount: number;
+}) {
+  return (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Revizuirea comenzii</Text>
+      <Text style={styles.stepDescription}>
+        Verificați detaliile comenzii înainte de a o plasa.
+      </Text>
+
+      {/* Products */}
+      <View style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>Produse ({products.length})</Text>
+        {products.map((product) => (
+          <View key={product.id} style={styles.reviewProduct}>
+            {product.images.length > 0 ? (
+              <Image source={{ uri: product.images[0] }} style={styles.reviewProductImage} />
+            ) : (
+              <View style={styles.reviewProductImagePlaceholder}>
+                <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
+              </View>
+            )}
+            <View style={styles.reviewProductInfo}>
+              <Text style={styles.reviewProductName} numberOfLines={2}>
+                {product.name}
+              </Text>
+              <Text style={styles.reviewProductPrice}>{formatEUR(product.price)}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Shipping Info */}
+      <View style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>Adresa de livrare</Text>
+        <View style={styles.reviewInfo}>
+          <Text style={styles.reviewInfoText}>{shippingInfo.name}</Text>
+          <Text style={styles.reviewInfoText}>{shippingInfo.address}</Text>
+          <Text style={styles.reviewInfoText}>
+            {shippingInfo.city}, {shippingInfo.postalCode}
+          </Text>
+          <Text style={styles.reviewInfoText}>{shippingInfo.country}</Text>
+          <Text style={styles.reviewInfoText}>{shippingInfo.phone}</Text>
+          <Text style={styles.reviewInfoText}>{shippingInfo.email}</Text>
         </View>
       </View>
 
       {/* Payment Method */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          Metodă de plată
-        </Text>
-
-        <View style={styles.rowGap}>
-          <TouchableOpacity
-            style={[styles.paymentButton, paymentMethod === 'card' ? styles.paymentButtonActive : styles.paymentButtonInactive]}
-            onPress={() => setPaymentMethod('card')}
-          >
-            <Text style={[styles.paymentButtonText, paymentMethod === 'card' ? styles.paymentButtonTextActive : styles.paymentButtonTextInactive]}>
-              Card
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.paymentButton, paymentMethod === 'bank' ? styles.paymentButtonActive : styles.paymentButtonInactive]}
-            onPress={() => setPaymentMethod('bank')}
-          >
-            <Text style={[styles.paymentButtonText, paymentMethod === 'bank' ? styles.paymentButtonTextActive : styles.paymentButtonTextInactive]}>
-              Transfer bancar
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {paymentMethod === 'card' && (
-          <View style={styles.paymentInfoBlock}>
-            <Text style={styles.label}>Detalii card</Text>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoBoxText}>
-                Plata cu cardul se va procesa în siguranță prin intermediul platformei noastre de plăți.
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {paymentMethod === 'bank' && (
-          <View style={styles.paymentInfoBlock}>
-            <Text style={styles.label}>Instrucțiuni transfer bancar</Text>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoBoxText}>
-                Instrucțiunile pentru transfer bancar sunt trimise după plasarea comenzii.
-              </Text>
-            </View>
-          </View>
-        )}
-      </View>
-
-      {/* Order Summary */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>
-          Rezumat comandă
-        </Text>
-
-        {cart.map((item: any) => (
-          <View key={item.id} style={styles.summaryRow}>
-            <View style={styles.flex1}>
-              <Text style={styles.summaryItemName} numberOfLines={1}>
-                {item.name}
-              </Text>
-              <Text style={styles.summaryItemDetails}>
-                {item.quantity} x {formatEUR(item.price)}
-              </Text>
-            </View>
-            <Text style={styles.summaryItemTotal}>{formatEUR(item.price * item.quantity)}</Text>
-          </View>
-        ))}
-
-        <View style={styles.summaryTotalRow}>
-          <Text style={styles.summaryTotalLabel}>Total</Text>
-          <Text style={styles.summaryTotalValue}>{formatEUR(calculateTotal())}</Text>
+      <View style={styles.reviewSection}>
+        <Text style={styles.reviewSectionTitle}>Metodă de plată</Text>
+        <View style={styles.reviewInfo}>
+          <Text style={styles.reviewInfoText}>
+            {paymentMethod === 'card' ? 'Card bancar' : 'Transfer bancar'}
+          </Text>
         </View>
       </View>
 
-      {/* Checkout Button */}
-      <TouchableOpacity
-        style={[styles.checkoutButton, isLoading && styles.checkoutButtonDisabled]}
-        onPress={handleCheckout}
-        disabled={isLoading}
-      >
-        <Text style={styles.checkoutButtonText}>
-          {isLoading ? 'Procesare...' : 'Plasare comandă'}
-        </Text>
-      </TouchableOpacity>
-    </ScrollView>
+      {/* Total */}
+      <View style={styles.reviewTotal}>
+        <Text style={styles.reviewTotalLabel}>Total de plată</Text>
+        <Text style={styles.reviewTotalValue}>{formatEUR(totalAmount)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// Confirmation Step Component
+function ConfirmationStep({ orderId }: { orderId: string | null }) {
+  return (
+    <View style={styles.stepContent}>
+      <View style={styles.successIcon}>
+        <Ionicons name="checkmark-circle" size={80} color={colors.primary} />
+      </View>
+      <Text style={styles.successTitle}>Comandă plasată cu succes!</Text>
+      <Text style={styles.successDescription}>
+        Comanda a fost înregistrată în sistem. Veți primi un email de confirmare cu detaliile
+        comenzii.
+      </Text>
+
+      {orderId && (
+        <View style={styles.orderIdContainer}>
+          <Text style={styles.orderIdLabel}>Număr comandă:</Text>
+          <Text style={styles.orderIdValue}>{orderId}</Text>
+        </View>
+      )}
+
+      <View style={styles.nextSteps}>
+        <Text style={styles.nextStepsTitle}>Ce urmează?</Text>
+        <View style={styles.nextStepItem}>
+          <Ionicons name="mail-outline" size={20} color={colors.primary} />
+          <Text style={styles.nextStepText}>
+            Veți primi un email de confirmare cu detaliile comenzii
+          </Text>
+        </View>
+        <View style={styles.nextStepItem}>
+          <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
+          <Text style={styles.nextStepText}>
+            Vânzătorul vă va contacta pentru a stabili detaliile livrării
+          </Text>
+        </View>
+        <View style={styles.nextStepItem}>
+          <Ionicons name="cube-outline" size={20} color={colors.primary} />
+          <Text style={styles.nextStepText}>
+            Produsele vor fi expediate în cel mai scurt timp
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  cartEmptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  cartEmptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  cartEmptyButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  cartEmptyButtonText: {
-    color: colors.primaryText,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  screen: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  screenContent: {
-    padding: 16,
+  header: {
+    backgroundColor: colors.background,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(231, 183, 60, 0.4)',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    marginBottom: 20,
+    marginTop: 8,
   },
-  card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
+  stepperContainer: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(231, 183, 60, 0.3)',
+    paddingVertical: 12,
+  },
+  stepperScroll: {
+    paddingHorizontal: 16,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleCompleted: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  stepCircleCurrent: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  stepCirclePending: {
+    backgroundColor: 'transparent',
     borderColor: colors.borderColor,
   },
-  cardTitle: {
-    fontSize: 18,
+  stepNumber: {
+    fontSize: 14,
     fontWeight: '600',
+  },
+  stepNumberCurrent: {
+    color: colors.primaryText,
+  },
+  stepNumberPending: {
+    color: colors.textSecondary,
+  },
+  stepLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  stepLabelCurrent: {
+    color: colors.primary,
+  },
+  stepLabelPending: {
+    color: colors.textSecondary,
+  },
+  stepLine: {
+    width: 24,
+    height: 2,
+    marginLeft: 8,
+  },
+  stepLineCompleted: {
+    backgroundColor: colors.primary,
+  },
+  stepLinePending: {
+    backgroundColor: colors.borderColor,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+  },
+  stepContent: {
+    paddingBottom: 16,
+  },
+  stepTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  formGroup: {
     marginBottom: 16,
   },
-  formControl: {
-    marginBottom: 16,
+  formGroupHalf: {
+    flex: 1,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   label: {
     fontSize: 14,
@@ -350,107 +873,263 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderColor,
   },
-  rowGap: {
+  inputError: {
+    borderColor: colors.error,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+  },
+  paymentOption: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  flex1: {
+  paymentOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: 'rgba(231, 183, 60, 0.1)',
+  },
+  paymentOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  paymentButton: {
-    flex: 1,
-    paddingVertical: 12,
+  paymentIcon: {
+    width: 40,
+    height: 40,
     borderRadius: 8,
+    backgroundColor: 'rgba(231, 183, 60, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  paymentButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  paymentButtonInactive: {
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-  },
-  paymentButtonText: {
+  paymentOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
-  paymentButtonTextActive: {
-    color: colors.primaryText,
-  },
-  paymentButtonTextInactive: {
+  paymentOptionDescription: {
+    fontSize: 14,
     color: colors.textSecondary,
   },
-  paymentInfoBlock: {
-    marginTop: 16,
+  paymentRadio: {
+    marginLeft: 12,
   },
-  infoBox: {
+  paymentInfo: {
     backgroundColor: colors.inputBackground,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     marginTop: 8,
   },
-  infoBoxText: {
+  paymentInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  paymentInfoText: {
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
   },
-  summaryRow: {
+  reviewSection: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  reviewSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  reviewProduct: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderColor,
   },
-  summaryItemName: {
-    fontSize: 16,
+  reviewProductImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  reviewProductImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: colors.navy800,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  reviewProductInfo: {
+    flex: 1,
+  },
+  reviewProductName: {
+    fontSize: 14,
     fontWeight: '500',
     color: colors.textPrimary,
+    marginBottom: 4,
   },
-  summaryItemDetails: {
+  reviewProductPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  reviewInfo: {
+    gap: 4,
+  },
+  reviewInfoText: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 4,
+    lineHeight: 20,
   },
-  summaryItemTotal: {
+  reviewTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  reviewTotalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  reviewTotalValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  successIcon: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  successDescription: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  orderIdContainer: {
+    backgroundColor: colors.inputBackground,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  orderIdLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  orderIdValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  nextSteps: {
+    gap: 12,
+  },
+  nextStepsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  nextStepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  nextStepText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(231, 183, 60, 0.3)',
+  },
+  backButton: {
+    flex: 1,
+    backgroundColor: colors.inputBackground,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  backButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  summaryTotalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  nextButton: {
+    flex: 2,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingTop: 16,
-    marginTop: 8,
-    borderTopWidth: 2,
-    borderTopColor: colors.borderColor,
   },
-  summaryTotalLabel: {
+  nextButtonDisabled: {
+    opacity: 0.6,
+  },
+  nextButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primaryText,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  emptyTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 24,
+    textAlign: 'center',
   },
-  summaryTotalValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  checkoutButton: {
+  emptyButton: {
     backgroundColor: colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  checkoutButtonDisabled: {
-    backgroundColor: colors.disabledButton,
-  },
-  checkoutButtonText: {
+  emptyButtonText: {
     color: colors.primaryText,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

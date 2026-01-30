@@ -174,7 +174,7 @@ export default function HelpCenterScreen() {
 
   const handleStartSupport = async () => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fie autentificat pentru a contacta suportul.');
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a contacta suportul.');
       return;
     }
 

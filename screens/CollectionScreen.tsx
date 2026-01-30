@@ -147,7 +147,7 @@ export default function CollectionScreen() {
         <View style={styles.subscriptionCard}>
           <Text style={styles.subscriptionTitle}>Abonament Colecție Necesar</Text>
           <Text style={styles.subscriptionDescription}>
-            Pentru a folosi funcțiile "Colecția Mea" (vizualizare, adăugare și gestionare articole), este nevoie de un abonament activ plătit cu credite.
+            Pentru a folosi funcțiile "Colecția Personală" (vizualizare, adăugare și gestionare articole), este nevoie de un abonament activ plătit cu credite.
           </Text>
           <View style={styles.subscriptionInfo}>
             <Text style={styles.infoText}>• Cost: 50 credite / an</Text>

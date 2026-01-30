@@ -11,6 +11,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
@@ -197,7 +198,7 @@ export default function MonetariaStatuluiScreen() {
 
   const handleAddToCart = async (productId: string, productName: string) => {
     if (!user) {
-      Alert.alert('Autentificare necesară', 'Trebuie să fii autentificat pentru a adăuga produse în coș.');
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a adăuga produse în coș.');
       return;
     }
     try {
@@ -210,6 +211,15 @@ export default function MonetariaStatuluiScreen() {
     } catch (error: any) {
       Alert.alert('Eroare', error.message || 'Nu s-a putut adăuga produsul în coș.');
     }
+  };
+
+  const handleBuyNow = async (productId: string) => {
+    if (!user) {
+      Alert.alert('Autentificare necesară', 'Este necesară autentificarea pentru a cumpăra produse.');
+      return;
+    }
+    // Navigate to checkout with the product
+    navigation.navigate('Checkout', { productId });
   };
 
   // Calculate dynamic filter options based on current selections
@@ -301,8 +311,16 @@ export default function MonetariaStatuluiScreen() {
         }
       >
         <View style={{ marginBottom: 16 }}>
-          <InlineBackButton />
-          <Text style={[styles.title, { marginTop: 12, textAlign: 'left' }]}>Monetăria Statului</Text>
+          <View style={styles.headerRow}>
+            <InlineBackButton />
+            <Text style={[styles.title, { marginTop: 12, textAlign: 'left', flex: 1 }]}>Monetăria Statului</Text>
+            <TouchableOpacity
+              style={styles.cartButton}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <Ionicons name="cart" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.heroSection}>
@@ -462,12 +480,20 @@ export default function MonetariaStatuluiScreen() {
                   </Text>
                   <Text style={styles.productPrice}>{item.price}</Text>
                 </View>
-                <TouchableOpacity 
-                  style={styles.addToCartButton}
-                  onPress={() => handleAddToCart(item.id, item.title)}
-                >
-                  <Text style={styles.addToCartButtonText}>Adaugă în coș</Text>
-                </TouchableOpacity>
+                <View style={styles.productActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.buyNowButton]}
+                    onPress={() => handleBuyNow(item.id)}
+                  >
+                    <Text style={styles.actionButtonText}>Cumpără acum</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.addToCartButton]}
+                    onPress={() => handleAddToCart(item.id, item.title)}
+                  >
+                    <Text style={styles.actionButtonText}>Adaugă în coș</Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -706,6 +732,30 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
   },
+  productActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buyNowButton: {
+    backgroundColor: colors.primary,
+  },
+  addToCartButton: {
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.5)',
+  },
+  actionButtonText: {
+    color: colors.primaryText,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -761,7 +811,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  addToCartButton: {
+  addToCartButtonOld: {
     backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -770,9 +820,21 @@ const styles = StyleSheet.create({
     marginRight: 12,
     marginBottom: 12,
   },
-  addToCartButtonText: {
+  addToCartButtonTextOld: {
     color: colors.primaryText,
     fontSize: 12,
     fontWeight: '600',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cartButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(231, 183, 60, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.4)',
   },
 });

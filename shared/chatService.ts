@@ -597,7 +597,7 @@ async function createChatNotification(
     createdAt: serverTimestamp(),
   });
 
-  // Send push notification
+  // Send browser notification (for web users)
   try {
     await sendPushNotification(
       userId,
@@ -605,12 +605,13 @@ async function createChatNotification(
       message,
       { conversationId, auctionId, notificationId: docRef.id }
     );
-    
-    // Mark as pushed
-    await updateDoc(docRef, { pushed: true });
   } catch (error) {
-    console.error('Failed to send push notification:', error);
+    console.error('Failed to send browser notification:', error);
   }
+
+  // Note: The Firebase Cloud Function (sendChatMessagePush) will handle
+  // sending push notifications to Expo devices and mark the notification as pushed.
+  // We don't mark it as pushed here to allow the Cloud Function to process it.
 }
 
 /**

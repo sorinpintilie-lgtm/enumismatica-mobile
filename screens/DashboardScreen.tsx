@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { logout } from '@shared/auth';
@@ -240,6 +240,11 @@ const DashboardScreen: React.FC = () => {
       textAlign: 'center',
       marginTop: 16,
     },
+    partnerLogo: {
+      width: 60,
+      height: 60,
+      marginBottom: 8,
+    },
   });
 
   if (!user) {
@@ -345,14 +350,22 @@ const DashboardScreen: React.FC = () => {
                   style={dashboardStyles.actionGridButton}
                   onPress={() => setAuthPromptVisible(true)}
                 >
-                  <Ionicons name="people-outline" size={28} color={colors.primary} />
+                  <Image
+                    source={require('../assets/eNumismatica.ro_logo.png')}
+                    style={dashboardStyles.partnerLogo}
+                    resizeMode="contain"
+                  />
                   <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={dashboardStyles.actionGridButton}
                   onPress={() => setAuthPromptVisible(true)}
                 >
-                  <Ionicons name="business-outline" size={28} color={colors.primary} />
+                  <Image
+                    source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
+                    style={dashboardStyles.partnerLogo}
+                    resizeMode="contain"
+                  />
                   <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
                 </TouchableOpacity>
               </View>
@@ -377,7 +390,7 @@ const DashboardScreen: React.FC = () => {
           {/* Header */}
           <View style={dashboardStyles.header}>
             <View>
-              <Text style={dashboardStyles.headerTitle}>Panou de control</Text>
+              <Text style={dashboardStyles.headerTitle}>Cont</Text>
               <Text style={dashboardStyles.headerSubtitle}>Cont activ: {user.email}</Text>
             </View>
           </View>
@@ -565,14 +578,22 @@ const DashboardScreen: React.FC = () => {
               style={dashboardStyles.actionGridButton}
               onPress={() => navigation.navigate('Pronumismatica')}
             >
-              <Ionicons name="people-outline" size={28} color={colors.primary} />
+              <Image
+                source={require('../assets/eNumismatica.ro_logo.png')}
+                style={dashboardStyles.partnerLogo}
+                resizeMode="contain"
+              />
               <Text style={dashboardStyles.actionGridText}>Asociația Pronumismatica</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={dashboardStyles.actionGridButton}
               onPress={() => navigation.navigate('MonetariaStatului')}
             >
-              <Ionicons name="business-outline" size={28} color={colors.primary} />
+              <Image
+                source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
+                style={dashboardStyles.partnerLogo}
+                resizeMode="contain"
+              />
               <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
             </TouchableOpacity>
           </View>

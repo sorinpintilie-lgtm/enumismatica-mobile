@@ -173,7 +173,7 @@ const MessagesScreen: React.FC = () => {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, padding: 16 }}>
         <ActivityIndicator size="large" color={colors.primary} />
         <Text style={{ marginTop: 16, color: colors.textSecondary, textAlign: 'center' }}>Autentificare necesară</Text>
-        <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 14, textAlign: 'center' }}>Trebuie să fii autentificat pentru a accesa mesajele tale.</Text>
+        <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 14, textAlign: 'center' }}>Este necesară autentificarea pentru a accesa mesajele.</Text>
         <TouchableOpacity
           style={[sharedStyles.button, { backgroundColor: colors.primary, marginTop: 16 }]}
           onPress={() => navigation.navigate('Login')}
@@ -379,6 +379,7 @@ const MessagesScreen: React.FC = () => {
               // Conversations List View
               <View style={styles.mobileConversationsContainer}>
                 <View style={styles.conversationsHeader}>
+                  <InlineBackButton />
                   <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesajele Mele</Text>
                   <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]}>
                     Conversații private cu vânzătorii și cumpărătorii
@@ -558,6 +559,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(231, 183, 60, 0.3)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   conversationsHeaderTitle: {
     fontSize: 20,

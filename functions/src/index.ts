@@ -13,6 +13,9 @@ interface NotificationDoc {
   message?: string;
   conversationId?: string;
   auctionId?: string;
+  offerId?: string;
+  itemType?: string;
+  itemId?: string;
 }
 
 interface DeviceRecord {
@@ -28,6 +31,9 @@ interface ExpoPushMessage {
     auctionId: string | null;
     notificationId: string | null;
     type: string | undefined;
+    offerId?: string | null;
+    itemType?: string | null;
+    itemId?: string | null;
   };
 }
 
@@ -80,9 +86,10 @@ async function sendExpoPushNotifications(
 }
 
 /**
- * Send Expo push notifications for new chat message notifications.
+ * Send Expo push notifications for all notification types.
+ * Handles: new_message, outbid, auction_won, auction_ended_no_win
  */
-export const sendChatMessagePush = onDocumentCreated(
+export const sendNotificationPush = onDocumentCreated(
   {
     region: "europe-west1",
     document: "users/{userId}/notifications/{notificationId}",
@@ -111,23 +118,54 @@ export const sendChatMessagePush = onDocumentCreated(
       return;
     }
 
-    if (data.type !== "new_message") {
-      logger.info("Skipping non-message notification", {
-        userId: params.userId,
-        notificationId: params.notificationId,
-        type: data.type,
-      });
-      return;
+    let title: string;
+    let body: string;
+
+    // Determine title and body based on notification type
+    switch (data.type) {
+      case "new_message":
+        title = data.senderName
+          ? `Mesaj nou de la ${data.senderName}`
+          : "Mesaj nou";
+        body = data.message || "Ai primit un mesaj nou.";
+        break;
+      case "outbid":
+        title = "Ai fost depășit la licitație";
+        body = data.message || "Cineva a plasat o licitare mai mare.";
+        break;
+      case "auction_won":
+        title = "Ai câștigat licitația!";
+        body = data.message || "Felicitări! Ai câștigat licitația.";
+        break;
+      case "auction_ended_no_win":
+        title = "Licitație încheiată";
+        body = data.message || "Licitația s-a încheiat.";
+        break;
+      case "conversation_started":
+        title = data.senderName
+          ? `Conversație nouă de la ${data.senderName}`
+          : "Conversație nouă";
+        body = data.message || "Ai o conversație nouă.";
+        break;
+      case "new_offer":
+        title = data.senderName
+          ? `Ofertă nouă de la ${data.senderName}`
+          : "Ofertă nouă";
+        body = data.message || "Ai primit o ofertă nouă.";
+        break;
+      default:
+        logger.info("Skipping unknown notification type", {
+          userId: params.userId,
+          notificationId: params.notificationId,
+          type: data.type,
+        });
+        return;
     }
 
-    const title = data.senderName
-      ? `Mesaj nou de la ${data.senderName}`
-      : "Mesaj nou";
-    const body = data.message || "Ai primit un mesaj nou.";
-
-    logger.info("Processing chat message notification", {
+    logger.info("Processing notification", {
       userId: params.userId,
       notificationId: params.notificationId,
+      type: data.type,
       title,
       body,
     });
@@ -169,6 +207,9 @@ export const sendChatMessagePush = onDocumentCreated(
           auctionId: data.auctionId || null,
           notificationId: snap?.id || null,
           type: data.type,
+          offerId: data.offerId || null,
+          itemType: data.itemType || null,
+          itemId: data.itemId || null,
         },
       });
     });

@@ -113,7 +113,7 @@ function WebRootLayoutFix() {
 
 const TAB_CONFIG: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
   ProductCatalog: { label: 'Magazin', icon: 'storefront-outline' },
-  Dashboard: { label: 'Dashboard', icon: 'person-circle-outline' },
+  Dashboard: { label: 'Cont', icon: 'person-circle-outline' },
   AuctionList: { label: 'Licitații', icon: 'pricetag-outline' },
   Notifications: { label: 'Notificări', icon: 'notifications-outline' },
 };

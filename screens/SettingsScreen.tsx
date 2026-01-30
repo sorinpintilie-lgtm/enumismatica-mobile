@@ -65,7 +65,7 @@ const SettingsScreen: React.FC = () => {
     route: SettingsRoute;
     icon: keyof typeof Ionicons.glyphMap;
   }> = [
-    { title: 'Contractele mele', subtitle: 'Descarcă contracte semnate (via web)', route: 'Contracts', icon: 'document-text-outline' },
+    { title: 'Contracte', subtitle: 'Descarcă contracte semnate (via web)', route: 'Contracts', icon: 'document-text-outline' },
     { title: 'Asociația Pronumismatica', subtitle: 'Formular & informații (via web)', route: 'Pronumismatica', icon: 'people-outline' },
     { title: 'Monetăria Statului', subtitle: 'Catalog (via web)', route: 'MonetariaStatului', icon: 'business-outline' },
   ];

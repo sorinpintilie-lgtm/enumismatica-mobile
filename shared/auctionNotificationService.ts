@@ -103,25 +103,9 @@ export async function createAuctionNotification(
         requireInteraction: false,
       });
 
-      // Mark as pushed so we know a browser notification was attempted
-      await updateDoc(docRef, {
-        pushed: true,
-        updatedAt: Timestamp.fromDate(new Date()),
-      });
-
-      // Mark unified notification as pushed (best-effort)
-      try {
-        const unifiedSnapshot = await getDocs(
-          query(unifiedRef, orderBy('createdAt', 'desc'), limit(1))
-        );
-        if (!unifiedSnapshot.empty) {
-          await updateDoc(unifiedSnapshot.docs[0].ref, {
-            pushed: true,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to mark unified notification as pushed:', err);
-      }
+      // Note: We don't mark as pushed here to allow Firebase Cloud Functions
+      // to process the notification and send push notifications to Expo devices.
+      // The Cloud Function will mark it as pushed after successfully sending.
     }
   } catch (error) {
     console.error('Failed to show browser auction notification:', error);
