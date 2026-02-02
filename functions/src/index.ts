@@ -115,8 +115,48 @@ export const sendNotificationPush = onDocumentCreated(
       return;
     }
 
-    if (data.pushed === true) {
-      logger.info("Notification already pushed", {
+    // Use a transaction to prevent race conditions and duplicate notifications
+    let shouldSendPush = false;
+    try {
+      await admin.firestore().runTransaction(async (transaction) => {
+        const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
+        const notificationDoc = await transaction.get(notificationRef);
+
+        if (!notificationDoc.exists) {
+          logger.info("Notification no longer exists", {
+            userId: params.userId,
+            notificationId: params.notificationId,
+          });
+          return;
+        }
+
+        const notificationData = notificationDoc.data() as NotificationDoc;
+
+        // Check if already pushed to prevent duplicates
+        if (notificationData.pushed === true) {
+          logger.info("Notification already pushed (transaction)", {
+            userId: params.userId,
+            notificationId: params.notificationId,
+          });
+          return;
+        }
+
+        // Mark as pushed atomically - this prevents race conditions
+        transaction.update(notificationRef, { pushed: true });
+        shouldSendPush = true;
+      });
+    } catch (error) {
+      logger.error("Transaction failed", {
+        error: (error as any)?.message,
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+      return;
+    }
+
+    // Only send push notification if we successfully claimed it in the transaction
+    if (!shouldSendPush) {
+      logger.info("Skipping push send - notification already claimed by another instance", {
         userId: params.userId,
         notificationId: params.notificationId,
       });
@@ -173,7 +213,6 @@ export const sendNotificationPush = onDocumentCreated(
       type: data.type,
       title,
       body,
-      pushed: data.pushed,
     });
 
     const devicesSnap = await admin
@@ -236,14 +275,9 @@ export const sendNotificationPush = onDocumentCreated(
 
     await sendExpoPushNotifications(messages);
 
-    if (snap?.ref) {
-      await snap.ref.update({
-        pushed: true,
-      });
-      logger.info("Marked notification as pushed", {
-        userId: params.userId,
-        notificationId: params.notificationId,
-      });
-    }
+    logger.info("Notification sent successfully", {
+      userId: params.userId,
+      notificationId: params.notificationId,
+    });
   }
 );
