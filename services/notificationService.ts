@@ -108,8 +108,15 @@ export async function getPushToken() {
     return '';
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+  // Try to get project ID from Constants, with fallback to hardcoded value
+  let projectId = Constants.expoConfig?.extra?.eas?.projectId
     ?? Constants.easConfig?.projectId;
+
+  // Fallback to hardcoded project ID if Constants doesn't have it (common in standalone apps)
+  if (!projectId) {
+    console.log('[notificationService] Project ID not found in Constants, using fallback');
+    projectId = 'f4fa174b-8702-4031-b9b3-e72887532885';
+  }
 
   console.log('[notificationService] Getting push token for platform:', Platform.OS);
   console.log('[notificationService] Project ID:', projectId);
@@ -119,11 +126,12 @@ export async function getPushToken() {
   if (!projectId) {
     console.error('[notificationService] No project ID found in app config');
     console.error('[notificationService] This will prevent push notifications from working');
+    console.error('[notificationService] Please ensure that project ID is set in app.json under extra.eas.projectId');
     return '';
   }
 
   try {
-    console.log('[notificationService] Calling Notifications.getExpoPushTokenAsync...');
+    console.log('[notificationService] Calling Notifications.getExpoPushTokenAsync with projectId:', projectId);
     const token = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
