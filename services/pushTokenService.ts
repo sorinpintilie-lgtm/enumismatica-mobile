@@ -19,18 +19,25 @@ export async function registerPushTokenForUser(userId: string) {
   }
 
   console.log('[pushTokenService] Starting push token registration for user:', userId);
+  console.log('[pushTokenService] Platform:', Platform.OS);
 
   const granted = await requestNotificationPermissions();
   if (!granted) {
-    console.log('[pushTokenService] Notification permissions not granted');
+    console.log('[pushTokenService] Notification permissions not granted - cannot register push token');
+    console.log('[pushTokenService] This is a critical issue - push notifications will not work');
     return;
   }
 
+  console.log('[pushTokenService] Permissions granted, proceeding to get push token...');
+
   const expoPushToken = await getPushToken();
   if (!expoPushToken) {
-    console.log('[pushTokenService] No expoPushToken retrieved');
+    console.log('[pushTokenService] No expoPushToken retrieved - cannot register device');
+    console.log('[pushTokenService] This is a critical issue - push notifications will not work');
     return;
   }
+
+  console.log('[pushTokenService] Push token retrieved successfully, registering device...');
 
   // Use a simpler document ID to avoid issues with special characters
   const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
@@ -53,6 +60,7 @@ export async function registerPushTokenForUser(userId: string) {
     await setDoc(deviceRef, payload, { merge: true });
     console.log('[pushTokenService] Successfully registered device token for user:', userId);
     console.log('[pushTokenService] Device document path:', `users/${userId}/devices/${deviceDocId}`);
+    console.log('[pushTokenService] Device is now ready to receive push notifications');
   } catch (error) {
     console.error('[pushTokenService] Failed to register device token:', error);
     console.error('[pushTokenService] Error details:', {
@@ -61,6 +69,7 @@ export async function registerPushTokenForUser(userId: string) {
       userId,
       deviceDocId,
     });
+    console.error('[pushTokenService] This is a critical issue - push notifications will not work');
   }
 }
 

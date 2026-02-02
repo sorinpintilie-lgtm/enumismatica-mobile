@@ -13,22 +13,54 @@ if (Platform.OS !== 'web') {
       shouldShowList: true,
     }),
   });
+}
 
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'Default',
-      description: 'Notificări implicite pentru eNumismatica',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#e7b73c',
-      sound: 'default',
-      enableVibrate: true,
-      showBadge: false,
-    }).then(() => {
+// Function to ensure notification channel is created (call this after app is mounted)
+export async function ensureNotificationChannelCreated() {
+  if (Platform.OS !== 'android') {
+    console.log('[notificationService] Not Android, skipping channel creation');
+    return;
+  }
+
+  console.log('[notificationService] Ensuring Android notification channel is created...');
+
+  try {
+    // First, try to get the existing channel
+    const existingChannel = await Notifications.getNotificationChannelAsync('default');
+    console.log('[notificationService] Existing channel found:', JSON.stringify(existingChannel, null, 2));
+
+    // If channel exists, update it to ensure it has the correct settings
+    if (existingChannel) {
+      console.log('[notificationService] Updating existing notification channel...');
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Default',
+        description: 'Notificări implicite pentru eNumismatica',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#e7b73c',
+        sound: 'default',
+        enableVibrate: true,
+        showBadge: false,
+      });
+      console.log('[notificationService] Android notification channel updated successfully');
+    } else {
+      // Create new channel if it doesn't exist
+      console.log('[notificationService] Creating new Android notification channel...');
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Default',
+        description: 'Notificări implicite pentru eNumismatica',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#e7b73c',
+        sound: 'default',
+        enableVibrate: true,
+        showBadge: false,
+      });
       console.log('[notificationService] Android notification channel created successfully');
-    }).catch((error) => {
-      console.error('[notificationService] Failed to create Android notification channel:', error);
-    });
+    }
+  } catch (error) {
+    console.error('[notificationService] Failed to ensure notification channel:', error);
+    console.error('[notificationService] Channel creation error details:', JSON.stringify(error, null, 2));
   }
 }
 
@@ -45,17 +77,21 @@ export async function requestNotificationPermissions() {
   if (Platform.OS === 'android') {
     const { status } = await Notifications.getPermissionsAsync();
     console.log('[notificationService] Android current permission status:', status);
+    console.log('[notificationService] Android permission canAskAgain:', (await Notifications.getPermissionsAsync()).canAskAgain);
 
     if (status !== 'granted') {
       console.log('[notificationService] Requesting Android notification permissions...');
-      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      const { status: newStatus, canAskAgain } = await Notifications.requestPermissionsAsync();
       console.log('[notificationService] Android new permission status:', newStatus);
+      console.log('[notificationService] Android canAskAgain after request:', canAskAgain);
 
       if (newStatus !== 'granted') {
         console.log('[notificationService] Failed to get push token for push notification!');
+        console.log('[notificationService] Permission denied - notifications will not work');
         return false;
       }
     }
+    console.log('[notificationService] Android notification permissions granted successfully');
     return true;
   }
 
@@ -68,7 +104,7 @@ export async function requestNotificationPermissions() {
 // Get push token
 export async function getPushToken() {
   if (Platform.OS === 'web') {
-    console.log('Push notifications not supported on web');
+    console.log('[notificationService] Push notifications not supported on web');
     return '';
   }
 
@@ -77,20 +113,27 @@ export async function getPushToken() {
 
   console.log('[notificationService] Getting push token for platform:', Platform.OS);
   console.log('[notificationService] Project ID:', projectId);
+  console.log('[notificationService] Constants.expoConfig:', JSON.stringify(Constants.expoConfig, null, 2));
+  console.log('[notificationService] Constants.easConfig:', JSON.stringify(Constants.easConfig, null, 2));
 
   if (!projectId) {
     console.error('[notificationService] No project ID found in app config');
+    console.error('[notificationService] This will prevent push notifications from working');
     return '';
   }
 
   try {
+    console.log('[notificationService] Calling Notifications.getExpoPushTokenAsync...');
     const token = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
-    console.log('[notificationService] Push token retrieved:', token.data ? `${token.data.substring(0, 20)}...` : 'null');
+    console.log('[notificationService] Push token retrieved successfully:', token.data ? `${token.data.substring(0, 20)}...` : 'null');
+    console.log('[notificationService] Full token data:', JSON.stringify(token, null, 2));
     return token.data;
   } catch (error) {
     console.error('[notificationService] Error getting push token:', error);
+    console.error('[notificationService] Error details:', JSON.stringify(error, null, 2));
+    console.error('[notificationService] This will prevent push notifications from working');
     return '';
   }
 }
@@ -184,34 +227,42 @@ export async function cancelAuctionNotifications(auctionId: string) {
 // Initialize notification listeners
 export function setupNotificationListeners() {
   if (Platform.OS === 'web') {
-    console.log('Push notifications not supported on web');
+    console.log('[notificationService] Push notifications not supported on web');
     return () => {};
   }
 
+  console.log('[notificationService] Setting up notification listeners...');
+
   // Handle incoming push notifications from Expo
   const pushTokenListener = Notifications.addPushTokenListener((token) => {
-    console.log('Push token received:', token);
+    console.log('[notificationService] Push token received:', token);
+    console.log('[notificationService] Push token data:', JSON.stringify(token, null, 2));
     // Token is automatically registered by pushTokenService
   });
 
   // Handle notification received while app is foregrounded
   const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-    console.log('Notification received:', notification);
+    console.log('[notificationService] Notification received while app is foregrounded:', notification);
+    console.log('[notificationService] Notification details:', JSON.stringify(notification, null, 2));
   });
 
   // Handle notification response (when user taps on notification)
   const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-    console.log('Notification response:', response);
+    console.log('[notificationService] Notification response (user tapped):', response);
+    console.log('[notificationService] Response details:', JSON.stringify(response, null, 2));
     const data = response.notification.request.content.data;
 
     // Handle navigation based on notification type
     if (data?.auctionId) {
       // Navigate to auction details - this would need to be handled by navigation context
-      console.log('Navigate to auction:', data.auctionId);
+      console.log('[notificationService] Navigate to auction:', data.auctionId);
     }
   });
 
+  console.log('[notificationService] Notification listeners set up successfully');
+
   return () => {
+    console.log('[notificationService] Cleaning up notification listeners...');
     pushTokenListener.remove();
     notificationListener.remove();
     responseListener.remove();

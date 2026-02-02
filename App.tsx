@@ -24,7 +24,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ToastProvider from './context/ToastContext';
 import type { RootStackParamList } from './navigationTypes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { setupNotificationListeners } from './services/notificationService';
+import { setupNotificationListeners, ensureNotificationChannelCreated } from './services/notificationService';
 
 // Import all screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -342,6 +342,11 @@ function AppContent() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    // Ensure notification channel is created (Android only)
+    ensureNotificationChannelCreated().catch((error) => {
+      console.error('[App] Failed to ensure notification channel:', error);
+    });
+
     // Setup notification listeners for push notifications
     const cleanup = setupNotificationListeners();
 
