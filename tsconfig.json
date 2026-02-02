@@ -8,7 +8,9 @@
     "allowSyntheticDefaultImports": true,
     "paths": {
       "@shared/*": ["./shared/*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types"],
+    "types": []
   },
   "include": [
     "**/*.ts",
