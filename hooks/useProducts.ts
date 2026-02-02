@@ -110,7 +110,7 @@ export function useProducts(
     const timeoutId = setTimeout(() => {
       setError('Timeout: Unable to load products. Please check your connection.');
       setLoading(false);
-    }, 15000); // 15 second timeout
+    }, 60000); // 60 second timeout
 
     const unsubscribe = onSnapshot(
       q,

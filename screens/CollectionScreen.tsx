@@ -5,7 +5,6 @@ import { CollectionItem } from '@shared/types';
 import { subscribeToUserCollection, getCollectionStats, addCollectionItem, updateCollectionItem, deleteCollectionItem, getCollectionItem } from '@shared/collectionService';
 import { getUserCredits, payCollectionSubscriptionWithCredits } from '@shared/creditService';
 import { uploadMultipleImages } from '@shared/storageService';
-import { format } from 'date-fns';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import InlineBackButton from '../components/InlineBackButton';
 import * as ImagePicker from 'expo-image-picker';

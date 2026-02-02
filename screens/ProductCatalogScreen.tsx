@@ -482,6 +482,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 
   return (
     <TouchableOpacity
+      key={`product-card-${product.id}`}
       style={styles.card}
       onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
     >
@@ -489,6 +490,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <View style={styles.cardImageContainer}>
         {product.images && product.images.length > 0 ? (
           <Image
+            key={`product-image-${product.id}`}
             source={{ uri: product.images[0] }}
             style={styles.cardImage}
             resizeMode="contain"

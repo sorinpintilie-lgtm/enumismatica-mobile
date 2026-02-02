@@ -13,6 +13,7 @@ import { formatEUR } from '../utils/currency';
 import { useConversations } from '../hooks/useChat';
 import { useCollection } from '../hooks/useCollection';
 import AuthPromptModal from '../components/AuthPromptModal';
+import crashlyticsService from '../shared/crashlyticsService';
 
 
 const DashboardScreen: React.FC = () => {
@@ -598,6 +599,32 @@ const DashboardScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Test Crashlytics Button */}
+        <TouchableOpacity
+          style={[dashboardStyles.logoutButton, { backgroundColor: '#1f2937' }]}
+          onPress={() => {
+            console.log('Testing Crashlytics...');
+            crashlyticsService.log('Testing Crashlytics from DashboardScreen');
+            
+            // Test log error
+            try {
+              throw new Error('Crashlytics test error');
+            } catch (error) {
+              crashlyticsService.logError(error);
+              console.log('Crashlytics test error logged');
+            }
+            
+            // Test user properties
+            crashlyticsService.setUserProperties({
+              test: 'true',
+              screen: 'Dashboard',
+              timestamp: new Date().toISOString()
+            });
+          }}
+        >
+          <Text style={dashboardStyles.logoutButtonText}>Test Crashlytics</Text>
+        </TouchableOpacity>
 
         {/* Logout Button at Bottom */}
         <TouchableOpacity

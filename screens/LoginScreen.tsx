@@ -439,10 +439,10 @@ const LoginScreen: React.FC = () => {
 
       await startSessionOnServer();
 
-      // Trigger AuthContext to re-check authentication status
-      await refreshAuth();
-
-      // Navigation will be handled by AuthContext
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      });
     } catch (err: any) {
       setTwoFactorError(err.message || 'Cod invalid. Se recomandă reîncercarea.');
       // Send login attempt notification on failed 2FA

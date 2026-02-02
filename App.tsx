@@ -25,6 +25,7 @@ import ToastProvider from './context/ToastContext';
 import type { RootStackParamList } from './navigationTypes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { setupNotificationListeners, ensureNotificationChannelCreated } from './services/notificationService';
+import crashlyticsService from './shared/crashlyticsService';
 
 // Import all screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -345,13 +346,54 @@ function AppContent() {
     // Ensure notification channel is created (Android only)
     ensureNotificationChannelCreated().catch((error) => {
       console.error('[App] Failed to ensure notification channel:', error);
+      crashlyticsService.logError(error);
     });
 
     // Setup notification listeners for push notifications
     const cleanup = setupNotificationListeners();
 
+    // Setup global error handler
+    const originalError = console.error;
+    console.error = (error, ...args) => {
+      originalError(error, ...args);
+      // Prevent recursion by checking if we're already handling this error
+      if (error && typeof error === 'object' && error.crashlyticsHandled) {
+        return;
+      }
+      try {
+        crashlyticsService.logError(error);
+      } catch (e) {
+        console.warn('Failed to log error to Crashlytics:', e);
+      }
+    };
+
+    // Setup unhandled promise rejection handler
+    const handleUnhandledRejection = (error: any) => {
+      console.error('[App] Unhandled promise rejection:', error);
+      crashlyticsService.logError(error);
+    };
+
+    // Setup global error listener
+    const handleGlobalError = (error: any, stackTrace: any) => {
+      console.error('[App] Global error:', error);
+      crashlyticsService.logError(error);
+    };
+
+    // Register handlers
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      // For React Native error handling
+      const originalOnError = global.onerror;
+      global.onerror = (message, source, lineno, colno, error) => {
+        crashlyticsService.logError(error || message);
+        if (originalOnError) {
+          originalOnError(message, source, lineno, colno, error);
+        }
+      };
+    }
+
     return () => {
       cleanup();
+      console.error = originalError;
     };
   }, []);
 

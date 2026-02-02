@@ -77,17 +77,22 @@ export async function unregisterPushTokenForUser(userId: string) {
   if (!userId) return;
   if (Platform.OS === 'web') return;
 
-  const expoPushToken = await getPushToken();
-  if (!expoPushToken) return;
-
-  // Use the same document ID format as registration
-  const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
-  const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
-
   try {
+    // Get the current device's push token
+    const expoPushToken = await getPushToken();
+    if (!expoPushToken) {
+      console.log('[pushTokenService] No expoPushToken retrieved - skipping unregistration');
+      return;
+    }
+
+    // Use the same document ID format as registration
+    const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
+    const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
+
     await deleteDoc(deviceRef);
     console.log('[pushTokenService] Successfully removed device token for user:', userId);
   } catch (error) {
-    console.error('[pushTokenService] Failed to remove device token:', error);
+    console.warn('[pushTokenService] Failed to unregister push token (ignoring):', error);
+    // Do not rethrow - this should not prevent login/logout
   }
 }

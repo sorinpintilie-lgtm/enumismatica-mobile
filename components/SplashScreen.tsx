@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { useAuth } from '../context/AuthContext';
-import { preloadAppData, AppDataLoadProgress } from '../shared/appDataLoader';
 
 type SplashScreenProps = {
   onFinish?: () => void;
@@ -13,7 +12,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [videoError, setVideoError] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
-  const [loadProgress, setLoadProgress] = useState<AppDataLoadProgress | null>(null);
   const { user } = useAuth();
 
   const handleVideoError = () => {
@@ -34,15 +32,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   };
 
   const loadAppData = async () => {
-    console.log('[SplashScreen] Starting app data preload');
-    await preloadAppData(
-      user?.uid || null,
-      (progress) => {
-        setLoadProgress(progress);
-        console.log(`[SplashScreen] Loading progress: ${progress.progress}% - ${progress.step}`);
-      }
-    );
-    console.log('[SplashScreen] App data preload complete');
+    console.log('[SplashScreen] Skipping app data preload');
+    // Simulate a short delay for better UX
+    await new Promise(resolve => setTimeout(resolve, 500));
     if (onFinish) {
       onFinish();
     }
@@ -81,12 +73,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         <Text style={styles.tagline}>Vânzarea și licitațiile de monede rare</Text>
         <View style={styles.footer}>
           <ActivityIndicator size="large" color="#e7b73c" />
-          <Text style={styles.footerText}>
-            {loadProgress ? loadProgress.step : 'Se încarcă aplicația...'}
-          </Text>
-          {loadProgress && (
-            <Text style={styles.progressText}>{loadProgress.progress}%</Text>
-          )}
+          <Text style={styles.footerText}>Se încarcă aplicația...</Text>
         </View>
       </View>
     );
@@ -117,12 +104,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       <View style={styles.footer}>
         <Text style={styles.topTagline}>Magazin • Licitații • Colecții</Text>
         <ActivityIndicator size="large" color="#e7b73c" />
-        <Text style={styles.footerText}>
-          {loadProgress ? loadProgress.step : 'Se încarcă experiența numismatică...'}
-        </Text>
-        {loadProgress && (
-          <Text style={styles.progressText}>{loadProgress.progress}%</Text>
-        )}
+        <Text style={styles.footerText}>Se încarcă experiența numismatică...</Text>
       </View>
     </View>
   );

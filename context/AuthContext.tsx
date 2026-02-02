@@ -5,6 +5,7 @@ import { registerPushTokenForUser, unregisterPushTokenForUser } from '../service
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import crashlyticsService from '@shared/crashlyticsService';
 
 interface AuthContextType {
   user: User | null;
@@ -106,6 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           setPreviousUserId(null);
         }
+        // Clear user info from Crashlytics
+        crashlyticsService.setUserId('');
         setUser(null);
         setTwoFactorRequired(false);
         // Let minimumLoadingTime handle loading state for unauthenticated users
@@ -123,6 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setPreviousUserId(currentUser.uid);
       console.log('[AuthContext] Set previousUserId to:', currentUser.uid);
+      // Set user ID in Crashlytics for better crash reporting
+      crashlyticsService.setUserId(currentUser.uid);
       await check2FAStatus(currentUser);
 
       // Clear timeout if authentication completes before minimum time

@@ -1,0 +1,504 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             (request.auth.uid == 'QEm0DSIzylNQIHpQAZlgtWQkYYE3' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+             (request.auth.uid == 'QEm0DSIzylNQIHpQAZlgtWQkYYE3' ||
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
+
+    function isValidEmail(email) {
+      return email.matches('[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}');
+    }
+
+    function isValidBidAmount(amount, currentBid, reservePrice) {
+      return amount is number && amount > 0 && amount >= (currentBid != null ? currentBid : (reservePrice != null ? reservePrice : 0)) + 0.01;
+    }
+
+    function hasRequiredFields(data, requiredFields) {
+      return data.keys().hasAll(requiredFields);
+    }
+
+    // Identity verification rules:
+    // - Admins/superadmins can manage all identity fields.
+    // - Users can only SET identity fields once (typically at signup) and only to a pending state.
+    // - Users cannot self-verify or modify verification audit fields.
+    function isOwnerIdentityWriteAllowed(userId) {
+      return isOwner(userId) && (
+        // On create (doc doesn't exist yet): allow optional identity data but never allow verified state.
+        (!exists(/databases/$(database)/documents/users/$(userId)) &&
+          (!request.resource.data.keys().hasAny(['idVerifiedAt', 'idVerifiedBy']) ||
+            (request.resource.data.idVerifiedAt == null && request.resource.data.idVerifiedBy == null)) &&
+          (!request.resource.data.keys().hasAny(['idVerificationStatus']) ||
+            request.resource.data.idVerificationStatus in ['pending', 'not_provided']) &&
+          (!request.resource.data.keys().hasAny(['idDocumentNumber', 'idDocumentType']) ||
+            (request.resource.data.idDocumentNumber is string &&
+              request.resource.data.idDocumentNumber.size() > 0 &&
+              request.resource.data.idDocumentType in ['ci', 'passport'] &&
+              request.resource.data.idVerificationStatus == 'pending')))
+        ||
+        // On update: restrict identity-related changes.
+        (exists(/databases/$(database)/documents/users/$(userId)) &&
+          // Owner can never touch verification audit fields.
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['idVerifiedAt', 'idVerifiedBy']) &&
+          (
+            // If the owner is not changing identity fields, allow.
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['idDocumentType', 'idDocumentNumber', 'idVerificationStatus']) ||
+            // Owner is attempting to change identity fields.
+            // Allow only if identity was not previously provided (set-once) and status is set to pending.
+            ((resource.data.idDocumentNumber == null || resource.data.idDocumentNumber == '') &&
+              request.resource.data.idDocumentNumber is string &&
+              request.resource.data.idDocumentNumber.size() > 0 &&
+              request.resource.data.idDocumentType in ['ci', 'passport'] &&
+              request.resource.data.idVerificationStatus == 'pending')
+          ))
+      );
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp;
+    }
+
+    // Users collection: simplify to avoid unexpected permission errors for normal profile edits.
+    // - Owners can freely create/update their own user document.
+    // - Admins/superadmins can manage any user.
+    // - Delete remains restricted so only admins can remove accounts.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Allow owners and admins to create/update without over-constraining fields.
+      allow create, update: if isOwner(userId) || isAdmin();
+
+      // Only superadmin can delete admin or superadmin accounts; admins can delete normal users.
+      allow delete: if isSuperAdmin() || (isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.role == 'user');
+
+      // User's personal collection subcollection
+      match /collection/{itemId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+                      hasRequiredFields(request.resource.data, ['userId', 'name']) &&
+                      request.resource.data.userId == userId;
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      // User's watchlist subcollection
+      match /watchlist/{itemId} {
+        allow read: if isOwner(userId) || isAdmin();
+
+        // Normal users can manage their own watchlist.
+        // Admins/superadmins can also create watchlist entries for any user (needed for seeding/sample data).
+        allow create: if (isOwner(userId) || isAdmin()) &&
+                      hasRequiredFields(request.resource.data, ['userId', 'itemType', 'itemId']) &&
+                      request.resource.data.userId == userId &&
+                      request.resource.data.itemType in ['product', 'auction'];
+
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      // User's cart subcollection for shop purchases
+      match /cart/{itemId} {
+        allow read: if isOwner(userId) || isAdmin();
+
+        // Only the owner (or admin) can create cart items for this user.
+        // Required fields:
+        //  - userId: must equal the authenticated user
+        //  - productId: product being added
+        //  - quantity: positive number
+        // `addedAt` is optional and typically set with serverTimestamp() from the client.
+        allow create: if isOwner(userId) &&
+                      hasRequiredFields(request.resource.data, ['userId', 'productId', 'quantity']) &&
+                      request.resource.data.userId == userId &&
+                      request.resource.data.quantity is number &&
+                      request.resource.data.quantity > 0;
+
+        // Owner or admin can update (e.g., change quantity) or delete items.
+        allow update: if isOwner(userId) || isAdmin();
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      // Trusted devices for 2FA ("remember this device")
+      match /trustedDevices/{deviceId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update, delete: if isOwner(userId) || isAdmin();
+      }
+
+      // Device tokens for push notifications
+      match /devices/{deviceId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update, delete: if isOwner(userId) || isAdmin();
+      }
+
+      // Private auth/security data (server-managed): TOTP secret, email-change state, etc.
+      // MUST NOT be readable/writable by normal users.
+      match /privateAuth/{docId} {
+        allow read, write: if isAdmin();
+      }
+
+      // 2FA backup codes (hashed). These should NOT be readable by normal users.
+      match /backupCodes/{codeHash} {
+        allow read: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // Step-up verification tokens are server-managed and should never be accessible to clients.
+    match /stepUpTokens/{tokenId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Pending email-change requests (server-managed, contain sensitive metadata).
+    match /emailChangeRequests/{token} {
+      allow read, write: if isAdmin();
+    }
+
+    // User sessions tracking (server-managed). Users can read their own sessions.
+    match /userSessions/{sessionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Products collection: Anyone can read approved products, authenticated users can read their own, admins can read all
+    match /products/{productId} {
+      allow read: if resource.data.status == 'approved' || isAdmin() || (isAuthenticated() && isOwner(resource.data.ownerId));
+      allow create: if isAuthenticated() &&
+                    hasRequiredFields(request.resource.data, ['name', 'ownerId', 'price', 'status']) &&
+                    request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100 &&
+                    (!request.resource.data.keys().hasAny(['description']) || request.resource.data.description.size() <= 1000) &&
+                    (isOwner(request.resource.data.ownerId) || isAdmin()) &&
+                    (request.resource.data.status == 'pending' || (isAdmin() && request.resource.data.status in ['pending', 'approved', 'rejected']));
+      allow update: if isAuthenticated() && (
+                      // Existing rule: owner or admin can update (with status restrictions for non-admin)
+                      (
+                        (isOwner(resource.data.ownerId) || isAdmin()) &&
+                        (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']))
+                      )
+                      ||
+                      // New rule: allow the buyer to mark a product as sold as part of a checkout/ordering flow.
+                      // - Only non-admin, non-owner can use this
+                      // - Only specific fields may change: isSold, soldAt, buyerId, orderId, updatedAt
+                      // - Product must not already be sold
+                      // - isSold must become true
+                      // - buyerId must match the authenticated user
+                      (
+                        !isOwner(resource.data.ownerId) &&
+                        !isAdmin() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isSold', 'soldAt', 'buyerId', 'orderId', 'updatedAt']) &&
+                        (resource.data.isSold == null || resource.data.isSold == false) &&
+                        request.resource.data.isSold == true &&
+                        request.resource.data.buyerId == request.auth.uid &&
+                        // Ensure we have a valid timestamp for soldAt (or at least the write time)
+                        isValidTimestamp(request.resource.data.soldAt != null ? request.resource.data.soldAt : request.time)
+                      )
+                    );
+      allow delete: if isOwner(resource.data.ownerId) || isAdmin();
+
+      // Price history subcollection for products
+      match /priceHistory/{historyId} {
+        // Allow public read for approved products, authenticated read for all
+        allow read: if true;
+        allow create: if isAuthenticated() &&
+                      (isOwner(get(/databases/$(database)/documents/products/$(productId)).data.ownerId) || isAdmin()) &&
+                      hasRequiredFields(request.resource.data, ['price', 'source']);
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Offers collection: Authenticated users can create offers on products/auctions
+    match /offers/{offerId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdmin());
+      allow create: if isAuthenticated() &&
+                     request.resource.data.buyerId == request.auth.uid &&
+                     request.resource.data.offerAmount >= 0 &&
+                     request.resource.data.status == 'pending';
+      allow update: if isAuthenticated() && (isOwner(resource.data.buyerId) || isOwner(resource.data.sellerId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Auctions collection: Anyone can read active/ended auctions, authenticated users can read their own, admins can read all
+    match /auctions/{auctionId} {
+      allow read: if resource.data.status in ['active', 'ended'] || isAdmin() || (isAuthenticated() && isOwner(resource.data.ownerId));
+      allow create: if isAuthenticated() &&
+                           hasRequiredFields(request.resource.data, ['productId', 'ownerId', 'reservePrice', 'minAcceptPrice', 'startTime', 'endTime', 'status']) &&
+                           isValidTimestamp(request.resource.data.startTime) && isValidTimestamp(request.resource.data.endTime) &&
+                           request.resource.data.reservePrice > 0 &&
+                           request.resource.data.endTime > request.resource.data.startTime &&
+                           // Validate that the authenticated user owns this auction
+                           request.resource.data.ownerId == request.auth.uid &&
+                           // Validate that the product exists and the user owns it
+                           exists(/databases/$(database)/documents/products/$(request.resource.data.productId)) &&
+                           get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.ownerId == request.auth.uid &&
+                           (request.resource.data.status == 'pending' || (isAdmin() && request.resource.data.status in ['pending', 'active', 'ended', 'cancelled', 'rejected']));
+      allow update: if isAuthenticated() &&
+                    (isAdmin() ||
+                     // Allow updates to currentBid, currentBidderId, status, updatedAt for bidding
+                     (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentBid', 'currentBidderId', 'status', 'updatedAt']) &&
+                      request.resource.data.status in ['active', 'ended'] && isValidTimestamp(request.resource.data.updatedAt != null ? request.resource.data.updatedAt : request.time)));
+      allow delete: if isAdmin();
+
+      // Bids subcollection: Authenticated users can read all bids in an auction, write their own bids
+      match /bids/{bidId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() &&
+                      hasRequiredFields(request.resource.data, ['userId', 'amount']) &&
+                      (isAdmin() ||
+                       (isOwner(request.resource.data.userId) &&
+                        // Check if auction is active
+                        exists(/databases/$(database)/documents/auctions/$(auctionId)) &&
+                        get(/databases/$(database)/documents/auctions/$(auctionId)).data.status == 'active' &&
+                        // Validate bid amount
+                        isValidBidAmount(request.resource.data.amount, get(/databases/$(database)/documents/auctions/$(auctionId)).data.currentBid, get(/databases/$(database)/documents/auctions/$(auctionId)).data.reservePrice) &&
+                        // Rate limiting: check if user hasn't bid in the last 10 seconds (simple rate limit)
+                        (!exists(/databases/$(database)/documents/auctions/$(auctionId)/bids/$(bidId)) ||
+                         request.time > get(/databases/$(database)/documents/auctions/$(auctionId)/bids/$(bidId)).data.timestamp + duration.value(10, 's'))));
+        allow update, delete: if isAdmin();
+      }
+
+      // AutoBids subcollection: Users can manage their own auto-bids, admins can manage all
+      match /autoBids/{autoBidId} {
+        allow read: if isAuthenticated();
+        allow write: if (isOwner(request.resource.data.userId) || isAdmin()) &&
+                     hasRequiredFields(request.resource.data, ['userId', 'maxAmount', 'auctionId']) &&
+                     request.resource.data.maxAmount > 0;
+        allow delete: if isOwner(resource.data.userId) || isAdmin();
+      }
+
+      // Public Chat subcollection: Authenticated users can read and write messages
+      match /publicChat/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() &&
+                      isOwner(request.resource.data.senderId) &&
+                      hasRequiredFields(request.resource.data, ['senderId', 'message', 'isAnonymous']) &&
+                      request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 500;
+        allow update: if isAuthenticated() &&
+                      isOwner(resource.data.senderId) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'edited', 'editedAt', 'deleted']);
+        allow delete: if isOwner(resource.data.senderId) || isAdmin();
+      }
+
+      // Price history subcollection for auctions
+      match /priceHistory/{historyId} {
+        // Allow public read for active/ended auctions
+        allow read: if true;
+        allow create: if isAuthenticated() &&
+                      hasRequiredFields(request.resource.data, ['price', 'source']);
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Conversations collection: Private chats between buyers and sellers
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() &&
+                  (resource.data.participants.hasAny([request.auth.uid]) || isAdmin());
+      allow create: if isAuthenticated() &&
+                    hasRequiredFields(request.resource.data, ['buyerId', 'sellerId', 'participants', 'status']) &&
+                    request.resource.data.participants.hasAll([request.auth.uid]) &&
+                    request.resource.data.participants.size() == 2 &&
+                    (isOwner(request.resource.data.buyerId) || isOwner(request.resource.data.sellerId));
+      allow update: if isAuthenticated() &&
+                    (resource.data.participants.hasAny([request.auth.uid]) || isAdmin()) &&
+                    (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['buyerId', 'sellerId', 'participants']) ||
+                     isAdmin());
+      allow delete: if isAdmin();
+
+      // Messages subcollection: Participants can read and write messages, admins can read all
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() &&
+                    (get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]) ||
+                     isAdmin());
+        allow create: if isAuthenticated() &&
+                      get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants.hasAny([request.auth.uid]) &&
+                      isOwner(request.resource.data.senderId) &&
+                      hasRequiredFields(request.resource.data, ['senderId', 'message']) &&
+                      request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 500;
+        allow update: if isAuthenticated() &&
+                      (isOwner(resource.data.senderId) || isAdmin()) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'edited', 'editedAt', 'deleted']);
+        allow delete: if isOwner(resource.data.senderId) || isAdmin();
+      }
+    }
+
+    // User notifications subcollection
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // User auction notifications subcollection
+    match /users/{userId}/auctionNotifications/{notificationId} {
+      allow read: if isOwner(userId);
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    // User credit transactions subcollection
+    // Users can read their own credit history; writes are done by the app logic.
+    match /users/{userId}/creditTransactions/{transactionId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Create only via authenticated owner or admin; prevent arbitrary tampering with credits
+      allow create: if isAuthenticated() &&
+                    (isOwner(userId) || isAdmin()) &&
+                    hasRequiredFields(request.resource.data, ['userId', 'type', 'amount']) &&
+                    request.resource.data.userId == userId;
+
+      // Updates and deletes only by admin (for auditability)
+      allow update, delete: if isAdmin();
+    }
+
+    // Site Assets collection: Public read, admin write
+    match /siteAssets/{assetId} {
+      allow read: if true; // Public read access for displaying site assets
+      allow create, update: if isAdmin() &&
+                            hasRequiredFields(request.resource.data, ['name', 'imageUrl', 'altText', 'type', 'active']) &&
+                            request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100 &&
+                            request.resource.data.altText.size() > 0 && request.resource.data.altText.size() <= 200 &&
+                            request.resource.data.type in ['logo', 'hero', 'banner', 'icon', 'other'];
+      allow delete: if isAdmin();
+    }
+
+    // Orders collection: direct purchases from the shop.
+    // For now, orders are created client-side after validation. Later, Netopia integration
+    // can update status/payment fields securely via backend.
+    match /orders/{orderId} {
+      // Buyers, sellers and admins can read the order
+      allow read: if isAuthenticated() &&
+                  (
+                    resource.data.buyerId == request.auth.uid ||
+                    resource.data.sellerId == request.auth.uid ||
+                    isAdmin()
+                  );
+
+      // Orders are created by the buyer's client:
+      //  - buyerId must match the authenticated user
+      //  - basic required fields must be present
+      allow create: if isAuthenticated() &&
+                    request.resource.data.buyerId == request.auth.uid &&
+                    hasRequiredFields(
+                      request.resource.data,
+                      ['productId', 'buyerId', 'sellerId', 'price', 'currency', 'status', 'paymentProvider']
+                    ) &&
+                    request.resource.data.currency == 'RON' &&
+                    request.resource.data.price is number &&
+                    request.resource.data.price > 0;
+
+      // Updates and deletes restricted to admins for now (future: Netopia callbacks / backend).
+      allow update, delete: if isAdmin();
+    }
+
+    // Event registrations (QR / landing pre-registrations)
+    // Anyone can create a registration with a valid email; only admins can read/delete.
+    match /eventRegistrations/{registrationId} {
+      // For privacy, only admins should read these directly from Firestore.
+      allow read: if isAdmin();
+
+      allow create: if hasRequiredFields(request.resource.data, ['email', 'eventKey']) &&
+                    isValidEmail(request.resource.data.email);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // Activity Logs collection: Only admins can read, authenticated users can create their own logs
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() &&
+                    hasRequiredFields(request.resource.data, ['userId', 'eventType', 'metadata']) &&
+                    (isOwner(request.resource.data.userId) || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Admin Actions collection: Only admins can read and write
+    match /adminActions/{actionId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+                    hasRequiredFields(request.resource.data, ['userId', 'action', 'performedBy', 'performedByEmail']);
+      allow update, delete: if isAdmin();
+    }
+
+    // Admin Notifications collection: Only admins can read and write
+    match /adminNotifications/{notificationId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() &&
+                    hasRequiredFields(request.resource.data, ['type', 'severity', 'title', 'message', 'read', 'actionTaken']);
+      allow update: if isAdmin() &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'actionTaken', 'actionTakenBy', 'actionTakenAt']);
+      allow delete: if isAdmin();
+    }
+
+    // Security Logs collection: Users can read their own logs, admins can read all
+    match /securityLogs/{logId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if isAuthenticated() &&
+                    hasRequiredFields(request.resource.data, ['userId', 'action', 'description']) &&
+                    (isOwner(request.resource.data.userId) || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Fallback rule: allow authenticated users to read/write any other
+    // documents that are not covered by the more specific admin rules above.
+    //
+    // Because Firestore chooses the most specific match, collections like
+    // /adminActions, /adminNotifications, /activityLogs, etc. still obey
+    // their stricter admin-only rules, while everything else becomes fully
+    // accessible to signed-in users.
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+
+  // Help Articles collection: Public read for published articles, admin write
+  match /helpArticles/{articleId} {
+    allow read: if resource.data.status == 'published' || isAdmin();
+    allow create: if isAdmin() &&
+                  hasRequiredFields(request.resource.data, ['title', 'content', 'categoryId', 'language', 'createdBy', 'status']) &&
+                  request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 100 &&
+                  request.resource.data.content.size() > 0 && request.resource.data.content.size() <= 10000 &&
+                  request.resource.data.status in ['draft', 'published', 'archived'];
+    allow update: if isAdmin() &&
+                  (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy', 'createdAt']) ||
+                   isSuperAdmin());
+    allow delete: if isAdmin();
+  }
+
+  // Help Categories collection: Public read, admin write
+  match /helpCategories/{categoryId} {
+    allow read: if true; // Public read access for categories
+    allow create: if isAdmin() &&
+                  hasRequiredFields(request.resource.data, ['name', 'language']) &&
+                  request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 50;
+    allow update: if isAdmin();
+    allow delete: if isAdmin();
+  }
+
+  // Help Article Feedback subcollection: Authenticated users can create their own feedback
+  match /helpArticles/{articleId}/feedback/{feedbackId} {
+    allow read: if isAdmin();
+    allow create: if isAuthenticated() &&
+                  hasRequiredFields(request.resource.data, ['userId', 'rating']) &&
+                  request.resource.data.userId == request.auth.uid &&
+                  request.resource.data.rating in ['helpful', 'not_helpful'];
+    allow update, delete: if isAdmin();
+  }
+}

@@ -54,6 +54,49 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 /**
+ * Retry a function with exponential backoff for transient errors.
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if this is a transient error that should be retried
+      const isTransient = 
+        error?.code === 'PERMISSION_DENIED' ||
+        error?.code === 'UNAVAILABLE' ||
+        error?.code === 'DEADLINE_EXCEEDED' ||
+        error?.code === 'INTERNAL' ||
+        error?.code === 'RESOURCE_EXHAUSTED';
+      
+      if (!isTransient || attempt === maxRetries - 1) {
+        // Not a transient error or we've exhausted retries
+        throw error;
+      }
+      
+      // Calculate exponential backoff delay
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      logger.info(`Retrying operation (attempt ${attempt + 1}/${maxRetries}) after ${delay}ms`, {
+        errorCode: error?.code,
+        errorMessage: error?.message,
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
  * Send Expo push notifications in batches of 100.
  */
 async function sendExpoPushNotifications(
@@ -115,52 +158,36 @@ export const sendNotificationPush = onDocumentCreated(
       return;
     }
 
-    // Use a transaction to prevent race conditions and duplicate notifications
-    let shouldSendPush = false;
-    try {
-      await admin.firestore().runTransaction(async (transaction) => {
-        const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
-        const notificationDoc = await transaction.get(notificationRef);
-
-        if (!notificationDoc.exists) {
-          logger.info("Notification no longer exists", {
-            userId: params.userId,
-            notificationId: params.notificationId,
-          });
-          return;
-        }
-
-        const notificationData = notificationDoc.data() as NotificationDoc;
-
-        // Check if already pushed to prevent duplicates
-        if (notificationData.pushed === true) {
-          logger.info("Notification already pushed (transaction)", {
-            userId: params.userId,
-            notificationId: params.notificationId,
-          });
-          return;
-        }
-
-        // Mark as pushed atomically - this prevents race conditions
-        transaction.update(notificationRef, { pushed: true });
-        shouldSendPush = true;
-      });
-    } catch (error) {
-      logger.error("Transaction failed", {
-        error: (error as any)?.message,
+    // Check if already pushed to prevent duplicates (using event data, no transaction needed)
+    if (data.pushed === true) {
+      logger.info("Notification already pushed (from event data)", {
         userId: params.userId,
         notificationId: params.notificationId,
       });
       return;
     }
 
-    // Only send push notification if we successfully claimed it in the transaction
-    if (!shouldSendPush) {
-      logger.info("Skipping push send - notification already claimed by another instance", {
+    // Mark as pushed to prevent duplicate sends (simple update, no transaction needed)
+    // We do this before sending to minimize race conditions
+    const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
+    try {
+      await retryWithBackoff(async () => {
+        await notificationRef.update({ pushed: true });
+      }, 3, 1000);
+      logger.info("Marked notification as pushed", {
         userId: params.userId,
         notificationId: params.notificationId,
       });
-      return;
+    } catch (error) {
+      // If we can't mark it as pushed, we should still try to send the notification
+      // but log the error for debugging
+      logger.error("Failed to mark notification as pushed after retries (will still attempt to send)", {
+        error: (error as any)?.message,
+        errorCode: (error as any)?.code,
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+      // Continue with sending the notification even if marking failed
     }
 
     let title: string;
@@ -215,12 +242,26 @@ export const sendNotificationPush = onDocumentCreated(
       body,
     });
 
-    const devicesSnap = await admin
-      .firestore()
-      .collection("users")
-      .doc(params.userId)
-      .collection("devices")
-      .get();
+    // Fetch devices with retry logic for transient errors
+    let devicesSnap;
+    try {
+      devicesSnap = await retryWithBackoff(async () => {
+        return await admin
+          .firestore()
+          .collection("users")
+          .doc(params.userId)
+          .collection("devices")
+          .get();
+      }, 3, 1000);
+    } catch (error) {
+      logger.error("Failed to fetch devices after retries", {
+        error: (error as any)?.message,
+        errorCode: (error as any)?.code,
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+      return;
+    }
 
     if (devicesSnap.empty) {
       logger.info("No devices for push", {userId: params.userId});
