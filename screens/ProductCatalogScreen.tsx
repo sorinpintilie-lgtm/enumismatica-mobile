@@ -507,7 +507,7 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
             key={`product-image-${product.id}`}
             source={{ uri: product.images[0] }}
             style={styles.cardImage}
-            contentFit="contain"
+            contentFit="cover"
             placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
             transition={200}
             onError={(error) => {

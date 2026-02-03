@@ -84,7 +84,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
         <ExpoImage
           source={{ uri: images[0] }}
           style={styles.mainImage}
-          contentFit="contain"
+          contentFit="cover"
           transition={200}
         />
         {images.length > 1 && (
@@ -152,6 +152,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
               zoomStep={0.5}
               initialScale={1}
               bindToBorders={true}
+              style={styles.zoomView}
             >
               <ExpoImage
                 source={{ uri: images[currentIndex] }}
@@ -319,15 +320,15 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
-  zoomContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: SCREEN_HEIGHT,
-  },
-  modalImage: {
+  zoomView: {
     width: SCREEN_WIDTH - 40,
     height: SCREEN_HEIGHT - 200,
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
   },
   navButton: {
     position: 'absolute',
