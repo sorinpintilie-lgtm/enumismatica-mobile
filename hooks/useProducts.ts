@@ -188,13 +188,12 @@ export function useProducts(
       (err) => {
         clearTimeout(timeoutId);
 
-        if (debug) {
-          console.error('[useProducts] snapshot error', {
-            message: err?.message,
-            code: (err as any)?.code,
-            name: (err as any)?.name,
-          });
-        }
+        console.error('[useProducts] snapshot error', {
+          message: err?.message,
+          code: (err as any)?.code,
+          name: (err as any)?.name,
+          stack: (err as any)?.stack,
+        });
 
         setError(err.message);
         setLoading(false);

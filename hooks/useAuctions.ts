@@ -80,6 +80,12 @@ export function useAuctions(status?: 'active' | 'ended' | 'cancelled', pageSize:
       },
       (err) => {
         clearTimeout(timeoutId);
+        console.error('[useAuctions] snapshot error', {
+          message: err?.message,
+          code: (err as any)?.code,
+          name: (err as any)?.name,
+          stack: (err as any)?.stack,
+        });
         setError(err.message);
         setLoading(false);
       }

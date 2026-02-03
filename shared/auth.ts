@@ -29,11 +29,13 @@ export const signInWithEmail = async (email: string, password: string) => {
       return { user: null, error: 'Invalid email format' };
     }
 
+    console.log('[Auth] Attempting sign in with email:', sanitizedEmail);
     const userCredential = await signInWithEmailAndPassword(auth, sanitizedEmail, sanitizedPassword);
-   
+    console.log('[Auth] Sign in successful:', userCredential.user?.uid);
+
       // Ensure Firestore user profile exists (idempotent, no referral on login)
       await createUserProfileAfterSignup(userCredential.user, null);
-  
+
       // Log the login (non-blocking)
       try {
         await logActivity(
@@ -46,9 +48,15 @@ export const signInWithEmail = async (email: string, password: string) => {
       } catch (logError) {
         console.warn('Failed to log login activity:', logError);
       }
-  
+
       return { user: userCredential.user, error: null };
   } catch (error: any) {
+    console.error('[Auth] Sign in error:', {
+      code: error?.code,
+      message: error?.message,
+      name: error?.name,
+      stack: error?.stack,
+    });
     return { user: null, error: error.message };
   }
 };

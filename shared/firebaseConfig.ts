@@ -39,9 +39,15 @@ if (getApps().length === 0) {
 }
 
 if (Platform.OS === 'ios' || Platform.OS === 'android') {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
+  try {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+    console.log('[Firebase] Auth initialized with React Native persistence');
+  } catch (err) {
+    console.error('[Firebase] Failed to initialize auth with React Native persistence, falling back to default:', err);
+    auth = getAuth(app);
+  }
 } else {
   auth = getAuth(app);
 }
@@ -49,6 +55,15 @@ db = getFirestore(app);
 storage = getStorage(app);
 
 console.log('Firebase initialized - app:', !!app, 'auth:', !!auth, 'db:', !!db, 'db type:', typeof db, 'db constructor:', db?.constructor?.name);
+console.log('Firebase config:', {
+  apiKey: firebaseConfig.apiKey ? 'SET' : 'NOT SET',
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  storageBucket: firebaseConfig.storageBucket,
+  messagingSenderId: firebaseConfig.messagingSenderId,
+  appId: firebaseConfig.appId,
+  measurementId: firebaseConfig.measurementId,
+});
 
 // Initialize Analytics (only in real browser environment – NOT React Native)
 let analytics: Analytics | null = null;

@@ -1,10 +1,18 @@
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { db, doc, setDoc, deleteDoc, serverTimestamp } from '@shared/firebaseConfig';
-import { getPushToken, requestNotificationPermissions } from './notificationService';
+import { getPushToken, requestNotificationPermissions, ensureNotificationChannelCreated } from './notificationService';
 
 type DeviceRegistration = {
-  expoPushToken: string;
+  expoPushToken: string | null;
   platform: string;
+  isDevice: boolean;
+  modelName: string | null;
+  permStatus: string | null;
+  tokenError: string | null;
+  projectId: string | null;
+  createdAt: ReturnType<typeof serverTimestamp>;
   updatedAt: ReturnType<typeof serverTimestamp>;
 };
 
@@ -20,54 +28,89 @@ export async function registerPushTokenForUser(userId: string) {
 
   console.log('[pushTokenService] Starting push token registration for user:', userId);
   console.log('[pushTokenService] Platform:', Platform.OS);
+  console.log('[pushTokenService] isDevice:', Device.isDevice);
 
-  const granted = await requestNotificationPermissions();
-  if (!granted) {
-    console.log('[pushTokenService] Notification permissions not granted - cannot register push token');
-    console.log('[pushTokenService] This is a critical issue - push notifications will not work');
-    return;
+  // Generate a unique device ID
+  const deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+
+  let expoPushToken: string | null = null;
+  let permStatus: string | null = null;
+  let tokenError: string | null = null;
+  let projectId: string | null = null;
+
+  try {
+    // On Android, we need to create notification channel before requesting permissions
+    if (Platform.OS === 'android') {
+      await ensureNotificationChannelCreated();
+    }
+
+    // Request permissions
+    const granted = await requestNotificationPermissions();
+    permStatus = granted ? 'granted' : 'denied';
+    console.log('[pushTokenService] Permission status:', permStatus);
+
+    // Get project ID
+    projectId = Constants.expoConfig?.extra?.eas?.projectId
+      ?? Constants.easConfig?.projectId
+      ?? 'f4fa174b-8702-4031-b9b3-e72887532885';
+    console.log('[pushTokenService] Project ID:', projectId);
+
+    // Get push token only if permissions are granted
+    if (granted) {
+      expoPushToken = await getPushToken();
+      console.log('[pushTokenService] Push token retrieved:', expoPushToken ? `${expoPushToken.substring(0, 20)}...` : 'null');
+    } else {
+      console.log('[pushTokenService] Skipping push token retrieval - permissions denied');
+    }
+  } catch (e: any) {
+    tokenError = e?.message ?? String(e);
+    console.log('[pushTokenService] Push token error:', tokenError);
   }
 
-  console.log('[pushTokenService] Permissions granted, proceeding to get push token...');
-
-  const expoPushToken = await getPushToken();
-  if (!expoPushToken) {
-    console.log('[pushTokenService] No expoPushToken retrieved - cannot register device');
-    console.log('[pushTokenService] This is a critical issue - push notifications will not work');
-    return;
-  }
-
-  console.log('[pushTokenService] Push token retrieved successfully, registering device...');
-
-  // Use a simpler document ID to avoid issues with special characters
-  const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
-  const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
+  // Always write the device document, even if token is null
+  const deviceRef = doc(db, 'users', userId, 'devices', deviceId);
 
   const payload: DeviceRegistration = {
     expoPushToken,
     platform: Platform.OS,
+    isDevice: Device.isDevice,
+    modelName: Device.modelName ?? null,
+    permStatus,
+    tokenError,
+    projectId,
+    createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 
-  console.log('[pushTokenService] Registering device:', deviceDocId);
+  console.log('[pushTokenService] Registering device:', deviceId);
   console.log('[pushTokenService] Device payload:', {
     platform: Platform.OS,
-    tokenLength: expoPushToken.length,
-    tokenPrefix: expoPushToken.substring(0, 20),
+    isDevice: Device.isDevice,
+    modelName: Device.modelName,
+    hasToken: !!expoPushToken,
+    permStatus,
+    hasError: !!tokenError,
+    projectId,
   });
 
   try {
     await setDoc(deviceRef, payload, { merge: true });
-    console.log('[pushTokenService] Successfully registered device token for user:', userId);
-    console.log('[pushTokenService] Device document path:', `users/${userId}/devices/${deviceDocId}`);
-    console.log('[pushTokenService] Device is now ready to receive push notifications');
+    console.log('[pushTokenService] Successfully registered device for user:', userId);
+    console.log('[pushTokenService] Device document path:', `users/${userId}/devices/${deviceId}`);
+    
+    if (expoPushToken) {
+      console.log('[pushTokenService] Device is ready to receive push notifications');
+    } else {
+      console.log('[pushTokenService] Device registered but no push token - notifications may not work');
+      console.log('[pushTokenService] Check permStatus and tokenError for diagnostics');
+    }
   } catch (error) {
-    console.error('[pushTokenService] Failed to register device token:', error);
+    console.error('[pushTokenService] Failed to register device:', error);
     console.error('[pushTokenService] Error details:', {
       code: (error as any)?.code,
       message: (error as any)?.message,
       userId,
-      deviceDocId,
+      deviceId,
     });
     console.error('[pushTokenService] This is a critical issue - push notifications will not work');
   }
@@ -78,21 +121,14 @@ export async function unregisterPushTokenForUser(userId: string) {
   if (Platform.OS === 'web') return;
 
   try {
-    // Get the current device's push token
-    const expoPushToken = await getPushToken();
-    if (!expoPushToken) {
-      console.log('[pushTokenService] No expoPushToken retrieved - skipping unregistration');
-      return;
-    }
-
-    // Use the same document ID format as registration
-    const deviceDocId = `${Platform.OS}-${expoPushToken.substring(0, 20)}`;
-    const deviceRef = doc(db, 'users', userId, 'devices', deviceDocId);
+    // Generate the same device ID as registration
+    const deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+    const deviceRef = doc(db, 'users', userId, 'devices', deviceId);
 
     await deleteDoc(deviceRef);
-    console.log('[pushTokenService] Successfully removed device token for user:', userId);
+    console.log('[pushTokenService] Successfully removed device for user:', userId);
   } catch (error) {
-    console.warn('[pushTokenService] Failed to unregister push token (ignoring):', error);
+    console.warn('[pushTokenService] Failed to unregister device (ignoring):', error);
     // Do not rethrow - this should not prevent login/logout
   }
 }
