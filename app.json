@@ -33,6 +33,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "ro.enumismatica.mobile",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
