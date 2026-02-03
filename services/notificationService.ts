@@ -101,11 +101,11 @@ export async function requestNotificationPermissions() {
   return status === 'granted';
 }
 
-// Get push token
-export async function getPushToken() {
+// Get push token with retry mechanism (directly using Notifications API)
+export async function getPushToken(retries: number = 3, delay: number = 1000): Promise<{ data: string; raw: any } | null> {
   if (Platform.OS === 'web') {
     console.log('[notificationService] Push notifications not supported on web');
-    return '';
+    return null;
   }
 
   // Try to get project ID from Constants, with fallback to hardcoded value
@@ -120,30 +120,53 @@ export async function getPushToken() {
 
   console.log('[notificationService] Getting push token for platform:', Platform.OS);
   console.log('[notificationService] Project ID:', projectId);
-  console.log('[notificationService] Constants.expoConfig:', JSON.stringify(Constants.expoConfig, null, 2));
-  console.log('[notificationService] Constants.easConfig:', JSON.stringify(Constants.easConfig, null, 2));
+  console.log('[notificationService] Retry configuration: attempts =', retries, ', delay =', delay, 'ms');
 
   if (!projectId) {
     console.error('[notificationService] No project ID found in app config');
     console.error('[notificationService] This will prevent push notifications from working');
     console.error('[notificationService] Please ensure that project ID is set in app.json under extra.eas.projectId');
-    return '';
+    return null;
   }
 
-  try {
-    console.log('[notificationService] Calling Notifications.getExpoPushTokenAsync with projectId:', projectId);
-    const token = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
-    console.log('[notificationService] Push token retrieved successfully:', token.data ? `${token.data.substring(0, 20)}...` : 'null');
-    console.log('[notificationService] Full token data:', JSON.stringify(token, null, 2));
-    return token.data;
-  } catch (error) {
-    console.error('[notificationService] Error getting push token:', error);
-    console.error('[notificationService] Error details:', JSON.stringify(error, null, 2));
-    console.error('[notificationService] This will prevent push notifications from working');
-    return '';
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log('[notificationService] Attempt', attempt, 'to get push token');
+      
+      let token;
+      if (Platform.OS === 'android') {
+        token = await Notifications.getExpoPushTokenAsync({ projectId });
+        console.log('[notificationService] Android token response:', JSON.stringify(token, null, 2));
+      } else {
+        token = await Notifications.getExpoPushTokenAsync();
+      }
+
+      if (!token.data || typeof token.data !== 'string' || token.data.trim() === '') {
+        console.error('[notificationService] Attempt', attempt, ' - Invalid push token received:', token);
+        throw new Error('Received invalid push token (empty string or null)');
+      }
+
+      console.log('[notificationService] Push token retrieved successfully on attempt', attempt, ':', token.data ? `${token.data.substring(0, 20)}...` : 'null');
+      console.log('[notificationService] Full token data:', JSON.stringify(token, null, 2));
+      return {
+        data: token.data,
+        raw: token,
+      };
+    } catch (error) {
+      console.error('[notificationService] Attempt', attempt, ' - Error getting push token:', error);
+      
+      if (attempt < retries) {
+        console.log('[notificationService] Waiting', delay, 'ms before next attempt...');
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+      } else {
+        console.error('[notificationService] All', retries, 'attempts failed to get push token');
+        return null;
+      }
+    }
   }
+
+  return null;
 }
 
 // Schedule auction reminder notification (simplified - just send immediate for now)
