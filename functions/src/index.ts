@@ -158,36 +158,53 @@ export const sendNotificationPush = onDocumentCreated(
       return;
     }
 
-    // Check if already pushed to prevent duplicates (using event data, no transaction needed)
-    if (data.pushed === true) {
-      logger.info("Notification already pushed (from event data)", {
+    const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
+    
+    // Make sending idempotent using transaction lock
+    try {
+      await admin.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(notificationRef);
+        const notificationData = snap.data();
+        
+        if (notificationData?.pushed === true) {
+          logger.info("Notification already sent (transaction check)", {
+            userId: params.userId,
+            notificationId: params.notificationId,
+          });
+          throw new Error("ALREADY_SENT");
+        }
+        
+        if (notificationData?.status === "sending" && 
+            notificationData.sendingAt && 
+            Date.now() - notificationData.sendingAt.toMillis() < 60000) {
+          logger.info("Notification is already being sent (transaction check)", {
+            userId: params.userId,
+            notificationId: params.notificationId,
+          });
+          throw new Error("IN_PROGRESS");
+        }
+        
+        tx.update(notificationRef, {
+          status: "sending",
+          sendingAt: admin.firestore.FieldValue.serverTimestamp(),
+          attempts: admin.firestore.FieldValue.increment(1),
+        });
+      });
+    } catch (error: any) {
+      if (error.message === "ALREADY_SENT" || error.message === "IN_PROGRESS") {
+        logger.info(`Notification skipped: ${error.message}`, {
+          userId: params.userId,
+          notificationId: params.notificationId,
+        });
+        return;
+      }
+      logger.error("Failed to acquire transaction lock for sending notification", {
+        error: error.message,
+        errorCode: error.code,
         userId: params.userId,
         notificationId: params.notificationId,
       });
       return;
-    }
-
-    // Mark as pushed to prevent duplicate sends (simple update, no transaction needed)
-    // We do this before sending to minimize race conditions
-    const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
-    try {
-      await retryWithBackoff(async () => {
-        await notificationRef.update({ pushed: true });
-      }, 3, 1000);
-      logger.info("Marked notification as pushed", {
-        userId: params.userId,
-        notificationId: params.notificationId,
-      });
-    } catch (error) {
-      // If we can't mark it as pushed, we should still try to send the notification
-      // but log the error for debugging
-      logger.error("Failed to mark notification as pushed after retries (will still attempt to send)", {
-        error: (error as any)?.message,
-        errorCode: (error as any)?.code,
-        userId: params.userId,
-        notificationId: params.notificationId,
-      });
-      // Continue with sending the notification even if marking failed
     }
 
     let title: string;
@@ -272,8 +289,7 @@ export const sendNotificationPush = onDocumentCreated(
     logger.info(`Found ${devicesSnap.size} devices for user ${params.userId}`);
     logger.info("Device IDs:", devicesSnap.docs.map(doc => doc.id));
 
-    const messages: ExpoPushMessage[] = [];
-
+    const uniqueTokens = new Set<string>();
     devicesSnap.forEach((doc) => {
       const device = doc.data() as DeviceRecord;
       if (!device.expoPushToken) {
@@ -281,29 +297,38 @@ export const sendNotificationPush = onDocumentCreated(
         return;
       }
 
-      logger.info("Adding device to push messages", {
-        deviceId: doc.id,
-        token: device.expoPushToken.substring(0, 20) + "...",
-      });
-
-      messages.push({
-        to: device.expoPushToken,
-        title,
-        body,
-        channelId: 'default', // Android notification channel ID
-        sound: 'default', // Sound to play
-        priority: 'high', // Notification priority
-        data: {
-          conversationId: data.conversationId || null,
-          auctionId: data.auctionId || null,
-          notificationId: snap?.id || null,
-          type: data.type,
-          offerId: data.offerId || null,
-          itemType: data.itemType || null,
-          itemId: data.itemId || null,
-        },
-      });
+      // Validate Expo push token format
+      if (typeof device.expoPushToken === "string" && device.expoPushToken.startsWith("ExponentPushToken[")) {
+        uniqueTokens.add(device.expoPushToken);
+        logger.info("Adding device to push messages", {
+          deviceId: doc.id,
+          token: device.expoPushToken.substring(0, 20) + "...",
+        });
+      } else {
+        logger.warn("Invalid Expo push token format", {
+          deviceId: doc.id,
+          token: device.expoPushToken,
+        });
+      }
     });
+
+    const messages: ExpoPushMessage[] = [...uniqueTokens].map((token) => ({
+      to: token,
+      title,
+      body,
+      channelId: 'default', // Android notification channel ID
+      sound: 'default', // Sound to play
+      priority: 'high', // Notification priority
+      data: {
+        conversationId: data.conversationId || null,
+        auctionId: data.auctionId || null,
+        notificationId: snap?.id || null,
+        type: data.type,
+        offerId: data.offerId || null,
+        itemType: data.itemType || null,
+        itemId: data.itemId || null,
+      },
+    }));
 
     logger.info(`Sending ${messages.length} push notifications to Expo`);
     logger.info("Push message preview:", messages.map(msg => ({
@@ -315,6 +340,24 @@ export const sendNotificationPush = onDocumentCreated(
     })));
 
     await sendExpoPushNotifications(messages);
+
+    // Mark as sent after successful delivery
+    try {
+      await retryWithBackoff(async () => {
+        await notificationRef.update({
+          pushed: true,
+          status: "sent",
+          sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }, 3, 1000);
+    } catch (error) {
+      logger.error("Failed to mark notification as sent", {
+        error: (error as any)?.message,
+        errorCode: (error as any)?.code,
+        userId: params.userId,
+        notificationId: params.notificationId,
+      });
+    }
 
     logger.info("Notification sent successfully", {
       userId: params.userId,

@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+import * as Application from 'expo-application';
 import { db, doc, setDoc, deleteDoc, serverTimestamp } from '@shared/firebaseConfig';
 import { requestNotificationPermissions, ensureNotificationChannelCreated } from './notificationService';
 
@@ -35,8 +36,25 @@ export async function registerPushTokenForUser(userId: string) {
   console.log('[pushTokenService] Platform:', Platform.OS);
   console.log('[pushTokenService] isDevice:', Device.isDevice);
 
-  // Generate a unique device ID
-  const deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+  // Generate a stable device ID
+  // On Android: use Application.getAndroidId() which is stable across app reinstalls
+  // On iOS: use Application.getIosIdForVendorAsync() which is the vendor ID
+  // Fallback to installationId if all else fails
+  let deviceId: string;
+  
+  try {
+    if (Platform.OS === 'android') {
+      deviceId = `android-${Application.getAndroidId()}`;
+    } else if (Platform.OS === 'ios') {
+      const iosId = await Application.getIosIdForVendorAsync();
+      deviceId = iosId ? `ios-${iosId}` : `${Platform.OS}-${Constants.installationId ?? 'noInstallId'}`;
+    } else {
+      deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+    }
+  } catch (error) {
+    console.warn('[pushTokenService] Failed to get stable device ID, falling back to default:', error);
+    deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+  }
 
   let expoPushToken: string | null = null;
   let expoPushTokenRaw: any | null = null;
@@ -172,9 +190,23 @@ export async function unregisterPushTokenForUser(userId: string) {
 
   try {
     // Generate the same device ID as registration
-    const deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
-    const deviceRef = doc(db, 'users', userId, 'devices', deviceId);
+    let deviceId: string;
+    
+    try {
+      if (Platform.OS === 'android') {
+        deviceId = `android-${Application.getAndroidId()}`;
+      } else if (Platform.OS === 'ios') {
+        const iosId = await Application.getIosIdForVendorAsync();
+        deviceId = iosId ? `ios-${iosId}` : `${Platform.OS}-${Constants.installationId ?? 'noInstallId'}`;
+      } else {
+        deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+      }
+    } catch (error) {
+      console.warn('[pushTokenService] Failed to get stable device ID, falling back to default:', error);
+      deviceId = `${Platform.OS}-${Device.modelId ?? 'unknown'}-${Constants.installationId ?? 'noInstallId'}`;
+    }
 
+    const deviceRef = doc(db, 'users', userId, 'devices', deviceId);
     await deleteDoc(deviceRef);
     console.log('[pushTokenService] Successfully removed device for user:', userId);
   } catch (error) {
