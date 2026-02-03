@@ -103,6 +103,10 @@ export function useProducts(
         pageSize,
         fields: normalizedFields,
         fieldsKey,
+        loadAllAtOnce,
+        listingType,
+        hasMore,
+        productsCount: products.length,
       });
     }
 
@@ -118,13 +122,20 @@ export function useProducts(
         clearTimeout(timeoutId);
 
         if (debug) {
-          const sample = querySnapshot.docs[0];
-          const sampleData = sample?.data?.() as any;
-          console.log('[useProducts] snapshot', {
+          console.log('[useProducts] snapshot received', {
             size: querySnapshot.size,
             empty: querySnapshot.empty,
-            firstId: sample?.id ?? null,
-            firstKeys: sampleData ? Object.keys(sampleData).slice(0, 30) : [],
+            loadAllAtOnce,
+            pageSize,
+            productsCountBefore: products.length,
+          });
+          const sample = querySnapshot.docs[0];
+          const sampleData = sample?.data?.() as any;
+          console.log('[useProducts] sample doc', {
+            id: sample?.id ?? null,
+            hasImages: !!sampleData?.images,
+            imageCount: sampleData?.images?.length ?? 0,
+            firstImage: sampleData?.images?.[0]?.substring(0, 100) ?? null,
           });
         }
 
@@ -174,6 +185,18 @@ export function useProducts(
           productsData.push(productData as Product);
         });
 
+        if (debug) {
+          console.log('[useProducts] final productsData', {
+            count: productsData.length,
+            hasMoreSetTo: querySnapshot.size >= pageSize + 5,
+            sampleImages: productsData.slice(0, 3).map(p => ({
+              id: p.id,
+              hasImages: !!p.images,
+              imageCount: p.images?.length ?? 0,
+            })),
+          });
+        }
+
         // Replace products for initial load
         setProducts(productsData);
 
@@ -202,7 +225,7 @@ export function useProducts(
 
     unsubscribeRef.current = unsubscribe;
     return unsubscribe;
-  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType, loadAllAtOnce]);
+  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType, loadAllAtOnce, products.length, hasMore]);
 
   // Separate function for pagination using getDocs to avoid scroll jumping
   const loadMoreProducts = useCallback(async () => {

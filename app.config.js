@@ -11,6 +11,17 @@ export default {
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
+    plugins: [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "dynamic",
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ],
     splash: {
       image: "./assets/eNumismatica_trapezoid_no_black_margins.png",
       resizeMode: "contain",

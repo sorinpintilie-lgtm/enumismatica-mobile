@@ -25,27 +25,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [previousUserId, setPreviousUserId] = useState<string | null>(null);
 
-  const check2FAStatus = useCallback(async (currentUser: User | null) => {
+   const check2FAStatus = useCallback(async (currentUser: User | null) => {
+    console.log('[AuthContext] check2FAStatus called with user:', currentUser?.uid);
+    
     if (!currentUser) {
       setUser(null);
       setTwoFactorRequired(false);
+      console.log('[AuthContext] No current user, set user to null');
       return;
     }
 
     // Check if user has 2FA enabled
     try {
       const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      console.log('[AuthContext] User document exists:', userDoc.exists());
       const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
+      console.log('[AuthContext] 2FA enabled:', twoFactorEnabled);
 
       if (twoFactorEnabled) {
         // Check if 2FA has been verified for this session
         const okKey = `enumismatica_2fa_ok_${currentUser.uid}`;
         const sessionValue = await AsyncStorage.getItem(okKey);
+        console.log('[AuthContext] 2FA session value:', sessionValue);
 
         if (sessionValue === '1') {
           // 2FA verified, user is fully authenticated
           setUser(currentUser);
           setTwoFactorRequired(false);
+          console.log('[AuthContext] 2FA verified, user authenticated');
 
           if (currentUser?.uid) {
             console.log('[AuthContext] Registering push token for user (2FA verified):', currentUser.uid);
@@ -57,11 +64,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // 2FA required but not verified
           setUser(null);
           setTwoFactorRequired(true);
+          console.log('[AuthContext] 2FA required but not verified');
         }
       } else {
         // No 2FA, user is fully authenticated
         setUser(currentUser);
         setTwoFactorRequired(false);
+        console.log('[AuthContext] No 2FA, user authenticated');
 
         if (currentUser?.uid) {
           console.log('[AuthContext] Registering push token for user (no 2FA):', currentUser.uid);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,12 +7,11 @@ import {
   Dimensions,
   ScrollView,
   Text,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
-import { PinchGestureHandler, PanGestureHandler, State } from 'react-native-gesture-handler';
+import ZoomView from 'react-native-zoom-view';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,83 +23,23 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const insets = useSafeAreaInsets();
-  const scale = useRef(new Animated.Value(1)).current;
-  const lastScale = useRef(1);
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const lastTranslate = useRef({ x: 0, y: 0 });
-  const pinchRef = useRef(null);
-  const panRef = useRef(null);
 
   const handleImagePress = (index: number) => {
     setCurrentIndex(index);
     setModalVisible(true);
-    // Reset scale when opening modal
-    scale.setValue(1);
-    lastScale.current = 1;
-    translateX.setValue(0);
-    translateY.setValue(0);
-    lastTranslate.current = { x: 0, y: 0 };
   };
 
   const handleNext = () => {
     if (currentIndex < images.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      // Reset scale when changing image
-      scale.setValue(1);
-      lastScale.current = 1;
-      translateX.setValue(0);
-      translateY.setValue(0);
-      lastTranslate.current = { x: 0, y: 0 };
     }
   };
 
   const handlePrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
-      // Reset scale when changing image
-      scale.setValue(1);
-      lastScale.current = 1;
-      translateX.setValue(0);
-      translateY.setValue(0);
-      lastTranslate.current = { x: 0, y: 0 };
     }
   };
-
-  const onPinchGestureEvent = useCallback((event: any) => {
-    const newScale = lastScale.current * event.nativeEvent.scale;
-    scale.setValue(newScale);
-  }, [scale]);
-
-  const onPinchHandlerStateChange = useCallback((event: any) => {
-    if (event.nativeEvent.state === State.END) {
-      lastScale.current = lastScale.current * event.nativeEvent.scale;
-
-      if (lastScale.current < 1) {
-        lastScale.current = 1;
-        scale.setValue(1);
-        translateX.setValue(0);
-        translateY.setValue(0);
-        lastTranslate.current = { x: 0, y: 0 };
-      }
-    }
-  }, [scale, translateX, translateY]);
-
-  const onPanGestureEvent = useCallback((event: any) => {
-    const nextX = lastTranslate.current.x + event.nativeEvent.translationX;
-    const nextY = lastTranslate.current.y + event.nativeEvent.translationY;
-    translateX.setValue(nextX);
-    translateY.setValue(nextY);
-  }, [translateX, translateY]);
-
-  const onPanHandlerStateChange = useCallback((event: any) => {
-    if (event.nativeEvent.state === State.END || event.nativeEvent.state === State.CANCELLED) {
-      lastTranslate.current = {
-        x: lastTranslate.current.x + event.nativeEvent.translationX,
-        y: lastTranslate.current.y + event.nativeEvent.translationY,
-      };
-    }
-  }, []);
 
   const renderThumbnails = () => {
     if (images.length <= 1) return null;
@@ -207,38 +146,20 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
           </View>
 
           <View style={styles.modalImageContainer}>
-            <PanGestureHandler
-              ref={panRef}
-              simultaneousHandlers={pinchRef}
-              onGestureEvent={onPanGestureEvent}
-              onHandlerStateChange={onPanHandlerStateChange}
+            <ZoomView
+              maxScale={5}
+              minScale={1}
+              zoomStep={0.5}
+              initialScale={1}
+              bindToBorders={true}
             >
-              <Animated.View style={styles.zoomContainer}>
-                <PinchGestureHandler
-                  ref={pinchRef}
-                  simultaneousHandlers={panRef}
-                  onGestureEvent={onPinchGestureEvent}
-                  onHandlerStateChange={onPinchHandlerStateChange}
-                >
-                  <Animated.View
-                    style={{
-                      transform: [
-                        { translateX },
-                        { translateY },
-                        { scale },
-                      ],
-                    }}
-                  >
-                    <ExpoImage
-                      source={{ uri: images[currentIndex] }}
-                      style={styles.modalImage}
-                      contentFit="contain"
-                      transition={200}
-                    />
-                  </Animated.View>
-                </PinchGestureHandler>
-              </Animated.View>
-            </PanGestureHandler>
+              <ExpoImage
+                source={{ uri: images[currentIndex] }}
+                style={styles.modalImage}
+                contentFit="contain"
+                transition={200}
+              />
+            </ZoomView>
           </View>
 
           {images.length > 1 && (

@@ -359,13 +359,18 @@ const LoginScreen: React.FC = () => {
       return;
     }
 
-    if (user) {
+     if (user) {
       // AuthContext will handle 2FA gating automatically
       // If 2FA is required, it will set twoFactorRequired to true
       // and the LoginScreen will show the 2FA form
       await startSessionOnServer();
       await refreshAuth();
-      if (!twoFactorRequired) {
+      
+      // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
+      
+      if (!twoFactorEnabled) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs' }],
@@ -476,7 +481,7 @@ const LoginScreen: React.FC = () => {
     setPendingUserId(null);
   };
 
-  const handleGoogleLogin = async () => {
+   const handleGoogleLogin = async () => {
     setLoading(true);
     const { user, error } = await signInWithGoogle();
     setLoading(false);
@@ -484,7 +489,12 @@ const LoginScreen: React.FC = () => {
       setError(error);
     } else if (user) {
       await refreshAuth();
-      if (!twoFactorRequired) {
+      
+      // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
+      
+      if (!twoFactorEnabled) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs' }],

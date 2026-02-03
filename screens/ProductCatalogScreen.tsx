@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -479,6 +480,19 @@ const styles = StyleSheet.create({
 
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const [imageError, setImageError] = useState(false);
+
+  // Debug log for image loading (helps with Android issues)
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[ProductCatalog] Image load attempt:', {
+        productId: product.id,
+        hasImages: !!product.images,
+        imageCount: product.images?.length || 0,
+        firstImage: product.images?.[0]?.substring(0, 100),
+      });
+    }
+  }, [product.id, product.images]);
 
   return (
     <TouchableOpacity
@@ -488,12 +502,23 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
     >
       <View style={{ position: 'relative' }}>
         <View style={styles.cardImageContainer}>
-        {product.images && product.images.length > 0 ? (
-          <Image
+        {product.images && product.images.length > 0 && !imageError ? (
+          <ExpoImage
             key={`product-image-${product.id}`}
             source={{ uri: product.images[0] }}
             style={styles.cardImage}
-            resizeMode="contain"
+            contentFit="contain"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            transition={200}
+            onError={(error) => {
+              if (__DEV__) {
+                console.log('[ProductCatalog] Image load error:', {
+                  productId: product.id,
+                  error: error,
+                });
+              }
+              setImageError(true);
+            }}
           />
         ) : (
           <View style={styles.cardNoImageContainer}>
@@ -530,11 +555,9 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 };
 
 const ProductCatalogScreen: React.FC = () => {
-  const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [headerMeasuredHeight, setHeaderMeasuredHeight] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
-  const [authPromptVisible, setAuthPromptVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
 
@@ -755,13 +778,10 @@ const ProductCatalogScreen: React.FC = () => {
     return filtered;
   }, [products, filters]);
 
-  // Limit items for unauthenticated users
+  // Limit items for unauthenticated users - removed limit to show all products
   const displayProducts = useMemo(() => {
-    if (!user) {
-      return allFilteredProducts.slice(0, 10);
-    }
     return allFilteredProducts;
-  }, [allFilteredProducts, user]);
+  }, [allFilteredProducts]);
 
   // Animated header visibility - smooth transition based on visibility state
   const headerTranslateY = useRef(new Animated.Value(0)).current;
@@ -957,11 +977,17 @@ const ProductCatalogScreen: React.FC = () => {
           scrollEventThrottle={16}
           onEndReached={() => {
             // Automatically load more when user scrolls near the bottom
-            if (user && hasMore && !loading) {
+            if (hasMore && !loading) {
               loadMore();
             }
           }}
           onEndReachedThreshold={0.3}
+          // Android performance optimizations
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
           maintainVisibleContentPosition={{
             minIndexForVisible: 0,
             autoscrollToTopThreshold: 10,
@@ -996,19 +1022,7 @@ const ProductCatalogScreen: React.FC = () => {
             </View>
           }
           ListFooterComponent={
-            !user && displayProducts.length >= 10 ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
-                <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 8 }}>
-                  Autentificarea sau înregistrarea sunt necesare pentru a vedea toate piesele
-                </Text>
-                <TouchableOpacity
-                  style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-                  onPress={() => setAuthPromptVisible(true)}
-                >
-                  <Text style={[styles.emptyButtonText, { color: '#000940' }]}>Acces la toate piesele</Text>
-                </TouchableOpacity>
-              </View>
-            ) : user && hasMore && loading ? (
+            hasMore && loading ? (
               <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8 }}>
@@ -1017,26 +1031,6 @@ const ProductCatalogScreen: React.FC = () => {
               </View>
             ) : null
           }
-        />
-
-        <AuthPromptModal
-          visible={authPromptVisible}
-          title="Acces la întregul catalog"
-          message="Autentificarea sau crearea unui cont permite explorarea tuturor pieselor din E-shop, salvarea favoritelor și notificări personalizate."
-          benefits={[
-            'Acces complet la catalog și licitații',
-            'Liste de favorite și alerte de preț',
-            'Comenzi și plăți securizate',
-          ]}
-          onClose={() => setAuthPromptVisible(false)}
-          onLogin={() => {
-            setAuthPromptVisible(false);
-            navigation.navigate('Login');
-          }}
-          onRegister={() => {
-            setAuthPromptVisible(false);
-            navigation.navigate('Register');
-          }}
         />
 
         {/* Filter Modal */}

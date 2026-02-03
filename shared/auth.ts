@@ -14,7 +14,9 @@ import { sendWelcomeEmail } from './emailService';
 
 const googleProvider = new GoogleAuthProvider();
 
-export const signInWithEmail = async (email: string, password: string) => {
+ export const signInWithEmail = async (email: string, password: string) => {
+  console.log('[Auth] signInWithEmail called with:', email);
+  
   try {
     // Sanitize inputs
     const sanitizedEmail = email.trim().toLowerCase();
@@ -22,10 +24,12 @@ export const signInWithEmail = async (email: string, password: string) => {
 
     // Basic validation
     if (!sanitizedEmail || !sanitizedPassword) {
+      console.log('[Auth] Empty email or password');
       return { user: null, error: 'Email and password are required' };
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+      console.log('[Auth] Invalid email format');
       return { user: null, error: 'Invalid email format' };
     }
 
