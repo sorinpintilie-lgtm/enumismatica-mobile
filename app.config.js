@@ -37,7 +37,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "ro.enumismatica.mobile",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./android/app/google-services.json",
       permissions: [
         "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
@@ -60,7 +60,7 @@ export default {
     extra: {
       eas: {
         projectId: "f4fa174b-8702-4031-b9b3-e72887532885",
-        fcmV1CredentialPath: process.env.FCM_V1_CREDENTIAL_PATH || "./service-account-key.json",
+        fcmV1CredentialPath: process.env.FCM_V1_CREDENTIAL_PATH || "./e-numismatica-ro-firebase-adminsdk-fbsvc-ba41e55b6f.json",
       },
     },
   },
