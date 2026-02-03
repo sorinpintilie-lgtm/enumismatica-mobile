@@ -1,3 +1,4 @@
+
 import * as admin from "firebase-admin";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
@@ -158,6 +159,7 @@ export const sendNotificationPush = onDocumentCreated(
       return;
     }
 
+    // Check if we've already processed this notification
     const notificationRef = admin.firestore().collection("users").doc(params.userId).collection("notifications").doc(params.notificationId);
     
     // Make sending idempotent using transaction lock
