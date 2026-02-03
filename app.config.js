@@ -1,0 +1,67 @@
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+
+export default {
+  expo: {
+    name: "eNumismatica",
+    slug: "enumismatica",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/eNumismatica.ro_logo.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    splash: {
+      image: "./assets/eNumismatica_trapezoid_no_black_margins.png",
+      resizeMode: "contain",
+      backgroundColor: "#000000"
+    },
+    ios: {
+      supportsTablet: true,
+      statusBar: {
+        style: "dark",
+        backgroundColor: "#ffffff"
+      },
+      infoPlist: {
+        UIStatusBarHidden: false,
+        UIViewControllerBasedStatusBarAppearance: true,
+        ITSAppUsesNonExemptEncryption: false
+      },
+      bundleIdentifier: "ro.enumismatica.mobile"
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/eNumismatica.ro_logo.png",
+        backgroundColor: "#00020d"
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      package: "ro.enumismatica.mobile",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
+      permissions: [
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ],
+      intentFilters: [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "enumismatica"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    web: {
+      favicon: "./assets/favicon.png"
+    },
+    scheme: "enumismatica",
+    extra: {
+      eas: {
+        projectId: "f4fa174b-8702-4031-b9b3-e72887532885",
+        fcmV1CredentialPath: process.env.FCM_V1_CREDENTIAL_PATH || "./service-account-key.json",
+      },
+    },
+  },
+};

@@ -28,6 +28,10 @@
       },
       "android": {
         "resourceClass": "medium"
+      },
+      "env": {
+        "GOOGLE_SERVICES_JSON": "$GOOGLE_SERVICES_JSON",
+        "FCM_V1_CREDENTIAL_PATH": "$FCM_V1_CREDENTIALS"
       }
     }
   },
