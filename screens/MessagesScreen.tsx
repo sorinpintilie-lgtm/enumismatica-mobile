@@ -206,9 +206,9 @@ const MessagesScreen: React.FC = () => {
             <View style={[styles.conversationsListContainer, { backgroundColor: colors.cardBackground }]}>
               <View style={styles.conversationsHeader}>
                 <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesajele Mele</Text>
-                <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]}>
-                  Conversații private cu vânzătorii și cumpărătorii
-                </Text>
+                  <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                    Conversații cu vânzători și cumpărători
+                  </Text>
               </View>
 
               <View style={styles.searchContainer}>
@@ -381,8 +381,8 @@ const MessagesScreen: React.FC = () => {
                 <View style={styles.conversationsHeader}>
                   <InlineBackButton />
                   <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesajele Mele</Text>
-                  <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]}>
-                    Conversații private cu vânzătorii și cumpărătorii
+                  <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                    Conversații cu vânzători și cumpărători
                   </Text>
                 </View>
 

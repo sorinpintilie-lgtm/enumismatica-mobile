@@ -241,7 +241,7 @@ const CustomTabBar: React.FC<MaterialTopTabBarProps & { onFabPress: () => void }
           color={isFocused ? '#020617' : '#64748b'}
           style={styles.tabIcon}
         />
-        <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{config.label}</Text>
+        <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]} numberOfLines={1} ellipsizeMode="tail">{config.label}</Text>
       </TouchableOpacity>
     );
   };
@@ -857,9 +857,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 4,
     borderRadius: 999,
+    minWidth: 60,
+    maxWidth: 80,
   },
   tabItemActive: {
     backgroundColor: 'rgba(248, 250, 252, 0.96)',
@@ -871,6 +873,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#94a3b8',
+    lineHeight: 13,
   },
   tabLabelActive: {
     color: '#020617',

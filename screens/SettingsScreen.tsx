@@ -41,8 +41,6 @@ const SettingsScreen: React.FC = () => {
     | 'Sessions'
     | 'TrustedDevices'
     | 'AccountActions'
-    | 'Pronumismatica'
-    | 'MonetariaStatului'
     | 'Contracts';
 
   const securityRows: Array<{
@@ -51,8 +49,8 @@ const SettingsScreen: React.FC = () => {
     route: SettingsRoute;
     icon: keyof typeof Ionicons.glyphMap;
   }> = [
-    { title: 'Schimbă parola', subtitle: 'Actualizează parola contului', route: 'ChangePassword', icon: 'key-outline' },
-    { title: 'Schimbă emailul', subtitle: 'Actualizează adresa de email', route: 'ChangeEmail', icon: 'mail-outline' },
+    { title: 'Schimbare parolă', subtitle: 'Actualizează parola contului', route: 'ChangePassword', icon: 'key-outline' },
+    { title: 'Schimbare email', subtitle: 'Actualizează adresa de email', route: 'ChangeEmail', icon: 'mail-outline' },
     { title: 'Autentificare în doi pași (2FA)', subtitle: 'Configurează / dezactivează 2FA', route: 'TwoFA', icon: 'shield-checkmark-outline' },
     { title: 'Sesiuni', subtitle: 'Vezi și revocă sesiuni active', route: 'Sessions', icon: 'time-outline' },
     { title: 'Dispozitive de încredere', subtitle: 'Gestionează dispozitivele memorate', route: 'TrustedDevices', icon: 'phone-portrait-outline' },
@@ -66,8 +64,6 @@ const SettingsScreen: React.FC = () => {
     icon: keyof typeof Ionicons.glyphMap;
   }> = [
     { title: 'Contracte', subtitle: 'Descarcă contracte semnate (via web)', route: 'Contracts', icon: 'document-text-outline' },
-    { title: 'Asociația Pronumismatica', subtitle: 'Formular & informații (via web)', route: 'Pronumismatica', icon: 'people-outline' },
-    { title: 'Monetăria Statului', subtitle: 'Catalog (via web)', route: 'MonetariaStatului', icon: 'business-outline' },
   ];
 
   const Row = ({
@@ -105,18 +101,18 @@ const SettingsScreen: React.FC = () => {
         items: [
           {
             key: 'auctionOutbid' as const,
-            label: 'Ai fost depășit',
-            subtitle: 'Când altcineva licitează peste tine',
+            label: 'Depășire la licitație',
+            subtitle: 'Când altcineva licitează peste utilizator',
           },
           {
             key: 'auctionWon' as const,
             label: 'Licitație câștigată',
-            subtitle: 'Când câștigi o licitație',
+            subtitle: 'Când utilizatorul câștigă o licitație',
           },
           {
             key: 'auctionEndedNoWin' as const,
             label: 'Licitație încheiată',
-            subtitle: 'Când licitația se termină fără să câștigi',
+            subtitle: 'Când licitația se termină fără ca utilizatorul să câștige',
           },
         ],
       },
@@ -132,7 +128,7 @@ const SettingsScreen: React.FC = () => {
           {
             key: 'offerUpdates' as const,
             label: 'Oferte',
-            subtitle: 'Răspunsuri la ofertele tale sau primite',
+            subtitle: 'Răspunsuri la ofertele utilizatorului sau primite',
           },
         ],
       },
