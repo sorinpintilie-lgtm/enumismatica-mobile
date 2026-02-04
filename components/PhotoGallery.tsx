@@ -14,7 +14,6 @@ import { Image as ExpoImage } from 'expo-image';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface PhotoGalleryProps {
@@ -206,24 +205,27 @@ function ZoomableImage({ uri }: { uri: string }) {
   const scale = useSharedValue(1);
 
   const pinch = Gesture.Pinch()
-    .onUpdate(({ scale: scaleFactor }) => {
-      scale.value = Math.max(1, Math.min(4, scaleFactor));
+    .onUpdate((e) => {
+      scale.value = Math.max(1, Math.min(4, e.scale));
     })
     .onEnd(() => {
       if (scale.value < 1.05) scale.value = 1;
     });
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const style = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
       <GestureDetector gesture={pinch}>
-        <Animated.View style={[styles.zoomView, animatedStyle]}>
+        <Animated.View style={style}>
           <ExpoImage
             source={{ uri }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ 
+              width: SCREEN_WIDTH - 40,
+              height: SCREEN_HEIGHT - 200
+            }}
             contentFit="contain"
           />
         </Animated.View>
