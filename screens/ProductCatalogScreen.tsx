@@ -442,6 +442,17 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 11,
   },
+  imageLoadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 2, 13, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
   cardTitle: {
     fontSize: 14,
     fontWeight: '600',
@@ -481,6 +492,7 @@ const styles = StyleSheet.create({
 const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Debug log for image loading (helps with Android issues)
   useEffect(() => {
@@ -503,22 +515,33 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       <View style={{ position: 'relative' }}>
         <View style={styles.cardImageContainer}>
         {product.images && product.images.length > 0 && !imageError ? (
-          <ExpoImage
-            source={{ uri: product.images[0] }}
-            style={styles.cardImage}
-            contentFit="cover"
-            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-            transition={200}
-            onError={(error) => {
-              if (__DEV__) {
-                console.log('[ProductCatalog] Image load error:', {
-                  productId: product.id,
-                  error: error,
-                });
-              }
-              setImageError(true);
-            }}
-          />
+          <>
+            {imageLoading && (
+              <View style={styles.imageLoadingContainer}>
+                <ActivityIndicator size="small" color="#e7b73c" />
+              </View>
+            )}
+            <ExpoImage
+              source={{ uri: product.images[0] }}
+              style={styles.cardImage}
+              contentFit="cover"
+              placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+              transition={200}
+              onLoadStart={() => setImageLoading(true)}
+              onLoadEnd={() => setImageLoading(false)}
+              onError={(error) => {
+                if (__DEV__) {
+                  console.log('[ProductCatalog] Image load error:', {
+                    productId: product.id,
+                    error: error,
+                  });
+                }
+                setImageError(true);
+                setImageLoading(false);
+              }}
+              cachePolicy="memory-disk"
+            />
+          </>
         ) : (
           <View style={styles.cardNoImageContainer}>
             <Text style={styles.cardNoImageText}>Fără imagine</Text>
