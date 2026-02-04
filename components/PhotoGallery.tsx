@@ -131,7 +131,8 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
         animationType="fade"
-        transparent={true}
+        presentationStyle="fullScreen"
+        statusBarTranslucent
       >
         <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <View style={[styles.modalHeader, { top: insets.top }]}>
@@ -204,13 +205,17 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
 
 function ZoomableImage({ uri }: { uri: string }) {
   const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
 
   const pinch = Gesture.Pinch()
+    .onBegin(() => {
+      savedScale.value = scale.value;
+    })
     .onUpdate((e) => {
-      scale.value = Math.max(1, Math.min(4, e.scale)); // clamp 1x..4x
+      const next = savedScale.value * e.scale;
+      scale.value = Math.max(1, Math.min(4, next));
     })
     .onEnd(() => {
-      // optional: snap back if close to 1
       if (scale.value < 1.05) scale.value = 1;
     });
 
@@ -219,16 +224,13 @@ function ZoomableImage({ uri }: { uri: string }) {
   }));
 
   return (
-    <View style={{ flex: 1, overflow: "hidden", justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{ flex: 1, overflow: "hidden", justifyContent: "center", alignItems: "center" }}>
       <GestureDetector gesture={pinch}>
-        <Animated.View style={[style]}>
-          <ExpoImage 
-            source={{ uri }} 
-            style={{ 
-              width: SCREEN_WIDTH - 40,
-              height: SCREEN_HEIGHT - 200
-            }} 
-            contentFit="contain" 
+        <Animated.View style={style}>
+          <ExpoImage
+            source={{ uri }}
+            style={{ width: SCREEN_WIDTH - 40, height: SCREEN_HEIGHT - 200 }}
+            contentFit="contain"
           />
         </Animated.View>
       </GestureDetector>
