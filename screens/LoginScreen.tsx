@@ -338,6 +338,8 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleEmailLogin = async () => {
+    if (loading) return; // Prevent multiple presses
+
     setLoading(true);
     setError('');
 

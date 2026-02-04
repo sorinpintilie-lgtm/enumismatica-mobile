@@ -504,7 +504,6 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <View style={styles.cardImageContainer}>
         {product.images && product.images.length > 0 && !imageError ? (
           <ExpoImage
-            key={`product-image-${product.id}`}
             source={{ uri: product.images[0] }}
             style={styles.cardImage}
             contentFit="cover"

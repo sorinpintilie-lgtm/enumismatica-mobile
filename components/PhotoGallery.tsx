@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,17 +7,11 @@ import {
   Dimensions,
   ScrollView,
   Text,
-  GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import ImagePanZoom from 'react-native-image-pan-zoom';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -29,45 +23,6 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const insets = useSafeAreaInsets();
-  const scale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const lastScale = useRef(1);
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((event) => {
-      scale.value = lastScale.current * event.scale;
-    })
-    .onEnd(() => {
-      lastScale.current = scale.value;
-      // Clamp scale between 1 and 5
-      if (scale.value < 1) {
-        scale.value = withSpring(1);
-        lastScale.current = 1;
-      } else if (scale.value > 5) {
-        scale.value = withSpring(5);
-        lastScale.current = 5;
-      }
-    });
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      // Simple pan implementation
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
-    });
-
-  const combinedGestures = Gesture.Simultaneous(pinchGesture, panGesture);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { scale: scale.value },
-      ],
-    } as any;
-  });
 
   const handleImagePress = (index: number) => {
     setCurrentIndex(index);
@@ -191,16 +146,20 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
           </View>
 
           <View style={styles.modalImageContainer}>
-            <GestureDetector gesture={combinedGestures}>
-              <Animated.View style={[styles.zoomView, animatedStyle]}>
-                <ExpoImage
-                  source={{ uri: images[currentIndex] }}
-                  style={styles.modalImage}
-                  contentFit="contain"
-                  transition={200}
-                />
-              </Animated.View>
-            </GestureDetector>
+            <ImagePanZoom
+              cropWidth={SCREEN_WIDTH - 40}
+              cropHeight={SCREEN_HEIGHT - 200}
+              imageWidth={SCREEN_WIDTH - 40}
+              imageHeight={SCREEN_HEIGHT - 200}
+              style={styles.zoomView}
+            >
+              <ExpoImage
+                source={{ uri: images[currentIndex] }}
+                style={styles.modalImage}
+                contentFit="contain"
+                transition={200}
+              />
+            </ImagePanZoom>
           </View>
 
           {images.length > 1 && (
