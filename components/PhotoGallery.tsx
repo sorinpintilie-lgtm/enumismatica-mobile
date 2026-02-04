@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
-import Zoomable from 'react-native-zoomable-view';
+import ImageZoom from 'react-native-image-pan-zoom';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -145,12 +145,12 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
             </TouchableOpacity>
           </View>
 
-          <Zoomable
+          <ImageZoom
+            cropWidth={SCREEN_WIDTH - 40}
+            cropHeight={SCREEN_HEIGHT - 200}
+            imageWidth={SCREEN_WIDTH - 40}
+            imageHeight={SCREEN_HEIGHT - 200}
             style={styles.modalImageContainer}
-            minScale={1}
-            maxScale={5}
-            contentWidth={SCREEN_WIDTH - 40}
-            contentHeight={SCREEN_HEIGHT - 200}
           >
             <ExpoImage
               source={{ uri: images[currentIndex] }}
@@ -162,7 +162,7 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
               contentFit="contain"
               transition={200}
             />
-          </Zoomable>
+          </ImageZoom>
 
           {images.length > 1 && (
             <>
