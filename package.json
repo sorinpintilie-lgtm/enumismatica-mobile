@@ -57,8 +57,6 @@
     "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "^0.5.1",
-    "react-native-zoom-view": "^1.0.2",
-    "react-native-zoomable-view": "^0.3.1",
     "tailwindcss": "^3.4.18",
     "zod": "^4.3.6"
   },
@@ -81,6 +79,9 @@
       "<rootDir>",
       "<rootDir>/../shared"
     ]
+  },
+  "overrides": {
+    "react-native-gesture-handler": "~2.28.0"
   },
   "private": true
 }

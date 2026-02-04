@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -145,31 +147,9 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={styles.modalImageContainer}
-            contentContainerStyle={{ 
-              justifyContent: 'center', 
-              alignItems: 'center',
-              padding: 20
-            }}
-            maximumZoomScale={5}
-            minimumZoomScale={1}
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-            bouncesZoom={true}
-            scrollEnabled={true}
-          >
-            <ExpoImage
-              source={{ uri: images[currentIndex] }}
-              style={{ 
-                width: SCREEN_WIDTH - 40,
-                height: SCREEN_HEIGHT - 200,
-                resizeMode: 'contain'
-              }}
-              contentFit="contain"
-              transition={200}
-            />
-          </ScrollView>
+          <View style={styles.modalImageContainer}>
+            <ZoomableImage uri={images[currentIndex]} />
+          </View>
 
           {images.length > 1 && (
             <>
@@ -221,6 +201,37 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
     </View>
   );
 };
+
+function ZoomableImage({ uri }: { uri: string }) {
+  const scale = useSharedValue(1);
+
+  const pinch = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(1, Math.min(4, e.scale)); // clamp 1x..4x
+    })
+    .onEnd(() => {
+      // optional: snap back if close to 1
+      if (scale.value < 1.05) scale.value = 1;
+    });
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <View style={{ flex: 1, overflow: "hidden" }}>
+      <GestureDetector gesture={pinch}>
+        <Animated.View style={[{ flex: 1 }, style]}>
+          <ExpoImage 
+            source={{ uri }} 
+            style={{ width: "100%", height: "100%" }} 
+            contentFit="contain" 
+          />
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
