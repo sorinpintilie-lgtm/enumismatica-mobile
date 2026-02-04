@@ -1004,12 +1004,12 @@ const ProductCatalogScreen: React.FC = () => {
             }
           }}
           onEndReachedThreshold={0.3}
-          // Android performance optimizations
+          // Performance optimizations - only load visible items and nearby items
           removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
+          maxToRenderPerBatch={8} // Fewer items per batch for faster initial load
           updateCellsBatchingPeriod={50}
-          initialNumToRender={10}
-          windowSize={10}
+          initialNumToRender={8} // Fewer initial items for faster screen display
+          windowSize={5} // Only load items in a small window around visible area
           maintainVisibleContentPosition={{
             minIndexForVisible: 0,
             autoscrollToTopThreshold: 10,
