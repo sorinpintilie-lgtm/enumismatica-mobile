@@ -338,7 +338,11 @@ const LoginScreen: React.FC = () => {
   };
 
   const handleEmailLogin = async () => {
-    if (loading) return; // Prevent multiple presses
+    console.log('handleEmailLogin called, loading:', loading); // Debug log
+    if (loading) {
+      console.log('Already loading, returning');
+      return; // Prevent multiple presses
+    }
 
     setLoading(true);
     setError('');
@@ -353,31 +357,38 @@ const LoginScreen: React.FC = () => {
       return;
     }
 
-    const { user, error } = await signInWithEmail(email, password);
-    setLoading(false);
-
-    if (error) {
-      setError(error);
-      return;
-    }
-
-     if (user) {
-      // AuthContext will handle 2FA gating automatically
-      // If 2FA is required, it will set twoFactorRequired to true
-      // and the LoginScreen will show the 2FA form
-      await startSessionOnServer();
-      await refreshAuth();
+    try {
+      const { user, error } = await signInWithEmail(email, password);
       
-      // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
-      
-      if (!twoFactorEnabled) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs' }],
-        });
+      if (error) {
+        setError(error);
+        return;
       }
+
+       if (user) {
+        // AuthContext will handle 2FA gating automatically
+        // If 2FA is required, it will set twoFactorRequired to true
+        // and the LoginScreen will show the 2FA form
+        await startSessionOnServer();
+        await refreshAuth();
+        
+        // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
+        
+        if (!twoFactorEnabled) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Eroare la autentificare. Vă rugăm să încercați din nou.');
+    } finally {
+      console.log('Setting loading to false');
+      setLoading(false);
     }
   };
 
