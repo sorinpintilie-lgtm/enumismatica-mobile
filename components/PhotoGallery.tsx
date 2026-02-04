@@ -219,12 +219,15 @@ function ZoomableImage({ uri }: { uri: string }) {
   }));
 
   return (
-    <View style={{ flex: 1, overflow: "hidden" }}>
+    <View style={{ flex: 1, overflow: "hidden", justifyContent: 'center', alignItems: 'center' }}>
       <GestureDetector gesture={pinch}>
-        <Animated.View style={[{ flex: 1 }, style]}>
+        <Animated.View style={[style]}>
           <ExpoImage 
             source={{ uri }} 
-            style={{ width: "100%", height: "100%" }} 
+            style={{ 
+              width: SCREEN_WIDTH - 40,
+              height: SCREEN_HEIGHT - 200
+            }} 
             contentFit="contain" 
           />
         </Animated.View>
