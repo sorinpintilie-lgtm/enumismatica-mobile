@@ -10,7 +10,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
-    newArchEnabled: true,
+    newArchEnabled: false,
     plugins: [
       [
         "expo-build-properties",

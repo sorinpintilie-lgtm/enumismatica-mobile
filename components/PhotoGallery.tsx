@@ -146,15 +146,25 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
 
           <ScrollView
             style={styles.modalImageContainer}
-            contentContainerStyle={{ justifyContent: 'center', alignItems: 'center' }}
+            contentContainerStyle={{ 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              padding: 20
+            }}
             maximumZoomScale={5}
             minimumZoomScale={1}
             showsVerticalScrollIndicator={false}
             showsHorizontalScrollIndicator={false}
+            bouncesZoom={true}
+            scrollEnabled={true}
           >
             <ExpoImage
               source={{ uri: images[currentIndex] }}
-              style={styles.modalImage}
+              style={{ 
+                width: SCREEN_WIDTH - 40,
+                height: SCREEN_HEIGHT - 200,
+                resizeMode: 'contain'
+              }}
               contentFit="contain"
               transition={200}
             />
