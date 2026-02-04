@@ -12,12 +12,14 @@ export default {
     userInterfaceStyle: "light",
     newArchEnabled: true,
     plugins: [
+      "@react-native-firebase/app",
       [
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "dynamic",
-            "deploymentTarget": "15.1"
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1",
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore"]
           }
         }
       ]
