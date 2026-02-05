@@ -8,12 +8,16 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-firebase/firestore",
       [
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "dynamic",
-            "deploymentTarget": "15.1"
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1",
+            "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore"]
           }
         }
       ]
@@ -34,7 +38,8 @@
         "UIViewControllerBasedStatusBarAppearance": true,
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "ro.enumismatica.mobile"
+      "bundleIdentifier": "ro.enumismatica.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {

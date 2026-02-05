@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image as ExpoImage } from 'expo-image';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -132,70 +132,72 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
         animationType="fade"
         transparent={true}
       >
-        <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <View style={[styles.modalHeader, { top: insets.top }]}>
-            <View style={styles.modalHeaderSpacer} />
-            <Text style={styles.modalTitle}>
-              {`${currentIndex + 1} / ${images.length}`}
-            </Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Ionicons name="close" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalImageContainer}>
-            <ZoomableImage uri={images[currentIndex]} />
-          </View>
-
-          {images.length > 1 && (
-            <>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+            <View style={[styles.modalHeader, { top: insets.top }]}>
+              <View style={styles.modalHeaderSpacer} />
+              <Text style={styles.modalTitle}>
+                {`${currentIndex + 1} / ${images.length}`}
+              </Text>
               <TouchableOpacity
-                style={styles.navButton}
-                onPress={handlePrev}
-                disabled={currentIndex === 0}
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
               >
-                <Ionicons name="chevron-back" size={24} color="white" />
+                <Ionicons name="close" size={24} color="white" />
               </TouchableOpacity>
+            </View>
 
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonRight]}
-                onPress={handleNext}
-                disabled={currentIndex === images.length - 1}
-              >
-                <Ionicons name="chevron-forward" size={24} color="white" />
-              </TouchableOpacity>
-            </>
-          )}
+            <View style={styles.modalImageContainer}>
+              <ZoomableImage uri={images[currentIndex]} />
+            </View>
 
-          <View style={[styles.modalThumbnailsContainer, { bottom: insets.bottom + 20 }]}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.modalThumbnailsContent}
-            >
-              {images.map((image, index) => (
+            {images.length > 1 && (
+              <>
                 <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.modalThumbnail,
-                    currentIndex === index && styles.modalThumbnailActive,
-                  ]}
-                  onPress={() => setCurrentIndex(index)}
+                  style={styles.navButton}
+                  onPress={handlePrev}
+                  disabled={currentIndex === 0}
                 >
-                  <ExpoImage
-                    source={{ uri: image }}
-                    style={styles.modalThumbnailImage}
-                    contentFit="cover"
-                    transition={150}
-                  />
+                  <Ionicons name="chevron-back" size={24} color="white" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+
+                <TouchableOpacity
+                  style={[styles.navButton, styles.navButtonRight]}
+                  onPress={handleNext}
+                  disabled={currentIndex === images.length - 1}
+                >
+                  <Ionicons name="chevron-forward" size={24} color="white" />
+                </TouchableOpacity>
+              </>
+            )}
+
+            <View style={[styles.modalThumbnailsContainer, { bottom: insets.bottom + 20 }]}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.modalThumbnailsContent}
+              >
+                {images.map((image, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.modalThumbnail,
+                      currentIndex === index && styles.modalThumbnailActive,
+                    ]}
+                    onPress={() => setCurrentIndex(index)}
+                  >
+                    <ExpoImage
+                      source={{ uri: image }}
+                      style={styles.modalThumbnailImage}
+                      contentFit="cover"
+                      transition={150}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </GestureHandlerRootView>
       </Modal>
     </View>
   );
@@ -203,34 +205,69 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({ images }) => {
 
 function ZoomableImage({ uri }: { uri: string }) {
   const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const savedTranslateX = useSharedValue(0);
+  const savedTranslateY = useSharedValue(0);
 
   const pinch = Gesture.Pinch()
+    .onStart(() => {
+      savedScale.value = scale.value;
+    })
     .onUpdate((e) => {
-      scale.value = Math.max(1, Math.min(4, e.scale));
+      scale.value = Math.max(1, Math.min(4, savedScale.value * e.scale));
     })
     .onEnd(() => {
-      if (scale.value < 1.05) scale.value = 1;
+      if (scale.value < 1.05) {
+        scale.value = 1;
+        translateX.value = 0;
+        translateY.value = 0;
+      }
     });
 
+  const pan = Gesture.Pan()
+    .onStart(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    })
+    .onUpdate((e) => {
+      if (scale.value > 1) {
+        translateX.value = savedTranslateX.value + e.translationX;
+        translateY.value = savedTranslateY.value + e.translationY;
+      }
+    })
+    .onEnd(() => {
+      if (scale.value === 1) {
+        translateX.value = 0;
+        translateY.value = 0;
+      }
+    })
+    .enabled(scale.value > 1);
+
   const style = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
   }));
 
+  const combined = Gesture.Simultaneous(pinch, pan);
+
   return (
-    <View style={{ flex: 1, overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
-      <GestureDetector gesture={pinch}>
-        <Animated.View style={style}>
-          <ExpoImage
-            source={{ uri }}
-            style={{ 
-              width: SCREEN_WIDTH - 40,
-              height: SCREEN_HEIGHT - 200
-            }}
-            contentFit="contain"
-          />
-        </Animated.View>
-      </GestureDetector>
-    </View>
+    <GestureDetector gesture={combined}>
+      <Animated.View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, style]}>
+        <ExpoImage
+          source={{ uri }}
+          style={{ 
+            width: SCREEN_WIDTH - 40,
+            height: SCREEN_HEIGHT - 200
+          }}
+          contentFit="contain"
+        />
+      </Animated.View>
+    </GestureDetector>
   );
 }
 

@@ -40,7 +40,8 @@ export default {
         UIViewControllerBasedStatusBarAppearance: true,
         ITSAppUsesNonExemptEncryption: false
       },
-      bundleIdentifier: "ro.enumismatica.mobile"
+      bundleIdentifier: "ro.enumismatica.mobile",
+      googleServicesFile: "./GoogleService-Info.plist"
     },
     android: {
       adaptiveIcon: {
@@ -50,7 +51,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "ro.enumismatica.mobile",
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./android/app/google-services.json",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       permissions: [
         "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
