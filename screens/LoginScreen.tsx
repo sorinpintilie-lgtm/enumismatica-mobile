@@ -378,8 +378,6 @@ const LoginScreen: React.FC = () => {
           if (sessionValue === '1') {
             // 2FA already verified for this session
             await startSessionOnServer();
-            // Wait a bit for auth state to propagate
-            await new Promise(resolve => setTimeout(resolve, 500));
             await refreshAuth();
             navigation.reset({
               index: 0,
@@ -394,8 +392,6 @@ const LoginScreen: React.FC = () => {
         } else {
           // No 2FA required, proceed to dashboard
           await startSessionOnServer();
-          // Wait a bit for auth state to propagate
-          await new Promise(resolve => setTimeout(resolve, 500));
           await refreshAuth();
           navigation.reset({
             index: 0,
@@ -533,8 +529,6 @@ const LoginScreen: React.FC = () => {
         if (sessionValue === '1') {
           // 2FA already verified for this session
           await startSessionOnServer();
-          // Wait a bit for auth state to propagate
-          await new Promise(resolve => setTimeout(resolve, 500));
           await refreshAuth();
           navigation.reset({
             index: 0,
@@ -549,8 +543,6 @@ const LoginScreen: React.FC = () => {
       } else {
         // No 2FA required, proceed to dashboard
         await startSessionOnServer();
-        // Wait a bit for auth state to propagate
-        await new Promise(resolve => setTimeout(resolve, 500));
         await refreshAuth();
         navigation.reset({
           index: 0,

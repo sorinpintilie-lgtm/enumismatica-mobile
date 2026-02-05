@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { onAuthStateChange } from '@shared/auth';
 import { registerPushTokenForUser, unregisterPushTokenForUser } from '../services/pushTokenService';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@shared/firebaseConfig';
+import { db, auth } from '@shared/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import crashlyticsService from '@shared/crashlyticsService';
 
@@ -95,8 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshAuth = useCallback(async () => {
-    await check2FAStatus(firebaseUser);
-  }, [check2FAStatus, firebaseUser]);
+    // Get the current user directly from auth instead of using stale state
+    const currentUser = auth.currentUser;
+    await check2FAStatus(currentUser);
+  }, [check2FAStatus]);
 
   useEffect(() => {
     // Show splash screen for at least 3.5 seconds to ensure branding is visible
