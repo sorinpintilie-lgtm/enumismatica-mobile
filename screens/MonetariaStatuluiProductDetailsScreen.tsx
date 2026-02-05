@@ -5,11 +5,11 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
   Share,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigationTypes';
@@ -256,10 +256,12 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
         {/* Product Image */}
         <View style={styles.productImageContainer}>
-          <Image
+          <ExpoImage
             source={{ uri: `${process.env.EXPO_PUBLIC_API_URL || 'https://enumismatica.ro'}${product.image}` }}
             style={styles.productImage}
-            resizeMode="contain"
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={200}
           />
         </View>
 

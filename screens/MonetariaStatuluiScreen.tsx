@@ -5,12 +5,12 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   RefreshControl,
   FlatList,
   Alert,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -318,11 +318,7 @@ export default function MonetariaStatuluiScreen() {
               style={styles.cartButton}
               onPress={() => navigation.navigate('Cart')}
             >
-              <Image
-                source={require('../assets/eNumismatica_trapezoid_no_black_margins.png')}
-                style={styles.cartButtonLogo}
-                resizeMode="contain"
-              />
+              <Ionicons name="cart-outline" size={24} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -472,10 +468,12 @@ export default function MonetariaStatuluiScreen() {
                 onPress={() => navigation.navigate('MonetariaStatuluiProductDetails', { productId: item.id })}
               >
                 <View style={styles.productImageContainer}>
-                  <Image
+                  <ExpoImage
                     source={{ uri: `${process.env.EXPO_PUBLIC_API_URL || 'https://enumismatica.ro'}${item.image}` }}
                     style={styles.productImage}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    transition={200}
                   />
                 </View>
                 <View style={styles.productInfo}>
@@ -840,10 +838,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(231, 183, 60, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(231, 183, 60, 0.4)',
-  },
-  cartButtonLogo: {
-    width: 24,
-    height: 24,
-    marginBottom: 8,
   },
 });
