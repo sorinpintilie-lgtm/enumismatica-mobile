@@ -6,6 +6,9 @@ import * as Application from 'expo-application';
 import { db, doc, setDoc, deleteDoc, serverTimestamp } from '@shared/firebaseConfig';
 import { requestNotificationPermissions, ensureNotificationChannelCreated } from './notificationService';
 
+// Global listener reference to prevent multiple listeners
+let pushTokenListener: Notifications.Subscription | null = null;
+
 type DeviceRegistration = {
   expoPushToken?: string | null;
   expoPushTokenRaw?: any | null;
@@ -149,8 +152,14 @@ export async function registerPushTokenForUser(userId: string) {
     console.log('[pushTokenService] Successfully registered device for user:', userId);
     console.log('[pushTokenService] Device document path:', `users/${userId}/devices/${deviceId}`);
     
+    // Remove any existing listener before creating a new one
+    if (pushTokenListener) {
+      pushTokenListener.remove();
+      console.log('[pushTokenService] Removed existing push token listener');
+    }
+    
     // Set up listener to update token if it becomes available later
-    const tokenListener = Notifications.addPushTokenListener(async (token) => {
+    pushTokenListener = Notifications.addPushTokenListener(async (token) => {
       console.log('[pushTokenService] Push token listener received token:', token);
       await setDoc(deviceRef, {
         expoPushToken: token?.data ?? null,
@@ -159,12 +168,6 @@ export async function registerPushTokenForUser(userId: string) {
         updatedAt: serverTimestamp(),
       }, { merge: true });
     });
-
-    // Clean up listener after some time (optional but recommended)
-    setTimeout(() => {
-      tokenListener.remove();
-      console.log('[pushTokenService] Push token listener removed');
-    }, 30000); // Remove after 30 seconds
 
     if (expoPushToken) {
       console.log('[pushTokenService] Device is ready to receive push notifications');
@@ -189,6 +192,13 @@ export async function unregisterPushTokenForUser(userId: string) {
   if (Platform.OS === 'web') return;
 
   try {
+    // Remove the push token listener
+    if (pushTokenListener) {
+      pushTokenListener.remove();
+      pushTokenListener = null;
+      console.log('[pushTokenService] Removed push token listener during unregister');
+    }
+
     // Generate the same device ID as registration
     let deviceId: string;
     

@@ -366,17 +366,33 @@ const LoginScreen: React.FC = () => {
       }
 
        if (user) {
-        // AuthContext will handle 2FA gating automatically
-        // If 2FA is required, it will set twoFactorRequired to true
-        // and the LoginScreen will show the 2FA form
-        await startSessionOnServer();
-        await refreshAuth();
-        
-        // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
+        // Check user's 2FA status
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
         
-        if (!twoFactorEnabled) {
+        if (twoFactorEnabled) {
+          // Check if this session already has 2FA verified
+          const okKey = `enumismatica_2fa_ok_${user.uid}`;
+          const sessionValue = await AsyncStorage.getItem(okKey);
+          
+          if (sessionValue === '1') {
+            // 2FA already verified for this session
+            await startSessionOnServer();
+            await refreshAuth();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'MainTabs' }],
+            });
+          } else {
+            // Show 2FA form
+            setPendingUserId(user.uid);
+            setShowStepper(true);
+            setCurrentStep(1);
+          }
+        } else {
+          // No 2FA required, proceed to dashboard
+          await startSessionOnServer();
+          await refreshAuth();
           navigation.reset({
             index: 0,
             routes: [{ name: 'MainTabs' }],
@@ -501,13 +517,33 @@ const LoginScreen: React.FC = () => {
     if (error) {
       setError(error);
     } else if (user) {
-      await refreshAuth();
-      
-      // Instead of checking twoFactorRequired immediately, let's check user's 2FA status directly
+      // Check user's 2FA status
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
       
-      if (!twoFactorEnabled) {
+      if (twoFactorEnabled) {
+        // Check if this session already has 2FA verified
+        const okKey = `enumismatica_2fa_ok_${user.uid}`;
+        const sessionValue = await AsyncStorage.getItem(okKey);
+        
+        if (sessionValue === '1') {
+          // 2FA already verified for this session
+          await startSessionOnServer();
+          await refreshAuth();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          });
+        } else {
+          // Show 2FA form
+          setPendingUserId(user.uid);
+          setShowStepper(true);
+          setCurrentStep(1);
+        }
+      } else {
+        // No 2FA required, proceed to dashboard
+        await startSessionOnServer();
+        await refreshAuth();
         navigation.reset({
           index: 0,
           routes: [{ name: 'MainTabs' }],
