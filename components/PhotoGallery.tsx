@@ -242,8 +242,7 @@ function ZoomableImage({ uri }: { uri: string }) {
         translateX.value = 0;
         translateY.value = 0;
       }
-    })
-    .enabled(scale.value > 1);
+    });
 
   const style = useAnimatedStyle(() => ({
     transform: [
