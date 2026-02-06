@@ -246,6 +246,14 @@ const DashboardScreen: React.FC = () => {
       height: 60,
       marginBottom: 8,
     },
+    versionText: {
+      fontSize: 10,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+      opacity: 0.5,
+    },
   });
 
   if (!user) {
@@ -369,8 +377,11 @@ const DashboardScreen: React.FC = () => {
                    />
                    <Text style={dashboardStyles.actionGridText}>Monetăria Statului</Text>
                  </TouchableOpacity>
-              </View>
+               </View>
             </View>
+
+            {/* Version Number */}
+            <Text style={dashboardStyles.versionText}>v0.75</Text>
           </View>
         </ScrollView>
       );
@@ -609,9 +620,12 @@ const DashboardScreen: React.FC = () => {
         >
           <Text style={dashboardStyles.logoutButtonText}>Deconectare</Text>
         </TouchableOpacity>
+
+        {/* Version Number */}
+        <Text style={dashboardStyles.versionText}>v0.75</Text>
       </View>
     </ScrollView>
-);
+  );
 };
 
 export default DashboardScreen;
