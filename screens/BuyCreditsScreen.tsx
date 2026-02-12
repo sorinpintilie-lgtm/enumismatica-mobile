@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Linking, TextInput } from 'react-native';
 import InlineBackButton from '../components/InlineBackButton';
 import { colors } from '../styles/sharedStyles';
 import { useAuth } from '../context/AuthContext';
@@ -11,13 +11,14 @@ const PRESET_RON_AMOUNTS = [20, 50, 100, 200];
 const BuyCreditsScreen: React.FC = () => {
   const { user } = useAuth();
   const [selectedAmount, setSelectedAmount] = useState<number>(50);
+  const [customAmount, setCustomAmount] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [currentCredits, setCurrentCredits] = useState<number | null>(null);
   const [lastPaymentId, setLastPaymentId] = useState<string | null>(null);
   const [lastStatus, setLastStatus] = useState<NetopiaPaymentStatus | null>(null);
 
-  const estimatedCredits = useMemo(() => Math.floor(selectedAmount / 2), [selectedAmount]);
+  const estimatedCredits = useMemo(() => selectedAmount, [selectedAmount]);
 
   const refreshCredits = useCallback(async () => {
     if (!user?.uid) return;
@@ -32,6 +33,11 @@ const BuyCreditsScreen: React.FC = () => {
   }, [refreshCredits]);
 
   const handleStartPayment = async () => {
+    if (!Number.isFinite(selectedAmount) || selectedAmount <= 0) {
+      Alert.alert('Sumă invalidă', 'Introdu o sumă mai mare decât 0 RON.');
+      return;
+    }
+
     try {
       setProcessing(true);
       const init = await initNetopiaCreditPayment(selectedAmount);
@@ -88,6 +94,13 @@ const BuyCreditsScreen: React.FC = () => {
       <Text style={styles.title}>Cumpărare credite</Text>
       <Text style={styles.subtitle}>Creditele sunt folosite pentru promovări, listări și licitații.</Text>
 
+      <View style={styles.infoCard}>
+        <Text style={styles.infoTitle}>Cum funcționează creditele</Text>
+        <Text style={styles.infoLine}>• 1 RON = 1 credit</Text>
+        <Text style={styles.infoLine}>• Creditele sunt adăugate după confirmarea plății</Text>
+        <Text style={styles.infoLine}>• Pot fi folosite pentru boost, promovare și publicare</Text>
+      </View>
+
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Sold curent</Text>
         <Text style={styles.balanceValue}>{currentCredits === null ? '—' : `${currentCredits} credite`}</Text>
@@ -102,14 +115,34 @@ const BuyCreditsScreen: React.FC = () => {
               <TouchableOpacity
                 key={amount}
                 style={[styles.amountButton, selected && styles.amountButtonSelected]}
-                onPress={() => setSelectedAmount(amount)}
+                onPress={() => {
+                  setSelectedAmount(amount);
+                  setCustomAmount('');
+                }}
               >
                 <Text style={[styles.amountText, selected && styles.amountTextSelected]}>{amount} RON</Text>
               </TouchableOpacity>
             );
           })}
         </View>
-        <Text style={styles.estimateText}>Primești aproximativ {estimatedCredits} credite (2 RON / credit).</Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: 14, marginBottom: 8 }]}>Sau introdu sumă personalizată</Text>
+        <TextInput
+          style={styles.customInput}
+          placeholder="Ex: 75"
+          placeholderTextColor={colors.textSecondary}
+          keyboardType="number-pad"
+          value={customAmount}
+          onChangeText={(text) => {
+            const cleaned = text.replace(/[^0-9]/g, '');
+            setCustomAmount(cleaned);
+            const value = Number(cleaned || 0);
+            if (value > 0) {
+              setSelectedAmount(value);
+            }
+          }}
+        />
+        <Text style={styles.estimateText}>Primești {estimatedCredits} credite (1 RON / credit).</Text>
       </View>
 
       <TouchableOpacity style={styles.primaryButton} disabled={processing} onPress={handleStartPayment}>
@@ -151,6 +184,24 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.textSecondary,
     fontSize: 13,
+  },
+  infoCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.35)',
+    backgroundColor: 'rgba(231, 183, 60, 0.08)',
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+  },
+  infoTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  infoLine: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   balanceCard: {
     borderWidth: 1,
@@ -209,6 +260,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: colors.textSecondary,
     fontSize: 12,
+  },
+  customInput: {
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: colors.textPrimary,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   primaryButton: {
     backgroundColor: colors.primary,

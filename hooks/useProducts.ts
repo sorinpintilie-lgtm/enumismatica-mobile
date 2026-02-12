@@ -105,8 +105,6 @@ export function useProducts(
         fieldsKey,
         loadAllAtOnce,
         listingType,
-        hasMore,
-        productsCount: products.length,
       });
     }
 
@@ -127,7 +125,6 @@ export function useProducts(
             empty: querySnapshot.empty,
             loadAllAtOnce,
             pageSize,
-            productsCountBefore: products.length,
           });
           const sample = querySnapshot.docs[0];
           const sampleData = sample?.data?.() as any;
@@ -200,9 +197,10 @@ export function useProducts(
         // Replace products for initial load
         setProducts(productsData);
 
-        // Check if there are more products to load
-        // If we got fewer documents than requested (pageSize + 5), we've reached the end
-        setHasMore(querySnapshot.size >= pageSize + 5);
+        // Check if there are more products to load.
+        // When loading all at once, pagination must stay disabled to avoid
+        // extra fetch cycles triggered by list interactions (e.g. search/filter updates).
+        setHasMore(loadAllAtOnce ? false : querySnapshot.size >= pageSize + 5);
         if (productsData.length > 0) {
           setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
         }
@@ -225,11 +223,11 @@ export function useProducts(
 
     unsubscribeRef.current = unsubscribe;
     return unsubscribe;
-  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType, loadAllAtOnce, products.length, hasMore]);
+  }, [ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType, loadAllAtOnce]);
 
   // Separate function for pagination using getDocs to avoid scroll jumping
   const loadMoreProducts = useCallback(async () => {
-    if (!hasMore || !lastVisible || loading) return;
+    if (loadAllAtOnce || !hasMore || !lastVisible || loading) return;
 
     setLoading(true);
     setError(null);
@@ -349,7 +347,7 @@ export function useProducts(
       setError(err.message);
       setLoading(false);
     }
-  }, [hasMore, lastVisible, loading, ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType]);
+  }, [loadAllAtOnce, hasMore, lastVisible, loading, ownerId, pageSize, debug, fieldsKey, normalizedFields, listingType]);
 
   useEffect(() => {
     const unsubscribe = loadProducts();

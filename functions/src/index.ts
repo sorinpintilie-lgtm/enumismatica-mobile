@@ -10,7 +10,7 @@ import * as logger from "firebase-functions/logger";
 admin.initializeApp();
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const CREDIT_PRICE_RON = 2;
+const CREDIT_PRICE_RON = 1;
 
 type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
@@ -49,7 +49,7 @@ async function getUidFromRequest(req: any): Promise<string> {
 }
 
 function buildNetopiaPlaceholderUrl(paymentId: string): string {
-  return `https://sandboxsecure.mobilpay.ro/placeholder?paymentId=${encodeURIComponent(paymentId)}`;
+  return `https://sandboxsecure.mobilpay.ro/?paymentId=${encodeURIComponent(paymentId)}`;
 }
 
 export const initNetopiaPayment = onRequest({region: "europe-west1"}, async (req, res) => {

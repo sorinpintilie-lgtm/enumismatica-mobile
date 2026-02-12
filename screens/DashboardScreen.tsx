@@ -470,14 +470,22 @@ const DashboardScreen: React.FC = () => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={dashboardStyles.statsCard}
-            onPress={() => navigation.navigate('BuyCredits')}
-          >
-            <Ionicons name="wallet-outline" size={32} color={colors.primary} />
-            <Text style={dashboardStyles.statsCardValue}>{credits ?? 0}</Text>
-            <Text style={dashboardStyles.statsCardTitle}>Credite</Text>
-          </TouchableOpacity>
+        </View>
+
+        {/* Credits summary (separate from stats grid to keep 2x2 symmetry) */}
+        <View style={dashboardStyles.section}>
+          <View style={dashboardStyles.sectionHeader}>
+            <Text style={dashboardStyles.sectionTitle}>Credite</Text>
+            <TouchableOpacity
+              style={dashboardStyles.viewAllButton}
+              onPress={() => navigation.navigate('BuyCredits')}
+            >
+              <Text style={dashboardStyles.viewAllButtonText}>Cumpără credite</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={dashboardStyles.loadingText}>
+            Sold curent: {credits ?? 0} credite
+          </Text>
         </View>
 
         {/* Quick Actions - 2x2 Grid (4 items, removed Mesaje and Colecția Mea) */}

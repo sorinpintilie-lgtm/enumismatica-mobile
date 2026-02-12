@@ -625,7 +625,7 @@ const ProductCatalogScreen: React.FC = () => {
     [],
   );
 
-  const { products, loading, error, loadMore, hasMore } = useProducts({
+  const { products, loading, error } = useProducts({
     pageSize: 20,
     fields: productFields,
     listingType: 'direct', // Only direct-sale products in E-shop
@@ -1004,13 +1004,6 @@ const ProductCatalogScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          onEndReached={() => {
-            // Automatically load more when user scrolls near the bottom
-            if (hasMore && !loading) {
-              loadMore();
-            }
-          }}
-          onEndReachedThreshold={0.3}
           // Performance optimizations - only load visible items and nearby items
           removeClippedSubviews={true}
           maxToRenderPerBatch={8} // Fewer items per batch for faster initial load
@@ -1049,16 +1042,6 @@ const ProductCatalogScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
             </View>
-          }
-          ListFooterComponent={
-            hasMore && loading ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, alignItems: 'center' }}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={{ color: colors.textSecondary, fontSize: 14, marginTop: 8 }}>
-                  Se încarcă mai multe piese...
-                </Text>
-              </View>
-            ) : null
           }
         />
 
