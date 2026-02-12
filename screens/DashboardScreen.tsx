@@ -401,7 +401,7 @@ const DashboardScreen: React.FC = () => {
             </View>
 
             {/* Version Number */}
-            <Text style={dashboardStyles.versionText}>v0.75</Text>
+            <Text style={dashboardStyles.versionText}>v0.75.1</Text>
           </View>
         </ScrollView>
       );
@@ -659,7 +659,7 @@ const DashboardScreen: React.FC = () => {
         </TouchableOpacity>
 
         {/* Version Number */}
-        <Text style={dashboardStyles.versionText}>v0.75</Text>
+        <Text style={dashboardStyles.versionText}>v0.75.1</Text>
       </View>
     </ScrollView>
   );

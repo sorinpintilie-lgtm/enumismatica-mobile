@@ -14,6 +14,7 @@ import {
 } from '@shared/firebaseConfig';
 import { db } from '@shared/firebaseConfig';
 import { Product } from '@shared/types';
+import { isDirectListingExpired } from '@shared/listingExpiry';
 
 // Default fields for product list view - optimize for performance
 const DEFAULT_PRODUCT_FIELDS = ['name', 'images', 'price', 'createdAt', 'updatedAt'];
@@ -152,6 +153,15 @@ export function useProducts(
         if (data.isPulledBack === true) {
           if (debug) {
             console.log('[useProducts] Skipping pulled-back product:', doc.id);
+          }
+          return;
+        }
+
+        // Skip expired direct listings only in shop-facing feeds.
+        // Owner dashboards (ownerId set) should still see their expired items for relist actions.
+        if (!ownerId && listingType === 'direct' && isDirectListingExpired(data)) {
+          if (debug) {
+            console.log('[useProducts] Skipping expired direct listing:', doc.id);
           }
           return;
         }
@@ -302,6 +312,15 @@ export function useProducts(
         if (data.isPulledBack === true) {
           if (debug) {
             console.log('[useProducts] Skipping pulled-back product:', doc.id);
+          }
+          return;
+        }
+
+        // Skip expired direct listings only in shop-facing feeds.
+        // Owner dashboards (ownerId set) should still see their expired items for relist actions.
+        if (!ownerId && listingType === 'direct' && isDirectListingExpired(data)) {
+          if (debug) {
+            console.log('[useProducts] Skipping expired direct listing:', doc.id);
           }
           return;
         }

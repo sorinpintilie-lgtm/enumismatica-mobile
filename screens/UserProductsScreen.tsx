@@ -8,6 +8,8 @@ import { RootStackParamList } from '../navigationTypes';
 import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import InlineBackButton from '../components/InlineBackButton';
+import { getEffectiveListingExpiryDate, isDirectListingExpired } from '@shared/listingExpiry';
+import { relistProductWithCredits } from '@shared/creditService';
 
 const styles = StyleSheet.create({
   screen: {
@@ -47,6 +49,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: colors.success,
+  },
+  expiredBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  expiredBadgeText: {
+    color: '#fecaca',
+    fontSize: 11,
+    fontWeight: '700',
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -108,7 +123,14 @@ const UserProductsScreen: React.FC = () => {
     loadAllAtOnce: true,
   });
 
-  const activeProducts = useMemo(() => products, [products]);
+  const ownerProducts = useMemo(() => {
+    const all = [...products];
+    return all.sort((a: any, b: any) => {
+      const ad = a?.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+      const bd = b?.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+      return bd - ad;
+    });
+  }, [products]);
 
   const loading = authLoading || productsLoading;
 
@@ -146,7 +168,16 @@ const UserProductsScreen: React.FC = () => {
     );
   }
 
-  const isEmpty = activeProducts.length === 0;
+  const isEmpty = ownerProducts.length === 0;
+
+  const handleRelist = async (productId: string) => {
+    if (!user?.uid) return;
+    try {
+      await relistProductWithCredits(user.uid, productId, 30);
+    } catch (e: any) {
+      alert(e?.message || 'Nu s-a putut relista produsul.');
+    }
+  };
 
   return (
     <ScrollView style={styles.screen}>
@@ -159,7 +190,7 @@ const UserProductsScreen: React.FC = () => {
               <Text style={styles.subtitle}>
                 {isEmpty
                   ? 'Nu există încă produse active listate în magazin.'
-                  : `Există ${activeProducts.length} ${activeProducts.length === 1 ? 'produs activ' : 'produse active'} în magazin.`}
+                  : `Există ${ownerProducts.length} ${ownerProducts.length === 1 ? 'produs' : 'produse'} în portofoliul tău.`}
               </Text>
             </View>
             <TouchableOpacity
@@ -183,8 +214,10 @@ const UserProductsScreen: React.FC = () => {
           </View>
         ) : (
           <View>
-            {activeProducts.map((product) => (
-              <View key={product.id} style={styles.card}>
+            {ownerProducts.map((product: any) => {
+              const expired = isDirectListingExpired(product);
+              const expiryDate = getEffectiveListingExpiryDate(product);
+              return <View key={product.id} style={styles.card}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <Text style={styles.cardTitle} numberOfLines={2}>
@@ -193,8 +226,18 @@ const UserProductsScreen: React.FC = () => {
                     <Text style={styles.mutedText}>
                       {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
                     </Text>
+                    <Text style={[styles.mutedText, { marginTop: 2 }]}> 
+                      {expiryDate ? `Expirare listare: ${expiryDate.toLocaleDateString()}` : 'Fără expirare definită'}
+                    </Text>
                   </View>
-                  <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
+                    {expired && (
+                      <View style={styles.expiredBadge}>
+                        <Text style={styles.expiredBadgeText}>EXPIRAT</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <TouchableOpacity
@@ -203,9 +246,17 @@ const UserProductsScreen: React.FC = () => {
                   >
                     <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
                   </TouchableOpacity>
+                  {expired && !product.isSold && (
+                    <TouchableOpacity
+                      style={[styles.primaryButton, { flex: 1 }]}
+                      onPress={() => handleRelist(product.id)}
+                    >
+                      <Text style={styles.primaryButtonText}>Relistează (5 credite)</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
-            ))}
+            })}
           </View>
         )}
       </View>

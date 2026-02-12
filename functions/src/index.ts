@@ -49,7 +49,9 @@ async function getUidFromRequest(req: any): Promise<string> {
 }
 
 function buildNetopiaPlaceholderUrl(paymentId: string): string {
-  return `https://sandboxsecure.mobilpay.ro/?paymentId=${encodeURIComponent(paymentId)}`;
+  // Keep this as a neutral sandbox landing URL until real Netopia order-signing
+  // integration is wired. Do not use /placeholder (invalid controller).
+  return `https://sandboxsecure.mobilpay.ro?paymentId=${encodeURIComponent(paymentId)}`;
 }
 
 export const initNetopiaPayment = onRequest({region: "europe-west1"}, async (req, res) => {

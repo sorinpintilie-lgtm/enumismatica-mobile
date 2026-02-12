@@ -36,7 +36,7 @@ const BOOST_COST = 5;
 const BOOST_DURATION_DAYS = 7;
 
 // Netopia purchases
-const CREDIT_PRICE_RON = 2; // 2 RON per credit
+const CREDIT_PRICE_RON = 1; // 1 RON per credit
 
 // Collection subscription
 const COLLECTION_SUBSCRIPTION_COST_PER_YEAR = 50; // 50 credits / year
@@ -723,6 +723,39 @@ export async function chargeProductListingWithCredits(
     amount: -cost,
     createdAt: serverTimestamp(),
   });
+}
+
+/**
+ * Relist an unsold direct product for another paid listing window.
+ */
+export async function relistProductWithCredits(
+  userId: string,
+  productId: string,
+  listingDays: number = 30,
+): Promise<void> {
+  if (!db) throw new Error('Firestore not initialized');
+
+  const productRef = doc(db, 'products', productId);
+  const snap = await getDoc(productRef);
+  if (!snap.exists()) {
+    throw new Error('Produsul nu există');
+  }
+
+  const product = snap.data() as any;
+  if (product.ownerId !== userId) {
+    throw new Error('Poți relista doar produsele tale.');
+  }
+  if (product.listingType !== 'direct') {
+    throw new Error('Doar produsele cu vânzare directă pot fi relistate aici.');
+  }
+  if (product.isSold === true) {
+    throw new Error('Produsul este vândut și nu poate fi relistat.');
+  }
+  if (product.status !== 'approved') {
+    throw new Error('Produsul nu este aprobat pentru listare în magazin.');
+  }
+
+  await chargeProductListingWithCredits(userId, productId, listingDays);
 }
 
 export interface PromoteWithCreditsOptions {

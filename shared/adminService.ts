@@ -22,6 +22,19 @@ import {
   sendAuctionRejectedEmail,
 } from './emailService';
 import { endAuction } from './auctionService';
+import { LISTING_EXPIRY_ROLLOUT_AT } from './listingExpiry';
+
+function getDefaultDirectListingExpiryDate(base: Date = new Date()): Date {
+  const d = new Date(base);
+  d.setDate(d.getDate() + 30);
+  return d;
+}
+
+function getRolloutBackfillExpiryDate(): Date {
+  const d = new Date(LISTING_EXPIRY_ROLLOUT_AT);
+  d.setDate(d.getDate() + 30);
+  return d;
+}
 
 /**
  * Admin UID - hardcoded for security
@@ -401,10 +414,20 @@ export async function deleteUser(userId: string): Promise<{ success: boolean; er
  */
 export async function approveProduct(productId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await updateDoc(doc(db, 'products', productId), {
+    const productRef = doc(db, 'products', productId);
+    const productSnap = await getDoc(productRef);
+    const existing = productSnap.exists() ? (productSnap.data() as any) : null;
+
+    const updates: any = {
       status: 'approved',
       updatedAt: Timestamp.fromDate(new Date()),
-    });
+    };
+
+    if (existing?.listingType === 'direct' && !existing?.listingExpiresAt) {
+      updates.listingExpiresAt = Timestamp.fromDate(getRolloutBackfillExpiryDate());
+    }
+
+    await updateDoc(productRef, updates);
 
     // Send email notification to product owner (non-blocking)
     const productDoc = await getDoc(doc(db, 'products', productId));
@@ -508,10 +531,20 @@ export async function approveAuction(auctionId: string): Promise<{ success: bool
     // Also approve the associated product
     if (auctionData.productId) {
       try {
-        await updateDoc(doc(db, 'products', auctionData.productId), {
+        const productRef = doc(db, 'products', auctionData.productId);
+        const productSnap = await getDoc(productRef);
+        const productDataForApproval = productSnap.exists() ? (productSnap.data() as any) : null;
+
+        const productUpdates: any = {
           status: 'approved',
           updatedAt: Timestamp.fromDate(new Date()),
-        });
+        };
+
+        if (productDataForApproval?.listingType === 'direct' && !productDataForApproval?.listingExpiresAt) {
+          productUpdates.listingExpiresAt = Timestamp.fromDate(getDefaultDirectListingExpiryDate());
+        }
+
+        await updateDoc(productRef, productUpdates);
 
         // Send email notification to product owner (non-blocking)
         const productDoc = await getDoc(doc(db, 'products', auctionData.productId));

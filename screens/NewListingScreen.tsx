@@ -22,6 +22,7 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from '@sh
 import { db } from '@shared/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigationTypes';
+import { Timestamp } from 'firebase/firestore';
 import { useCoinAutocomplete } from '../hooks/useCoinAutocomplete';
 import InlineBackButton from '../components/InlineBackButton';
 import {
@@ -446,6 +447,7 @@ const NewListingScreen: React.FC = () => {
           certificationCode: hasCertification ? certificationCode.trim() : null,
           certificationGrade: hasCertification ? certificationGrade : null,
           acceptsOffers,
+          ...(mode === 'direct' ? { listingExpiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) } : {}),
           updatedAt: serverTimestamp(),
         });
       } else {
@@ -475,6 +477,7 @@ const NewListingScreen: React.FC = () => {
           certificationCode: hasCertification ? certificationCode.trim() : null,
           certificationGrade: hasCertification ? certificationGrade : null,
           acceptsOffers,
+          ...(mode === 'direct' ? { listingExpiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) } : {}),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });

@@ -1,6 +1,7 @@
 import { collection, getDocs, query, where, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import { Product, Auction } from './types';
+import { isDirectListingExpired } from './listingExpiry';
 
 export interface AppDataLoadProgress {
   step: string;
@@ -68,7 +69,10 @@ async function loadFeaturedProducts(): Promise<void> {
     orderBy('createdAt', 'desc'),
     limit(20)
   );
-  await getDocs(q);
+  const snap = await getDocs(q);
+  // Touch and filter in-memory so preloaded featured entries stay aligned
+  // with shop visibility rules (expired direct listings hidden).
+  snap.docs.filter((d) => !isDirectListingExpired(d.data()));
 }
 
 /**
