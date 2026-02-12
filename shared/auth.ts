@@ -7,6 +7,7 @@ import {
   signOut,
   User,
   onAuthStateChanged,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { createUserProfileAfterSignup } from './creditService';
 import { logActivity } from './activityLogService';
@@ -97,6 +98,11 @@ export const signUpWithEmail = async (
     }
 
     const userCredential = await createUserWithEmailAndPassword(auth, sanitizedEmail, sanitizedPassword);
+
+    // Send Firebase verification email (non-blocking)
+    sendEmailVerification(userCredential.user).catch((verificationError) => {
+      console.warn('Failed to send Firebase verification email:', verificationError);
+    });
 
     const documentNumber = idDocumentData?.number?.trim();
     const normalizedCnp = (cnp || '').trim().replace(/[\s-]+/g, '');

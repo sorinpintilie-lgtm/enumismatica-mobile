@@ -6,7 +6,8 @@ export default {
   expo: {
     name: "eNumismatica",
     slug: "enumismatica",
-    version: "1.0.0",
+    description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
@@ -31,6 +32,7 @@ export default {
     },
     ios: {
       supportsTablet: true,
+      buildNumber: "2",
       statusBar: {
         style: "dark",
         backgroundColor: "#ffffff"
@@ -40,7 +42,7 @@ export default {
         UIViewControllerBasedStatusBarAppearance: true,
         ITSAppUsesNonExemptEncryption: false
       },
-      bundleIdentifier: "ro.enumismatica.mobile",
+      bundleIdentifier: "ro.recordtrust.enumismatica",
       googleServicesFile: "./GoogleService-Info.plist"
     },
     android: {
@@ -72,6 +74,10 @@ export default {
     },
     scheme: "enumismatica",
     extra: {
+      company: {
+        legalName: "RECORD TRUST SRL",
+      },
+      developedBy: "sky.ro",
       eas: {
         projectId: "f4fa174b-8702-4031-b9b3-e72887532885",
         fcmV1CredentialPath: process.env.FCM_V1_CREDENTIAL_PATH || "./e-numismatica-ro-firebase-adminsdk-fbsvc-ba41e55b6f.json",

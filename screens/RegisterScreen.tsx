@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, Platform } from 'react-native';
 import { z } from 'zod';
 import { signUpWithEmail, signInWithGoogle } from '@shared/auth';
 import { useNavigation } from '@react-navigation/native';
@@ -39,7 +39,10 @@ const RegisterScreen: React.FC = () => {
     if (error) {
       Alert.alert('Eroare', error);
     } else if (user) {
-      // AuthContext + AppNavigator will automatically move to the authenticated stack.
+      Alert.alert(
+        'Cont creat cu succes',
+        'Ți-am trimis un email de bun venit și un email de confirmare a adresei. Verifică inbox-ul și folderul spam.',
+      );
     }
   };
 
@@ -50,99 +53,95 @@ const RegisterScreen: React.FC = () => {
     if (error) {
       Alert.alert('Eroare', error);
     } else if (user) {
-      // AuthContext + AppNavigator will automatically move to the authenticated stack.
+      Alert.alert('Succes', 'Autentificarea cu Google a fost realizată cu succes.');
     }
   };
 
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
 
-  // Web container wrapper
-  const WebContainer = ({ children }: { children: React.ReactNode }) => {
-    if (isWeb) {
-      return (
-        <div style={{
-          minHeight: '100vh',
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-          padding: 24,
-        }}>
-          {children}
-        </div>
-      );
-    }
-    return <View style={sharedStyles.container}>{children}</View>;
-  };
+  const formContent = (
+    <View style={sharedStyles.formContainer}>
+      <View style={sharedStyles.header}>
+        <Text style={sharedStyles.title}>
+          Înregistrare
+        </Text>
+        <Text style={sharedStyles.subtitle}>Crearea unui cont nou pe eNumismatica</Text>
+      </View>
 
-  return (
-    <WebContainer>
-      <View style={sharedStyles.formContainer}>
-        <View style={sharedStyles.header}>
-          <Text style={sharedStyles.title}>
-            Înregistrare
+      <View style={sharedStyles.formCard}>
+        <TextInput
+          style={sharedStyles.input}
+          placeholder="Email"
+          placeholderTextColor={colors.textSecondary}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        <TextInput
+          style={sharedStyles.input}
+          placeholder="Parolă"
+          placeholderTextColor={colors.textSecondary}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TextInput
+          style={sharedStyles.input}
+          placeholder="Confirmare parolă"
+          placeholderTextColor={colors.textSecondary}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={sharedStyles.button}
+          onPress={handleEmailRegister}
+          disabled={loading}
+        >
+          <Text style={sharedStyles.buttonText}>
+            {loading ? 'Se creează cont...' : 'Înregistrare'}
           </Text>
-          <Text style={sharedStyles.subtitle}>Crearea unui cont nou pe eNumismatica</Text>
-        </View>
+        </TouchableOpacity>
 
-        <View style={sharedStyles.formCard}>
-          <TextInput
-            style={sharedStyles.input}
-            placeholder="Email"
-            placeholderTextColor={colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <TouchableOpacity
+          style={sharedStyles.secondaryButton}
+          onPress={handleGoogleLogin}
+          disabled={loading}
+        >
+          <Text style={sharedStyles.secondaryButtonText}>Înregistrare cu Google</Text>
+        </TouchableOpacity>
 
-          <TextInput
-            style={sharedStyles.input}
-            placeholder="Parolă"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TextInput
-            style={sharedStyles.input}
-            placeholder="Confirmare parolă"
-            placeholderTextColor={colors.textSecondary}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            style={sharedStyles.button}
-            onPress={handleEmailRegister}
-            disabled={loading}
-          >
-            <Text style={sharedStyles.buttonText}>
-              {loading ? 'Se creează cont...' : 'Înregistrare'}
-            </Text>
+        <View style={sharedStyles.linkContainer}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
+            <Text style={sharedStyles.linkText}>Cont existent? Autentificare</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={sharedStyles.secondaryButton}
-            onPress={handleGoogleLogin}
-            disabled={loading}
-          >
-            <Text style={sharedStyles.secondaryButtonText}>Înregistrare cu Google</Text>
-          </TouchableOpacity>
-
-          <View style={sharedStyles.linkContainer}>
-            <TouchableOpacity onPress={() => navigation.navigate('Login' as never)}>
-              <Text style={sharedStyles.linkText}>Cont existent? Autentificare</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
-    </WebContainer>
+    </View>
   );
+
+  if (isWeb) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: colors.background,
+        padding: 24,
+      }}>
+        {formContent}
+      </div>
+    );
+  }
+
+  return <View style={sharedStyles.container}>{formContent}</View>;
 };
 
 export default RegisterScreen;

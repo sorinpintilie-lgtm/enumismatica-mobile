@@ -1,6 +1,8 @@
 
 import * as admin from "firebase-admin";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {onRequest} from "firebase-functions/v2/https";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
 // Initialize Firebase Admin SDK
@@ -8,6 +10,303 @@ import * as logger from "firebase-functions/logger";
 admin.initializeApp();
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+const CREDIT_PRICE_RON = 2;
+
+type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
+
+interface NetopiaPaymentDoc {
+  userId: string;
+  status: PaymentStatus;
+  ronAmount: number;
+  creditsToAdd: number;
+  paymentReference: string;
+  provider: "netopia";
+  netopiaSignatureValid: boolean;
+  createdAt: FirebaseFirestore.FieldValue;
+  updatedAt: FirebaseFirestore.FieldValue;
+  completedAt?: FirebaseFirestore.FieldValue;
+  callbackRaw?: unknown;
+}
+
+function calcCreditsFromRon(ronAmount: number): number {
+  if (!ronAmount || ronAmount <= 0) return 0;
+  return Math.floor(ronAmount / CREDIT_PRICE_RON);
+}
+
+function getBearerToken(req: any): string | null {
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (!authHeader || typeof authHeader !== "string") return null;
+  const parts = authHeader.split(" ");
+  if (parts.length !== 2 || parts[0] !== "Bearer") return null;
+  return parts[1];
+}
+
+async function getUidFromRequest(req: any): Promise<string> {
+  const token = getBearerToken(req);
+  if (!token) throw new Error("Missing Authorization token");
+  const decoded = await admin.auth().verifyIdToken(token);
+  return decoded.uid;
+}
+
+function buildNetopiaPlaceholderUrl(paymentId: string): string {
+  return `https://sandboxsecure.mobilpay.ro/placeholder?paymentId=${encodeURIComponent(paymentId)}`;
+}
+
+export const initNetopiaPayment = onRequest({region: "europe-west1"}, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const uid = await getUidFromRequest(req);
+    const ronAmountRaw = Number(req.body?.ronAmount);
+    if (!Number.isFinite(ronAmountRaw) || ronAmountRaw <= 0) {
+      res.status(400).json({error: "Invalid ronAmount"});
+      return;
+    }
+
+    const ronAmount = Math.round(ronAmountRaw * 100) / 100;
+    const creditsToAdd = calcCreditsFromRon(ronAmount);
+    if (creditsToAdd <= 0) {
+      res.status(400).json({error: "Amount too small for at least 1 credit"});
+      return;
+    }
+
+    const paymentsCol = admin.firestore().collection("creditPayments");
+    const paymentRef = paymentsCol.doc();
+    const paymentReference = `netopia_${paymentRef.id}`;
+
+    const docData: NetopiaPaymentDoc = {
+      userId: uid,
+      status: "pending",
+      ronAmount,
+      creditsToAdd,
+      paymentReference,
+      provider: "netopia",
+      netopiaSignatureValid: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await paymentRef.set(docData);
+
+    res.status(200).json({
+      paymentId: paymentRef.id,
+      paymentReference,
+      paymentUrl: buildNetopiaPlaceholderUrl(paymentRef.id),
+    });
+  } catch (error: any) {
+    logger.error("initNetopiaPayment failed", {error: error?.message || error});
+    res.status(401).json({error: error?.message || "Unauthorized"});
+  }
+});
+
+export const initNetopiaPaymentCallable = onCall({region: "europe-west1"}, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Missing auth");
+  }
+
+  const uid = request.auth.uid;
+  const ronAmountRaw = Number((request.data as any)?.ronAmount);
+  if (!Number.isFinite(ronAmountRaw) || ronAmountRaw <= 0) {
+    throw new HttpsError("invalid-argument", "Invalid ronAmount");
+  }
+
+  const ronAmount = Math.round(ronAmountRaw * 100) / 100;
+  const creditsToAdd = calcCreditsFromRon(ronAmount);
+  if (creditsToAdd <= 0) {
+    throw new HttpsError("invalid-argument", "Amount too small for at least 1 credit");
+  }
+
+  const paymentsCol = admin.firestore().collection("creditPayments");
+  const paymentRef = paymentsCol.doc();
+  const paymentReference = `netopia_${paymentRef.id}`;
+
+  const docData: NetopiaPaymentDoc = {
+    userId: uid,
+    status: "pending",
+    ronAmount,
+    creditsToAdd,
+    paymentReference,
+    provider: "netopia",
+    netopiaSignatureValid: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+
+  await paymentRef.set(docData);
+
+  return {
+    paymentId: paymentRef.id,
+    paymentReference,
+    paymentUrl: buildNetopiaPlaceholderUrl(paymentRef.id),
+  };
+});
+
+export const getNetopiaPaymentStatus = onRequest({region: "europe-west1"}, async (req, res) => {
+  if (req.method !== "GET") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const uid = await getUidFromRequest(req);
+    const paymentId = String(req.query.paymentId || "").trim();
+    if (!paymentId) {
+      res.status(400).json({error: "paymentId is required"});
+      return;
+    }
+
+    const paymentRef = admin.firestore().collection("creditPayments").doc(paymentId);
+    const snap = await paymentRef.get();
+    if (!snap.exists) {
+      res.status(404).json({error: "Payment not found"});
+      return;
+    }
+
+    const data = snap.data() as any;
+    if (data.userId !== uid) {
+      res.status(403).json({error: "Forbidden"});
+      return;
+    }
+
+    res.status(200).json({
+      paymentId: snap.id,
+      status: data.status,
+      creditsAdded: data.status === "paid" ? data.creditsToAdd : 0,
+      ronAmount: data.ronAmount,
+      paymentReference: data.paymentReference,
+    });
+  } catch (error: any) {
+    logger.error("getNetopiaPaymentStatus failed", {error: error?.message || error});
+    res.status(401).json({error: error?.message || "Unauthorized"});
+  }
+});
+
+export const getNetopiaPaymentStatusCallable = onCall({region: "europe-west1"}, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Missing auth");
+  }
+
+  const uid = request.auth.uid;
+  const paymentId = String((request.data as any)?.paymentId || "").trim();
+  if (!paymentId) {
+    throw new HttpsError("invalid-argument", "paymentId is required");
+  }
+
+  const paymentRef = admin.firestore().collection("creditPayments").doc(paymentId);
+  const snap = await paymentRef.get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Payment not found");
+  }
+
+  const data = snap.data() as any;
+  if (data.userId !== uid) {
+    throw new HttpsError("permission-denied", "Forbidden");
+  }
+
+  return {
+    paymentId: snap.id,
+    status: data.status,
+    creditsAdded: data.status === "paid" ? data.creditsToAdd : 0,
+    ronAmount: data.ronAmount,
+    paymentReference: data.paymentReference,
+  };
+});
+
+export const netopiaIpnCallback = onRequest({region: "europe-west1"}, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  const paymentId = String(req.body?.paymentId || req.query?.paymentId || "").trim();
+  const reportedStatus = String(req.body?.status || "").trim().toLowerCase();
+
+  if (!paymentId) {
+    res.status(400).json({error: "paymentId is required"});
+    return;
+  }
+
+  const normalizedStatus: PaymentStatus =
+    reportedStatus === "paid" ? "paid" :
+    reportedStatus === "failed" ? "failed" :
+    reportedStatus === "cancelled" ? "cancelled" :
+    "pending";
+
+  const db = admin.firestore();
+  const paymentRef = db.collection("creditPayments").doc(paymentId);
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const paySnap = await tx.get(paymentRef);
+      if (!paySnap.exists) {
+        throw new Error("Payment not found");
+      }
+
+      const payData = paySnap.data() as any;
+      const existingStatus = payData.status as PaymentStatus;
+
+      if (existingStatus === "paid") {
+        tx.update(paymentRef, {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          callbackRaw: req.body || null,
+        });
+        return;
+      }
+
+      if (normalizedStatus !== "paid") {
+        tx.update(paymentRef, {
+          status: normalizedStatus,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          callbackRaw: req.body || null,
+          netopiaSignatureValid: false,
+        });
+        return;
+      }
+
+      const userRef = db.collection("users").doc(payData.userId);
+      const userSnap = await tx.get(userRef);
+      if (!userSnap.exists) {
+        throw new Error("User not found");
+      }
+
+      const currentCredits = Number(userSnap.data()?.credits || 0);
+      const creditsToAdd = Number(payData.creditsToAdd || 0);
+      const newCredits = currentCredits + creditsToAdd;
+
+      tx.update(userRef, {
+        credits: newCredits,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      tx.update(paymentRef, {
+        status: "paid",
+        netopiaSignatureValid: false,
+        callbackRaw: req.body || null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      const txRef = db.collection("users").doc(payData.userId).collection("creditTransactions").doc();
+      tx.set(txRef, {
+        userId: payData.userId,
+        type: "purchase_netopia",
+        provider: "netopia",
+        paymentReference: payData.paymentReference,
+        ronAmount: payData.ronAmount,
+        amount: creditsToAdd,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    res.status(200).json({ok: true});
+  } catch (error: any) {
+    logger.error("netopiaIpnCallback failed", {error: error?.message || error, paymentId});
+    res.status(500).json({error: error?.message || "Internal error"});
+  }
+});
 
 interface NotificationDoc {
   type?: string;

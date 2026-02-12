@@ -12,6 +12,7 @@ import { sharedStyles, colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import { useConversations } from '../hooks/useChat';
 import { useCollection } from '../hooks/useCollection';
+import { getUserCredits } from '@shared/creditService';
 import AuthPromptModal from '../components/AuthPromptModal';
 import crashlyticsService from '../shared/crashlyticsService';
 
@@ -24,11 +25,30 @@ const DashboardScreen: React.FC = () => {
   const { conversations, totalUnreadCount } = useConversations(user?.uid || null);
   const { items: collectionItems, stats: collectionStats } = useCollection(user?.uid || null);
   const [authPromptVisible, setAuthPromptVisible] = React.useState(false);
+  const [credits, setCredits] = React.useState<number | null>(null);
 
   const handleLogout = async () => {
     await logout();
     navigation.navigate('Login');
   };
+
+  React.useEffect(() => {
+    const loadCredits = async () => {
+      if (!user?.uid) {
+        setCredits(null);
+        return;
+      }
+
+      try {
+        const currentCredits = await getUserCredits(user.uid);
+        setCredits(currentCredits);
+      } catch (err) {
+        console.warn('[Dashboard] Failed to load credits:', err);
+      }
+    };
+
+    loadCredits();
+  }, [user?.uid]);
 
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
@@ -448,6 +468,15 @@ const DashboardScreen: React.FC = () => {
                 <Text style={dashboardStyles.badgeText}>{totalUnreadCount}</Text>
               </View>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={dashboardStyles.statsCard}
+            onPress={() => navigation.navigate('BuyCredits')}
+          >
+            <Ionicons name="wallet-outline" size={32} color={colors.primary} />
+            <Text style={dashboardStyles.statsCardValue}>{credits ?? 0}</Text>
+            <Text style={dashboardStyles.statsCardTitle}>Credite</Text>
           </TouchableOpacity>
         </View>
 

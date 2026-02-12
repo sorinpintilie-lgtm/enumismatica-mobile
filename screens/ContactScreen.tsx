@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert,
 import { sharedStyles, colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
 import InlineBackButton from '../components/InlineBackButton';
+import { companyInfo } from '../config/company';
 
 const ContactScreen: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -36,11 +37,12 @@ const ContactScreen: React.FC = () => {
   };
 
   const handleEmailPress = () => {
-    Linking.openURL('mailto:contact@enumismatica.ro');
+    Linking.openURL(`mailto:${companyInfo.supportEmail}`);
   };
 
   const handlePhonePress = () => {
-    Linking.openURL('tel:+40212345678');
+    const phoneHref = companyInfo.supportPhone.replace(/[^+\d]/g, '');
+    Linking.openURL(`tel:${phoneHref}`);
   };
 
   // Web-specific styling adjustments
@@ -241,7 +243,7 @@ const ContactScreen: React.FC = () => {
                 </View>
                 <View style={contactStyles.contactItemContent}>
                   <Text style={contactStyles.contactItemLabel}>Adresă</Text>
-                  <Text style={{ ...contactStyles.contactItemValue, color: colors.textPrimary }}>București, România</Text>
+                  <Text style={{ ...contactStyles.contactItemValue, color: colors.textPrimary }}>{companyInfo.city}</Text>
                 </View>
               </View>
 
@@ -252,7 +254,7 @@ const ContactScreen: React.FC = () => {
                 <View style={contactStyles.contactItemContent}>
                   <Text style={contactStyles.contactItemLabel}>Email</Text>
                   <TouchableOpacity onPress={handleEmailPress}>
-                    <Text style={contactStyles.contactItemValue}>contact@enumismatica.ro</Text>
+                    <Text style={contactStyles.contactItemValue}>{companyInfo.supportEmail}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -264,7 +266,7 @@ const ContactScreen: React.FC = () => {
                 <View style={contactStyles.contactItemContent}>
                   <Text style={contactStyles.contactItemLabel}>Telefon</Text>
                   <TouchableOpacity onPress={handlePhonePress}>
-                    <Text style={contactStyles.contactItemValue}>+40 (21) 234-5678</Text>
+                    <Text style={contactStyles.contactItemValue}>{companyInfo.supportPhone}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

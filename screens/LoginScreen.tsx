@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Switch, Platform, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Switch, Platform, Image, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { z } from 'zod';
 import { signInWithEmail, signInWithGoogle } from '@shared/auth';
@@ -927,10 +927,12 @@ const LoginScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
-      {showStepper ? renderTwoFactorForm() : renderLoginForm()}
-      {renderPasswordResetModal()}
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        {showStepper ? renderTwoFactorForm() : renderLoginForm()}
+        {renderPasswordResetModal()}
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

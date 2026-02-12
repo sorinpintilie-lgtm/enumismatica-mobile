@@ -53,6 +53,7 @@ import ContractsScreen from './screens/ContractsScreen';
 import EventScreen from './screens/EventScreen';
 import BookmarksScreen from './screens/BookmarksScreen';
 import CheckoutScreen from './screens/CheckoutScreen';
+import BuyCreditsScreen from './screens/BuyCreditsScreen';
 import SellerProfileScreen from './screens/SellerProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import MessagesScreen from './screens/MessagesScreen';
@@ -631,6 +632,13 @@ function AppContent() {
             {() => (
               <AuthGuard>
                 <CheckoutScreen />
+              </AuthGuard>
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="BuyCredits">
+            {() => (
+              <AuthGuard>
+                <BuyCreditsScreen />
               </AuthGuard>
             )}
           </Stack.Screen>

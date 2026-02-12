@@ -665,12 +665,19 @@ const ProductCatalogScreen: React.FC = () => {
     // Search by name / description / country / denomination
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchLower) ||
-        product.description.toLowerCase().includes(searchLower) ||
-        product.country?.toLowerCase().includes(searchLower) ||
-        product.denomination?.toLowerCase().includes(searchLower),
-      );
+      filtered = filtered.filter((product) => {
+        const name = (product.name || '').toLowerCase();
+        const description = (product.description || '').toLowerCase();
+        const country = (product.country || '').toLowerCase();
+        const denomination = (product.denomination || '').toLowerCase();
+
+        return (
+          name.includes(searchLower) ||
+          description.includes(searchLower) ||
+          country.includes(searchLower) ||
+          denomination.includes(searchLower)
+        );
+      });
     }
 
     // Category filter

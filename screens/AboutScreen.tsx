@@ -6,6 +6,7 @@ import { RootStackParamList } from '../navigationTypes';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
 import InlineBackButton from '../components/InlineBackButton';
+import { companyInfo } from '../config/company';
 
 const AboutScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -78,6 +79,12 @@ const AboutScreen: React.FC = () => {
       color: colors.textPrimary,
       lineHeight: 22,
       marginBottom: 12,
+    },
+    attributionText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
     },
     valuesGrid: {
       gap: 16,
@@ -289,6 +296,9 @@ const AboutScreen: React.FC = () => {
             <Text style={aboutStyles.heroTitle}>Despre eNumismatica</Text>
             <Text style={aboutStyles.heroSubtitle}>
               Partenerul de încredere în colecționarea numismatică din 2025
+            </Text>
+            <Text style={aboutStyles.attributionText}>
+              {companyInfo.copyright} • Dezvoltat de {companyInfo.developedBy}
             </Text>
           </View>
 

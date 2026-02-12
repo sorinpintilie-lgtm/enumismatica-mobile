@@ -672,11 +672,17 @@ const AuctionListScreen: React.FC = () => {
       // Search filter
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
+        const name = (product.name || '').toLowerCase();
+        const description = (product.description || '').toLowerCase();
+        const country = (product.country || '').toLowerCase();
+        const auctionId = (auction.id || '').toLowerCase();
+
         const matchesSearch =
-          product.name.toLowerCase().includes(searchLower) ||
-          product.description.toLowerCase().includes(searchLower) ||
-          product.country?.toLowerCase().includes(searchLower) ||
-          auction.id.toLowerCase().includes(searchLower);
+          name.includes(searchLower) ||
+          description.includes(searchLower) ||
+          country.includes(searchLower) ||
+          auctionId.includes(searchLower);
+
         if (!matchesSearch) return false;
       }
 

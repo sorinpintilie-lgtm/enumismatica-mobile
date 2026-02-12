@@ -5,6 +5,7 @@ import * as rnAuth from '@firebase/auth/dist/rn/index.js';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAnalytics, type Analytics } from 'firebase/analytics';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getFunctions, type Functions } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -30,6 +31,7 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
+let functions: Functions;
 
 // Initialize Firebase app (shared single instance across web & mobile)
 if (getApps().length === 0) {
@@ -53,6 +55,7 @@ if (Platform.OS === 'ios' || Platform.OS === 'android') {
 }
 db = getFirestore(app);
 storage = getStorage(app);
+functions = getFunctions(app, 'europe-west1');
 
 console.log('Firebase initialized - app:', !!app, 'auth:', !!auth, 'db:', !!db, 'db type:', typeof db, 'db constructor:', db?.constructor?.name);
 console.log('Firebase config:', {
@@ -123,4 +126,5 @@ export {
 export type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 export { app, auth, db, storage, analytics };
-export default { app, auth, db, storage, analytics };
+export { functions };
+export default { app, auth, db, storage, analytics, functions };
