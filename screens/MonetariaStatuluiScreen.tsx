@@ -52,6 +52,116 @@ interface TransformedProduct {
   era: string;
 }
 
+const normalizeMaterial = (material: string): string => {
+  if (!material) return '';
+  const normalized = material
+    .toLowerCase()
+    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/[:\s]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const materialMap: Record<string, string> = {
+    'argint 999‰': 'Argint 999‰',
+    'argint 925‰': 'Argint 925‰',
+    'aliaj de cupru': 'Aliaj de cupru',
+    'aliaj cupru': 'Aliaj de cupru',
+    'aliaj: cupru': 'Aliaj de cupru',
+    'aliaj din cupru': 'Aliaj de cupru',
+    cupru: 'Aliaj de cupru',
+    'tombac argintat': 'Tombac argintat',
+  };
+
+  return materialMap[normalized] || material.trim();
+};
+
+const normalizeDiameter = (diameter: string): string => {
+  if (!diameter) return '';
+  return diameter
+    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*mm\s*/i, ' mm')
+    .trim();
+};
+
+const normalizeWeight = (weight: string): string => {
+  if (!weight) return '';
+  return weight
+    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*gram\s*/i, ' grame')
+    .replace(/\s*grame\s*/i, ' grame')
+    .trim();
+};
+
+const normalizeQuality = (quality: string): string => {
+  if (!quality) return '';
+  const normalized = quality
+    .toLowerCase()
+    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/-\s+/g, '-')
+    .replace(/\s+-/g, '-')
+    .trim();
+
+  const qualityMap: Record<string, string> = {
+    patinata: 'patinată',
+    'sablata - patinata': 'sablată - patinată',
+    'sablata-patinata': 'sablată - patinată',
+    'proof like': 'proof like',
+    proof: 'proof',
+    clasica: 'clasică',
+  };
+
+  return qualityMap[normalized] || quality.trim();
+};
+
+const extractSpec = (text: string, key: 'Material' | 'Diametru' | 'Greutate' | 'Calitate'): string => {
+  if (!text) return '';
+  const cleanText = text
+    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const regex = new RegExp(`-?\\s*${key}:?\\s*([^|]+?)(?:\\s*[-|]|$)`, 'i');
+  const match = cleanText.match(regex);
+  if (!match) return '';
+
+  let value = match[1].trim();
+  value = value
+    .split(/\s*[-]?\s*(Material|Diametru|Greutate|Calitate|Tiraj|grame+|mm|bucăți):/i)[0]
+    .replace(/\s+\d+\s*(mm|grame+|bucăți).*$/i, '')
+    .replace(/\s+(grame+|mm|bucăți).*$/i, '')
+    .replace(/[-:,;\s]+$/, '')
+    .replace(/\s*‰\s*/g, '‰')
+    .trim();
+
+  return value;
+};
+
+const transformRawProduct = (p: RawProduct): TransformedProduct => {
+  const specs = p.specifications || '';
+  const material = normalizeMaterial(extractSpec(specs, 'Material'));
+  const diameter = normalizeDiameter(extractSpec(specs, 'Diametru'));
+  const weight = normalizeWeight(extractSpec(specs, 'Greutate'));
+  const quality = normalizeQuality(extractSpec(specs, 'Calitate'));
+
+  return {
+    ...p,
+    id: p.product_id,
+    title: p.title || 'Piesă fără titlu',
+    description: p.full_description,
+    price: p.price,
+    category: p.category,
+    image: `/Monetaria_statului/romanian_mint_products/${p.category_slug}/${p.image_files}`,
+    link: `/monetaria-statului/${p.product_id}`,
+    diameter,
+    weight,
+    mint: material,
+    era: quality,
+  };
+};
+
 export default function MonetariaStatuluiScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -86,46 +196,7 @@ export default function MonetariaStatuluiScreen() {
           throw new Error('Invalid data format: missing products array');
         }
 
-        const transformedProducts = data.products.map((p: RawProduct) => {
-          // Extract properties from specifications
-          const specs = p.specifications || '';
-          const lines = specs.split('|').map(line => line.trim());
-
-          let productDiameter = '';
-          let productWeight = '';
-          let productMaterial = '';
-          let productQuality = '';
-
-          lines.forEach(line => {
-            if (line.includes('Diametru:')) {
-              productDiameter = line.split('Diametru:')[1]?.trim() || '';
-            }
-            if (line.includes('Greutate:')) {
-              productWeight = line.split('Greutate:')[1]?.trim() || '';
-            }
-            if (line.includes('Material:')) {
-              productMaterial = line.split('Material:')[1]?.trim() || '';
-            }
-            if (line.includes('Calitate:')) {
-              productQuality = line.split('Calitate:')[1]?.trim() || '';
-            }
-          });
-
-          return {
-            ...p,
-            id: p.product_id,
-            title: p.title || 'Piesă fără titlu',
-            description: p.full_description,
-            price: p.price,
-            category: p.category,
-            image: `/Monetaria_statului/romanian_mint_products/${p.category_slug}/${p.image_files}`,
-            link: `/monetaria-statului/${p.product_id}`,
-            diameter: productDiameter,
-            weight: productWeight,
-            mint: productMaterial,
-            era: productQuality,
-          };
-        });
+        const transformedProducts = data.products.map(transformRawProduct);
         setProducts(transformedProducts);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -148,45 +219,7 @@ export default function MonetariaStatuluiScreen() {
         throw new Error('Invalid data format: missing products array');
       }
 
-      const transformedProducts = data.products.map((p: RawProduct) => {
-        const specs = p.specifications || '';
-        const lines = specs.split('|').map((line: string) => line.trim());
-
-        let productDiameter = '';
-        let productWeight = '';
-        let productMaterial = '';
-        let productQuality = '';
-
-        lines.forEach((line: string) => {
-          if (line.includes('Diametru:')) {
-            productDiameter = line.split('Diametru:')[1]?.trim() || '';
-          }
-          if (line.includes('Greutate:')) {
-            productWeight = line.split('Greutate:')[1]?.trim() || '';
-          }
-          if (line.includes('Material:')) {
-            productMaterial = line.split('Material:')[1]?.trim() || '';
-          }
-          if (line.includes('Calitate:')) {
-            productQuality = line.split('Calitate:')[1]?.trim() || '';
-          }
-        });
-
-        return {
-          ...p,
-          id: p.product_id,
-          title: p.title || 'Piesă fără titlu',
-          description: p.full_description,
-          price: p.price,
-          category: p.category,
-          image: `/Monetaria_statului/romanian_mint_products/${p.category_slug}/${p.image_files}`,
-          link: `/monetaria-statului/${p.product_id}`,
-          diameter: productDiameter,
-          weight: productWeight,
-          mint: productMaterial,
-          era: productQuality,
-        } as TransformedProduct;
-      });
+      const transformedProducts = data.products.map(transformRawProduct);
 
       setProducts(transformedProducts);
       setError(null);
@@ -228,42 +261,42 @@ export default function MonetariaStatuluiScreen() {
 
     // Apply current filters EXCEPT the one we're calculating options for
     if (excludeFilter !== 'material' && material !== 'Toate Materialele') {
-      baseProducts = baseProducts.filter(p => p.mint === material);
+      baseProducts = baseProducts.filter(p => normalizeMaterial(p.mint) === normalizeMaterial(material));
     }
     if (excludeFilter !== 'diameter' && diameter !== 'Toate Diametrele') {
-      baseProducts = baseProducts.filter(p => p.diameter === diameter);
+      baseProducts = baseProducts.filter(p => normalizeDiameter(p.diameter) === normalizeDiameter(diameter));
     }
     if (excludeFilter !== 'weight' && weight !== 'Toate Greutățile') {
-      baseProducts = baseProducts.filter(p => p.weight === weight);
+      baseProducts = baseProducts.filter(p => normalizeWeight(p.weight) === normalizeWeight(weight));
     }
     if (excludeFilter !== 'quality' && quality !== 'Toate Calitățile') {
-      baseProducts = baseProducts.filter(p => p.era === quality);
+      baseProducts = baseProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));
     }
 
     return baseProducts;
   };
 
   // Calculate available options for each filter based on other filters
-  const availableMaterials = ['Toate Materialele', ...new Set(getFilteredProductsExcluding('material').map(p => p.mint).filter(Boolean))];
-  const availableDiameters = ['Toate Diametrele', ...new Set(getFilteredProductsExcluding('diameter').map(p => p.diameter).filter(Boolean))];
-  const availableWeights = ['Toate Greutățile', ...new Set(getFilteredProductsExcluding('weight').map(p => p.weight).filter(Boolean))];
-  const availableQualities = ['Toate Calitățile', ...new Set(getFilteredProductsExcluding('quality').map(p => p.era).filter(Boolean))];
+  const availableMaterials = ['Toate Materialele', ...new Set(getFilteredProductsExcluding('material').map(p => normalizeMaterial(p.mint)).filter(Boolean))];
+  const availableDiameters = ['Toate Diametrele', ...new Set(getFilteredProductsExcluding('diameter').map(p => normalizeDiameter(p.diameter)).filter(Boolean))];
+  const availableWeights = ['Toate Greutățile', ...new Set(getFilteredProductsExcluding('weight').map(p => normalizeWeight(p.weight)).filter(Boolean))];
+  const availableQualities = ['Toate Calitățile', ...new Set(getFilteredProductsExcluding('quality').map(p => normalizeQuality(p.era)).filter(Boolean))];
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
   let filteredProducts = selectedCategory === 'all' ? products : products.filter(p => p.category === selectedCategory);
 
   // Apply Monetaria Statului filters
   if (material !== 'Toate Materialele') {
-    filteredProducts = filteredProducts.filter(p => p.mint === material);
+    filteredProducts = filteredProducts.filter(p => normalizeMaterial(p.mint) === normalizeMaterial(material));
   }
   if (diameter !== 'Toate Diametrele') {
-    filteredProducts = filteredProducts.filter(p => p.diameter === diameter);
+    filteredProducts = filteredProducts.filter(p => normalizeDiameter(p.diameter) === normalizeDiameter(diameter));
   }
   if (weight !== 'Toate Greutățile') {
-    filteredProducts = filteredProducts.filter(p => p.weight === weight);
+    filteredProducts = filteredProducts.filter(p => normalizeWeight(p.weight) === normalizeWeight(weight));
   }
   if (quality !== 'Toate Calitățile') {
-    filteredProducts = filteredProducts.filter(p => p.era === quality);
+    filteredProducts = filteredProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));
   }
 
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);

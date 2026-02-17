@@ -14,7 +14,7 @@ import { db } from './firebaseConfig';
 
 // Simple credit & referral support shared between web and mobile.
 // Updated to support time-limited signup bonuses, referral bonuses,
-// Netopia purchases and various credit-based platform fees.
+// Stripe purchases and various credit-based platform fees.
 
 // Signup promo window
 const SIGNUP_PROMO_END_DATE = new Date('2026-03-15T00:00:00Z'); // Until 15 March 2026 (approx. UTC)
@@ -35,7 +35,7 @@ const REFERRAL_INVITER_BONUS = 50;   // Bonus per successful referral for invite
 const BOOST_COST = 5;
 const BOOST_DURATION_DAYS = 7;
 
-// Netopia purchases
+// Stripe purchases
 const CREDIT_PRICE_RON = 1; // 1 RON per credit
 
 // Collection subscription
@@ -382,7 +382,7 @@ export async function getUserCredits(userId: string): Promise<number> {
 }
 
 /**
- * Calculate how many credits a Netopia payment in RON should generate.
+ * Calculate how many credits a Stripe payment in RON should generate.
  */
 export function calculateCreditsFromRON(ronAmount: number): number {
   if (!ronAmount || ronAmount <= 0) return 0;
@@ -390,10 +390,10 @@ export function calculateCreditsFromRON(ronAmount: number): number {
 }
 
 /**
- * Apply a successful Netopia payment and credit the user's balance.
- * This should be called only after Netopia confirms the payment.
+ * Apply a successful Stripe payment and credit the user's balance.
+ * This should be called only after Stripe confirms the payment.
  */
-export async function applyCreditsPurchaseFromNetopia(
+export async function applyCreditsPurchaseFromStripe(
   userId: string,
   ronAmount: number,
   paymentReference: string,
@@ -425,8 +425,8 @@ export async function applyCreditsPurchaseFromNetopia(
 
   await addDoc(collection(db, 'users', userId, 'creditTransactions'), {
     userId,
-    type: 'purchase_netopia',
-    provider: 'netopia',
+    type: 'purchase_stripe',
+    provider: 'stripe',
     paymentReference,
     ronAmount,
     amount: creditsToAdd,

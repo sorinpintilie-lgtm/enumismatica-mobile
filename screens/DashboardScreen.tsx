@@ -69,7 +69,7 @@ const DashboardScreen: React.FC = () => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 32,
+      marginBottom: 18,
     },
     headerTitle: {
       fontSize: 30,
@@ -78,7 +78,7 @@ const DashboardScreen: React.FC = () => {
     },
     headerSubtitle: {
       color: colors.textSecondary,
-      marginTop: 8,
+      marginTop: 4,
       fontSize: 14,
     },
     logoutButton: {
@@ -86,8 +86,8 @@ const DashboardScreen: React.FC = () => {
       paddingVertical: 12,
       paddingHorizontal: 16,
       borderRadius: 12,
-      marginTop: 24,
-      marginBottom: 16,
+      marginTop: 12,
+      marginBottom: 8,
       alignItems: 'center',
     },
     logoutButtonText: {
@@ -98,7 +98,7 @@ const DashboardScreen: React.FC = () => {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 12,
-      marginBottom: 24,
+      marginBottom: 16,
     },
     statsCard: {
       width: '48%',
@@ -204,14 +204,14 @@ const DashboardScreen: React.FC = () => {
       borderWidth: 1,
       borderColor: colors.borderColor,
       backgroundColor: colors.cardBackground,
-      padding: 20,
-      marginBottom: 24,
+      padding: 16,
+      marginBottom: 14,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 10,
     },
     sectionTitle: {
       fontSize: 18,
@@ -270,8 +270,8 @@ const DashboardScreen: React.FC = () => {
       fontSize: 10,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginTop: 8,
-      marginBottom: 16,
+      marginTop: 4,
+      marginBottom: 8,
       opacity: 0.5,
     },
   });
@@ -401,7 +401,7 @@ const DashboardScreen: React.FC = () => {
             </View>
 
             {/* Version Number */}
-            <Text style={dashboardStyles.versionText}>v0.75.1</Text>
+            <Text style={dashboardStyles.versionText}>v1.1.5</Text>
           </View>
         </ScrollView>
       );
@@ -659,7 +659,7 @@ const DashboardScreen: React.FC = () => {
         </TouchableOpacity>
 
         {/* Version Number */}
-        <Text style={dashboardStyles.versionText}>v0.75.1</Text>
+        <Text style={dashboardStyles.versionText}>v1.1.5</Text>
       </View>
     </ScrollView>
   );

@@ -38,8 +38,8 @@ const HomeScreen: React.FC = () => {
     heroContainer: {
       backgroundColor: 'rgba(231, 183, 60, 0.1)',
       borderRadius: 20,
-      padding: 20,
-      marginBottom: 24,
+      padding: 16,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: 'rgba(231, 183, 60, 0.3)',
     },
@@ -52,7 +52,7 @@ const HomeScreen: React.FC = () => {
       paddingVertical: 6,
       borderRadius: 20,
       alignSelf: 'flex-start',
-      marginBottom: 16,
+      marginBottom: 10,
     },
     heroBadgeDot: {
       width: 8,
@@ -69,19 +69,19 @@ const HomeScreen: React.FC = () => {
       fontSize: 28,
       fontWeight: 'bold',
       color: colors.textPrimary,
-      marginBottom: 12,
+      marginBottom: 8,
       lineHeight: 36,
     },
     heroDescription: {
       fontSize: 16,
       color: colors.textSecondary,
-      marginBottom: 20,
+      marginBottom: 14,
       lineHeight: 24,
     },
     ctaButtons: {
       flexDirection: 'row',
       gap: 12,
-      marginBottom: 20,
+      marginBottom: 14,
     },
     primaryButton: {
       flex: 1,
@@ -152,10 +152,10 @@ const HomeScreen: React.FC = () => {
       textAlign: 'center',
     },
     section: {
-      marginBottom: 24,
+      marginBottom: 16,
     },
     sectionHeader: {
-      marginBottom: 16,
+      marginBottom: 10,
     },
     sectionTitle: {
       fontSize: 20,
@@ -166,7 +166,7 @@ const HomeScreen: React.FC = () => {
     sectionSubtitle: {
       fontSize: 14,
       color: colors.textSecondary,
-      marginBottom: 16,
+      marginBottom: 10,
     },
     highlightsGrid: {
       gap: 16,
@@ -174,7 +174,7 @@ const HomeScreen: React.FC = () => {
     highlightCard: {
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
       borderRadius: 12,
-      padding: 16,
+      padding: 12,
       borderWidth: 1,
       borderColor: 'rgba(231, 183, 60, 0.2)',
     },
@@ -333,7 +333,7 @@ const HomeScreen: React.FC = () => {
     stepCard: {
       backgroundColor: 'rgba(255, 255, 255, 0.05)',
       borderRadius: 12,
-      padding: 16,
+      padding: 12,
       borderWidth: 1,
       borderColor: 'rgba(231, 183, 60, 0.2)',
     },

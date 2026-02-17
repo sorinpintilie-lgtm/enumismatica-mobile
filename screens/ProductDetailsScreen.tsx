@@ -401,15 +401,20 @@ const ProductDetailsScreen: React.FC = () => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginBottom: 8,
+      gap: 10,
     },
     detailLabel: {
       color: colors.textSecondary,
       fontSize: 14,
+      flex: 1,
     },
     detailValue: {
       color: colors.textPrimary,
       fontWeight: '500',
       fontSize: 14,
+      flex: 1,
+      textAlign: 'right',
+      flexWrap: 'wrap',
     },
     actionButton: {
       width: '100%',
@@ -624,7 +629,7 @@ const ProductDetailsScreen: React.FC = () => {
       borderColor: 'rgba(148, 163, 184, 0.5)',
     },
     ownerActionButtonText: {
-      color: colors.primaryText,
+      color: colors.textPrimary,
       textAlign: 'center',
       fontWeight: '700',
       fontSize: 14,

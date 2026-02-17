@@ -10,6 +10,8 @@ import type { Order } from '@shared/types';
 import { colors } from '../styles/sharedStyles';
 import { Ionicons } from '@expo/vector-icons';
 import InlineBackButton from '../components/InlineBackButton';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@shared/firebaseConfig';
 
 const styles = StyleSheet.create({
   screen: {
@@ -150,6 +152,8 @@ const OrderDetailsScreen: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [buyerFallbackEmail, setBuyerFallbackEmail] = useState<string | null>(null);
+  const [sellerFallbackEmail, setSellerFallbackEmail] = useState<string | null>(null);
 
   const {
     products,
@@ -199,6 +203,45 @@ const OrderDetailsScreen: React.FC = () => {
   const loading = authLoading || loadingOrder || productsLoading;
 
   const product = order ? products.find((p) => p.id === order.productId) || null : null;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPartyEmails = async () => {
+      if (!order) {
+        setBuyerFallbackEmail(null);
+        setSellerFallbackEmail(null);
+        return;
+      }
+
+      try {
+        const [buyerSnap, sellerSnap] = await Promise.all([
+          getDoc(doc(db, 'users', order.buyerId)),
+          getDoc(doc(db, 'users', order.sellerId)),
+        ]);
+
+        if (cancelled) return;
+
+        setBuyerFallbackEmail(
+          buyerSnap.exists() ? (buyerSnap.data().email || null) : null
+        );
+        setSellerFallbackEmail(
+          sellerSnap.exists() ? (sellerSnap.data().email || null) : null
+        );
+      } catch (err) {
+        console.error('Failed to load buyer/seller fallback emails', err);
+        if (!cancelled) {
+          setBuyerFallbackEmail(null);
+          setSellerFallbackEmail(null);
+        }
+      }
+    };
+
+    loadPartyEmails();
+    return () => {
+      cancelled = true;
+    };
+  }, [order]);
 
   if (loading) {
     return (
@@ -382,7 +425,7 @@ const OrderDetailsScreen: React.FC = () => {
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Metodă de plată</Text>
-            <Text style={styles.detailValue}>{order.paymentProvider === 'netopia' ? 'Netopia' : 'Manual'}</Text>
+            <Text style={styles.detailValue}>{order.paymentProvider === 'stripe' ? 'Stripe' : 'Manual'}</Text>
           </View>
 
           <View style={styles.detailRow}>
@@ -403,7 +446,7 @@ const OrderDetailsScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Cumpărător</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Nume</Text>
-            <Text style={styles.detailValue}>{order.buyerName || 'N/A'}</Text>
+            <Text style={styles.detailValue}>{order.buyerName || buyerFallbackEmail || 'N/A'}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>ID</Text>
@@ -413,7 +456,7 @@ const OrderDetailsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Vânzător</Text>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Nume</Text>
-            <Text style={styles.detailValue}>{order.sellerName || 'N/A'}</Text>
+            <Text style={styles.detailValue}>{order.sellerName || sellerFallbackEmail || 'N/A'}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>ID</Text>

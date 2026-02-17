@@ -7,7 +7,7 @@ export default {
     name: "eNumismatica",
     slug: "enumismatica",
     description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
-    version: "1.0.2",
+    version: "1.1.5",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
@@ -23,7 +23,8 @@ export default {
             "forceStaticLinking": ["RNFBApp", "RNFBAuth", "RNFBFirestore"]
           }
         }
-      ]
+      ],
+      "expo-iap"
     ],
     splash: {
       image: "./assets/eNumismatica_trapezoid_no_black_margins.png",
@@ -32,7 +33,7 @@ export default {
     },
     ios: {
       supportsTablet: true,
-      buildNumber: "3",
+      buildNumber: "0",
       statusBar: {
         style: "dark",
         backgroundColor: "#ffffff"

@@ -133,8 +133,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(231, 183, 60, 0.4)',
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
     shadowColor: '#000',
     shadowOpacity: 0.9,
     shadowRadius: 20,
@@ -150,12 +150,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#cbd5f5',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   resultsSummary: {
     fontSize: 13,
     color: '#e5e7eb',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   resultsHighlight: {
     fontWeight: '600',
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   categoryChip: {
     paddingHorizontal: 10,
@@ -202,12 +202,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(231, 183, 60, 0.4)',
     backgroundColor: 'rgba(0, 2, 13, 0.7)',
     color: '#f9fafb',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sortRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sortButton: {
     flex: 1,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   filtersButton: {
     marginTop: 4,
     backgroundColor: '#e7b73c',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     shadowColor: '#e7b73c',
     shadowOpacity: 0.6,
@@ -251,7 +251,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   listContent: {
-    paddingVertical: 16,
+    paddingTop: 4,
+    paddingBottom: 10,
   },
   emptyListContent: {
     flexGrow: 1,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   modalActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   modalResetButton: {
     flex: 1,

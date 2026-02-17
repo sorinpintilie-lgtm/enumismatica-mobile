@@ -654,10 +654,10 @@ export interface PriceHistory {
  * Order entity representing a direct purchase from the shop.
  * Stored in 'orders' collection.
  *
- * For future Netopia integration:
- *  - create with status "pending" and paymentProvider "netopia"
+ * Payment integration:
+ *  - create with status "pending" and paymentProvider "stripe"
  *  - set paymentReference once the payment is initiated
- *  - update status to "paid" from a secure Netopia callback handler.
+ *  - update status to "paid" from a secure Stripe webhook handler.
  */
 export interface Order {
   id: string;
@@ -680,7 +680,7 @@ export interface Order {
   price: number;
   currency: 'RON';
   status: 'pending' | 'paid' | 'cancelled' | 'failed' | 'refunded';
-  paymentProvider: 'manual' | 'netopia';
+  paymentProvider: 'manual' | 'stripe';
   paymentReference: string | null;
   isMintProduct?: boolean;
   mintProductData?: any; // RawProduct data for mint products

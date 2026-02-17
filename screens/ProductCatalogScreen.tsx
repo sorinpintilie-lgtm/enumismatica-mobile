@@ -11,8 +11,10 @@ import {
   Image,
   StyleSheet,
   Animated,
+  Keyboard,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -39,7 +41,8 @@ interface FilterOptions {
   maxYear: number;
   metal: string;
   rarity: string;
-  grade: string;
+  gradeGroup: string;
+  gradeNumber: string;
   sortBy: SortOption;
   // Romanian coin specific filters
   faceValue: string;
@@ -80,8 +83,19 @@ const rarities = [
   { value: 'extremely-rare', label: 'Extrem de rară' },
 ];
 
-// For now we expose a simple grade filter; values should match what is stored in Firestore
-const grades = ['Toate Gradele', 'VG', 'F', 'VF', 'XF', 'AU', 'MS-60', 'MS-65', 'MS-70'];
+const sheldonGradeGroups = [
+  { key: 'all', label: 'Toate Gradele', min: 0, max: 0 },
+  { key: 'MS', label: 'MS (Mint State)', min: 60, max: 70 },
+  { key: 'AU', label: 'AU (About Uncirculated)', min: 50, max: 58 },
+  { key: 'EF', label: 'EF (Extremely Fine)', min: 40, max: 45 },
+  { key: 'VF', label: 'VF (Very Fine)', min: 20, max: 35 },
+  { key: 'F', label: 'F (Fine)', min: 12, max: 15 },
+  { key: 'VG', label: 'VG (Very Good)', min: 8, max: 10 },
+  { key: 'G', label: 'G (Good)', min: 4, max: 6 },
+  { key: 'AG', label: 'AG (About Good)', min: 3, max: 3 },
+  { key: 'FR', label: 'FR (Fair)', min: 2, max: 2 },
+  { key: 'PO', label: 'PO (Poor)', min: 1, max: 1 },
+];
 
 const styles = StyleSheet.create({
   screen: {
@@ -117,8 +131,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(231, 183, 60, 0.4)',
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 10,
     shadowColor: '#000',
     shadowOpacity: 0.9,
     shadowRadius: 20,
@@ -136,9 +150,6 @@ const styles = StyleSheet.create({
     zIndex: 50,
     elevation: 50,
   },
-  headerHidden: {
-    transform: [{ translateY: -1000 }],
-  },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -148,12 +159,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#cbd5f5',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   resultsSummary: {
     fontSize: 13,
     color: '#e5e7eb',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   resultsHighlight: {
     fontWeight: '600',
@@ -162,7 +173,7 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   categoryChip: {
     paddingHorizontal: 10,
@@ -200,12 +211,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(231, 183, 60, 0.4)',
     backgroundColor: 'rgba(0, 2, 13, 0.7)',
     color: '#f9fafb',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sortRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sortButton: {
     flex: 1,
@@ -235,7 +246,7 @@ const styles = StyleSheet.create({
   filtersButton: {
     marginTop: 4,
     backgroundColor: '#e7b73c',
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     shadowColor: '#e7b73c',
     shadowOpacity: 0.6,
@@ -339,6 +350,24 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#000940',
     fontWeight: '600',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: 'rgba(231, 183, 60, 0.55)',
+    borderRadius: 10,
+    backgroundColor: '#020617',
+    marginBottom: 8,
+    height: 42,
+    overflow: 'hidden',
+  },
+  picker: {
+    color: '#e5e7eb',
+    height: 42,
+    fontSize: 13,
+  },
+  pickerItem: {
+    color: '#e5e7eb',
+    fontSize: 14,
   },
   rangeRow: {
     flexDirection: 'row',
@@ -579,31 +608,24 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
 const ProductCatalogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [headerMeasuredHeight, setHeaderMeasuredHeight] = useState(0);
-  const [headerVisible, setHeaderVisible] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const lastScrollY = useRef(0);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: true,
-      listener: (event: any) => {
-        const currentY = event.nativeEvent.contentOffset.y;
-        const scrollDirection = currentY > lastScrollY.current ? 'down' : 'up';
-        
-        // Hide header when scrolling down past 50px from top
-        if (scrollDirection === 'down' && currentY > 50 && headerVisible) {
-          setHeaderVisible(false);
-        } 
-        // Show header when scrolling up near the top (below 30px)
-        else if (scrollDirection === 'up' && currentY < 30 && !headerVisible) {
-          setHeaderVisible(true);
-        }
-        
-        lastScrollY.current = currentY;
-      },
+  const clampedScrollY = Animated.diffClamp(scrollY, 0, Math.max(1, headerMeasuredHeight + 8));
+  const headerTranslateY = clampedScrollY.interpolate({
+    inputRange: [0, Math.max(1, headerMeasuredHeight + 8)],
+    outputRange: [0, -Math.max(1, headerMeasuredHeight + 8)],
+    extrapolate: 'clamp',
+  });
+
+  const handleScroll = (event: any) => {
+    const rawY = event.nativeEvent.contentOffset.y;
+    const clampedY = Math.max(0, rawY);
+    scrollY.setValue(clampedY);
+
+    if (clampedY > 0) {
+      Keyboard.dismiss();
     }
-  );
+  };
 
   // Request extended product fields so filtering matches the web E-shop page
   const productFields = useMemo(
@@ -634,6 +656,37 @@ const ProductCatalogScreen: React.FC = () => {
 
   const [showFilters, setShowFilters] = useState(false);
 
+  const getGradeGroupAndNumber = (rawGrade?: string | null): { group: string; number: number | null } => {
+    if (!rawGrade) return { group: '', number: null };
+
+    const grade = String(rawGrade).trim().toUpperCase();
+
+    const normalized = grade.replace(/\s+/g, '').replace('EXTREMELYFINE', 'EF').replace('VERYFINE', 'VF').replace('FINE', 'F').replace('VERYGOOD', 'VG').replace('GOOD', 'G');
+
+    const specialPrefixMatch = normalized.match(/^(AG|FR|PO)(\d{1,2})?$/);
+    if (specialPrefixMatch) {
+      return {
+        group: specialPrefixMatch[1],
+        number: specialPrefixMatch[2] ? parseInt(specialPrefixMatch[2], 10) : null,
+      };
+    }
+
+    const prefixNumberMatch = normalized.match(/^(MS|AU|EF|VF|VG|F|G)[-]?(\d{1,2})$/);
+    if (prefixNumberMatch) {
+      return {
+        group: prefixNumberMatch[1],
+        number: parseInt(prefixNumberMatch[2], 10),
+      };
+    }
+
+    const standalonePrefixMatch = normalized.match(/^(MS|AU|EF|VF|VG|F|G)$/);
+    if (standalonePrefixMatch) {
+      return { group: standalonePrefixMatch[1], number: null };
+    }
+
+    return { group: '', number: null };
+  };
+
   const [filters, setFilters] = useState<FilterOptions>({
     searchTerm: '',
     category: 'Toate Categoriile',
@@ -646,7 +699,8 @@ const ProductCatalogScreen: React.FC = () => {
     maxYear: 0,
     metal: 'Toate Metalele',
     rarity: 'all',
-    grade: 'Toate Gradele',
+    gradeGroup: 'all',
+    gradeNumber: 'Toate Numerele',
     sortBy: 'best-match',
     // Romanian coin specific filters
     faceValue: 'Toate Valorile',
@@ -656,6 +710,14 @@ const ProductCatalogScreen: React.FC = () => {
     mint: 'Toate Monetăriile',
     era: 'Toate Epocile',
   });
+
+  const gradeNumberOptions = useMemo(() => {
+    if (filters.gradeGroup === 'all') return ['Toate Numerele'];
+    const group = sheldonGradeGroups.find((g) => g.key === filters.gradeGroup);
+    if (!group || group.min === 0 || group.max === 0) return ['Toate Numerele'];
+    const values = Array.from({ length: group.max - group.min + 1 }, (_, i) => String(group.min + i));
+    return ['Toate Numerele', ...values];
+  }, [filters.gradeGroup]);
 
   const totalInCatalog = products.length;
 
@@ -721,8 +783,18 @@ const ProductCatalogScreen: React.FC = () => {
     }
 
     // Grade filter
-    if (filters.grade && filters.grade !== 'Toate Gradele') {
-      filtered = filtered.filter((product) => product.grade === filters.grade);
+    if (filters.gradeGroup && filters.gradeGroup !== 'all') {
+      filtered = filtered.filter((product) => {
+        const parsed = getGradeGroupAndNumber((product as any).grade);
+        if (parsed.group !== filters.gradeGroup) return false;
+
+        if (filters.gradeNumber !== 'Toate Numerele') {
+          if (parsed.number === null) return false;
+          return String(parsed.number) === filters.gradeNumber;
+        }
+
+        return true;
+      });
     }
 
     // Romanian coin specific filters
@@ -812,18 +884,6 @@ const ProductCatalogScreen: React.FC = () => {
     return allFilteredProducts;
   }, [allFilteredProducts]);
 
-  // Animated header visibility - smooth transition based on visibility state
-  const headerTranslateY = useRef(new Animated.Value(0)).current;
-  
-  useEffect(() => {
-    Animated.timing(headerTranslateY, {
-      toValue: headerVisible ? 0 : -1000,
-      duration: 400, // Responsive animation duration
-      easing: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // Easing function for smooth effect
-      useNativeDriver: true,
-    }).start();
-  }, [headerVisible]);
-
   // Measure header height using onLayout
   const measureHeader = (event: any) => {
     const { height } = event.nativeEvent.layout;
@@ -842,7 +902,8 @@ const ProductCatalogScreen: React.FC = () => {
       maxYear: 0,
       metal: 'Toate Metalele',
       rarity: 'all',
-      grade: 'Toate Gradele',
+      gradeGroup: 'all',
+      gradeNumber: 'Toate Numerele',
       sortBy: 'best-match',
       faceValue: 'Toate Valorile',
       issueYear: 'Toți Anii',
@@ -879,9 +940,7 @@ const ProductCatalogScreen: React.FC = () => {
           style={[
             styles.headerContainer,
             styles.headerOverlay,
-            {
-              transform: [{ translateY: headerTranslateY }],
-            },
+            { transform: [{ translateY: headerTranslateY }] },
           ]}
         >
           <Text style={styles.headerTitle}>E-shop</Text>
@@ -1003,6 +1062,7 @@ const ProductCatalogScreen: React.FC = () => {
           numColumns={2}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
+          keyboardDismissMode="on-drag"
           scrollEventThrottle={16}
           // Performance optimizations - only load visible items and nearby items
           removeClippedSubviews={true}
@@ -1018,14 +1078,14 @@ const ProductCatalogScreen: React.FC = () => {
             displayProducts.length === 0
               ? [
                   {
-                    paddingTop: headerMeasuredHeight + 16,
-                    paddingBottom: 120,
+                    paddingTop: headerMeasuredHeight + 6,
+                    paddingBottom: 88,
                   },
                   styles.emptyListContent,
                 ]
               : {
-                  paddingTop: headerMeasuredHeight + 16,
-                  paddingBottom: 120,
+                  paddingTop: headerMeasuredHeight + 6,
+                  paddingBottom: 88,
                 }
           }
           columnWrapperStyle={styles.columnWrapper}
@@ -1119,23 +1179,44 @@ const ProductCatalogScreen: React.FC = () => {
                 })}
               </View>
 
-              {/* Grade Filter */}
-              <Text style={styles.filterLabel}>Grad</Text>
-              <View style={styles.filterChipsRow}>
-                {grades.map((grade) => {
-                  const active = filters.grade === grade;
-                  return (
-                    <TouchableOpacity
-                      key={grade}
-                      style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
-                      onPress={() => setFilters({ ...filters, grade })}
-                    >
-                      <Text style={active ? [styles.filterChipText, styles.filterChipTextActive] : styles.filterChipText}>
-                        {grade}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+              {/* Sheldon Grade Filter */}
+              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Grad (Sheldon) - Categorie</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.gradeGroup}
+                  onValueChange={(value) =>
+                    setFilters({
+                      ...filters,
+                      gradeGroup: String(value),
+                      gradeNumber: 'Toate Numerele',
+                    })
+                  }
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                  dropdownIconColor="#e5e7eb"
+                  mode="dropdown"
+                >
+                  {sheldonGradeGroups.map((group) => (
+                    <Picker.Item key={group.key} label={group.label} value={group.key} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Grad (Sheldon) - Număr</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={filters.gradeNumber}
+                  onValueChange={(value) => setFilters({ ...filters, gradeNumber: String(value) })}
+                  enabled={filters.gradeGroup !== 'all'}
+                  style={styles.picker}
+                  itemStyle={styles.pickerItem}
+                  dropdownIconColor="#e5e7eb"
+                  mode="dropdown"
+                >
+                  {gradeNumberOptions.map((num) => (
+                    <Picker.Item key={num} label={num} value={num} />
+                  ))}
+                </Picker>
               </View>
 
               {/* Price Range */}

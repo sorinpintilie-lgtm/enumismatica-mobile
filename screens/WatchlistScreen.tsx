@@ -269,7 +269,11 @@ const styles = StyleSheet.create({
   },
 });
 
-const WatchlistItemCard: React.FC<{ item: WatchlistItem; onRemove: (itemId: string) => void }> = ({ item, onRemove }) => {
+const WatchlistItemCard: React.FC<{
+  item: WatchlistItem;
+  onRemove: (itemId: string) => void;
+  onMissingItem?: (itemId: string) => void;
+}> = ({ item, onRemove, onMissingItem }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [itemData, setItemData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +291,8 @@ const WatchlistItemCard: React.FC<{ item: WatchlistItem; onRemove: (itemId: stri
         
         if (docSnap.exists()) {
           setItemData(docSnap.data());
+        } else {
+          onMissingItem?.(item.itemId);
         }
       } catch (error) {
         console.error('Error fetching watchlist item data:', error);
@@ -424,6 +430,16 @@ const WatchlistScreen: React.FC = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchWatchlist();
+    setRefreshing(false);
+  };
+
+  const handleMissingItem = async (itemId: string) => {
+    if (!user) return;
+    try {
+      await removeFromWatchlistHook(itemId);
+    } catch (err) {
+      console.error('Error removing missing watchlist item:', err);
+    }
   };
   
   // Refresh watchlist when screen comes into focus
@@ -557,6 +573,7 @@ const WatchlistScreen: React.FC = () => {
               <WatchlistItemCard
                 item={item}
                 onRemove={handleRemoveItem}
+                onMissingItem={handleMissingItem}
               />
             )}
             keyExtractor={(item) => item.id}

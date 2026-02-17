@@ -61,7 +61,7 @@ const ContactScreen: React.FC = () => {
       padding: 16,
     },
     header: {
-      marginBottom: 24,
+      marginBottom: 12,
     },
     headerTitle: {
       fontSize: 28,
@@ -221,7 +221,7 @@ const ContactScreen: React.FC = () => {
         contentContainerStyle={contactStyles.scrollContent}
       >
         <View style={contactStyles.content}>
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: 3 }}>
             <InlineBackButton />
           </View>
           {/* Header */}

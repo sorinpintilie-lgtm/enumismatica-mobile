@@ -244,7 +244,7 @@ const SettingsScreen: React.FC = () => {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={{ marginBottom: 16 }}>
         <InlineBackButton />
-        <Text style={[styles.title, { marginTop: 12 }]}>Setări & Securitate</Text>
+        <Text style={[styles.title, { marginTop: 4 }]}>Setări & Securitate</Text>
       </View>
 
       <View style={styles.accountCard}>
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 96,
-    gap: 16,
+    gap: 12,
   },
   title: {
     color: colors.textPrimary,
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(231, 183, 60, 0.25)',
     backgroundColor: 'rgba(0, 2, 13, 0.8)',
-    padding: 16,
+    padding: 12,
   },
   accountAvatar: {
     width: 44,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    gap: 8,
+    gap: 6,
   },
   sectionTitle: {
     color: colors.textSecondary,
@@ -454,8 +454,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   notificationBlock: {
-    marginTop: 12,
-    gap: 6,
+    marginTop: 8,
+    gap: 4,
   },
   notificationBlockTitle: {
     color: colors.textPrimary,

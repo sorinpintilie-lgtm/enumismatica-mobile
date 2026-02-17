@@ -9,6 +9,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   Image,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -319,130 +322,137 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <InlineBackButton />
-        <Text style={styles.headerTitle}>Finalizare comandă</Text>
-      </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <InlineBackButton />
+          <Text style={styles.headerTitle}>Finalizare comandă</Text>
+        </View>
 
-      {/* Stepper */}
-      <View style={styles.stepperContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stepperScroll}>
-          <View style={styles.stepper}>
-            {steps.map((step, index) => {
-              const isCompleted = index < currentStepIndex;
-              const isCurrent = index === currentStepIndex;
-              const isPending = index > currentStepIndex;
+        {/* Stepper */}
+        <View style={styles.stepperContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stepperScroll}>
+            <View style={styles.stepper}>
+              {steps.map((step, index) => {
+                const isCompleted = index < currentStepIndex;
+                const isCurrent = index === currentStepIndex;
+                const isPending = index > currentStepIndex;
 
-              return (
-                <View key={step.key} style={styles.stepItem}>
-                  <View
-                    style={[
-                      styles.stepCircle,
-                      isCompleted && styles.stepCircleCompleted,
-                      isCurrent && styles.stepCircleCurrent,
-                      isPending && styles.stepCirclePending,
-                    ]}
-                  >
-                    {isCompleted ? (
-                      <Ionicons name="checkmark" size={16} color={colors.primaryText} />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.stepNumber,
-                          isCurrent && styles.stepNumberCurrent,
-                          isPending && styles.stepNumberPending,
-                        ]}
-                      >
-                        {index + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.stepLabel,
-                      isCurrent && styles.stepLabelCurrent,
-                      isPending && styles.stepLabelPending,
-                    ]}
-                  >
-                    {step.label}
-                  </Text>
-                  {index < steps.length - 1 && (
+                return (
+                  <View key={step.key} style={styles.stepItem}>
                     <View
                       style={[
-                        styles.stepLine,
-                        isCompleted && styles.stepLineCompleted,
-                        isPending && styles.stepLinePending,
+                        styles.stepCircle,
+                        isCompleted && styles.stepCircleCompleted,
+                        isCurrent && styles.stepCircleCurrent,
+                        isPending && styles.stepCirclePending,
                       ]}
-                    />
-                  )}
-                </View>
-              );
-            })}
-          </View>
+                    >
+                      {isCompleted ? (
+                        <Ionicons name="checkmark" size={16} color={colors.primaryText} />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.stepNumber,
+                            isCurrent && styles.stepNumberCurrent,
+                            isPending && styles.stepNumberPending,
+                          ]}
+                        >
+                          {index + 1}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.stepLabel,
+                        isCurrent && styles.stepLabelCurrent,
+                        isPending && styles.stepLabelPending,
+                      ]}
+                    >
+                      {step.label}
+                    </Text>
+                    {index < steps.length - 1 && (
+                      <View
+                        style={[
+                          styles.stepLine,
+                          isCompleted && styles.stepLineCompleted,
+                          isPending && styles.stepLinePending,
+                        ]}
+                      />
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Content */}
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {currentStep === 'shipping' && (
+            <ShippingStep
+              shippingInfo={shippingInfo}
+              errors={errors}
+              onInputChange={handleInputChange}
+            />
+          )}
+
+          {currentStep === 'payment' && (
+            <PaymentStep
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+            />
+          )}
+
+          {currentStep === 'review' && (
+            <ReviewStep
+              products={checkoutProducts}
+              shippingInfo={shippingInfo}
+              paymentMethod={paymentMethod}
+              totalAmount={totalAmount}
+            />
+          )}
+
+          {currentStep === 'confirmation' && (
+            <ConfirmationStep orderId={orderId} />
+          )}
         </ScrollView>
-      </View>
 
-      {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        {currentStep === 'shipping' && (
-          <ShippingStep
-            shippingInfo={shippingInfo}
-            errors={errors}
-            onInputChange={handleInputChange}
-          />
-        )}
-
-        {currentStep === 'payment' && (
-          <PaymentStep
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-          />
-        )}
-
-        {currentStep === 'review' && (
-          <ReviewStep
-            products={checkoutProducts}
-            shippingInfo={shippingInfo}
-            paymentMethod={paymentMethod}
-            totalAmount={totalAmount}
-          />
-        )}
-
-        {currentStep === 'confirmation' && (
-          <ConfirmationStep orderId={orderId} />
-        )}
-      </ScrollView>
-
-      {/* Footer */}
-      {currentStep !== 'confirmation' && (
-        <View style={styles.footer}>
-          {currentStep !== 'shipping' && (
+        {/* Footer */}
+        {currentStep !== 'confirmation' && (
+          <View style={styles.footer}>
+            {currentStep !== 'shipping' && (
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                disabled={isLoading}
+              >
+                <Text style={styles.backButtonText}>Înapoi</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
+              style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
+              onPress={handleNext}
               disabled={isLoading}
             >
-              <Text style={styles.backButtonText}>Înapoi</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.primaryText} />
+              ) : (
+                <Text style={styles.nextButtonText}>
+                  {currentStep === 'review' ? 'Plasează comanda' : 'Continuă'}
+                </Text>
+              )}
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
-            onPress={handleNext}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={colors.primaryText} />
-            ) : (
-              <Text style={styles.nextButtonText}>
-                {currentStep === 'review' ? 'Plasează comanda' : 'Continuă'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+          </View>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -471,6 +481,8 @@ function ShippingStep({
           onChangeText={(text) => onInputChange('name', text)}
           placeholder="Nume complet"
           placeholderTextColor={colors.textSecondary}
+          returnKeyType="next"
+          blurOnSubmit={false}
         />
         {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
       </View>
@@ -483,6 +495,8 @@ function ShippingStep({
           onChangeText={(text) => onInputChange('address', text)}
           placeholder="Stradă, număr, apartament"
           placeholderTextColor={colors.textSecondary}
+          returnKeyType="next"
+          blurOnSubmit={false}
         />
         {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
       </View>
@@ -496,6 +510,8 @@ function ShippingStep({
             onChangeText={(text) => onInputChange('city', text)}
             placeholder="Oraș"
             placeholderTextColor={colors.textSecondary}
+            returnKeyType="next"
+            blurOnSubmit={false}
           />
           {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
         </View>
@@ -509,6 +525,8 @@ function ShippingStep({
             placeholder="Cod poștal"
             placeholderTextColor={colors.textSecondary}
             keyboardType="numeric"
+            returnKeyType="next"
+            blurOnSubmit={false}
           />
           {errors.postalCode && <Text style={styles.errorText}>{errors.postalCode}</Text>}
         </View>
@@ -522,6 +540,8 @@ function ShippingStep({
           onChangeText={(text) => onInputChange('country', text)}
           placeholder="Țară"
           placeholderTextColor={colors.textSecondary}
+          returnKeyType="next"
+          blurOnSubmit={false}
         />
       </View>
 
@@ -534,6 +554,8 @@ function ShippingStep({
           placeholder="Număr de telefon"
           placeholderTextColor={colors.textSecondary}
           keyboardType="phone-pad"
+          returnKeyType="next"
+          blurOnSubmit={false}
         />
         {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
       </View>
@@ -548,6 +570,9 @@ function ShippingStep({
           placeholderTextColor={colors.textSecondary}
           keyboardType="email-address"
           autoCapitalize="none"
+          returnKeyType="done"
+          blurOnSubmit={true}
+          onSubmitEditing={() => Keyboard.dismiss()}
         />
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
       </View>

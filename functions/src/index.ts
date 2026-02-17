@@ -12,20 +12,23 @@ admin.initializeApp();
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const CREDIT_PRICE_RON = 1;
 
+// Stripe configuration
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+
 type PaymentStatus = "pending" | "paid" | "failed" | "cancelled";
 
-interface NetopiaPaymentDoc {
+interface StripePaymentDoc {
   userId: string;
   status: PaymentStatus;
   ronAmount: number;
   creditsToAdd: number;
   paymentReference: string;
-  provider: "netopia";
-  netopiaSignatureValid: boolean;
+  provider: "stripe";
+  stripePaymentIntentId: string;
+  stripeClientSecret: string;
   createdAt: FirebaseFirestore.FieldValue;
   updatedAt: FirebaseFirestore.FieldValue;
   completedAt?: FirebaseFirestore.FieldValue;
-  callbackRaw?: unknown;
 }
 
 function calcCreditsFromRon(ronAmount: number): number {
@@ -48,63 +51,10 @@ async function getUidFromRequest(req: any): Promise<string> {
   return decoded.uid;
 }
 
-function buildNetopiaPlaceholderUrl(paymentId: string): string {
-  // Keep this as a neutral sandbox landing URL until real Netopia order-signing
-  // integration is wired. Do not use /placeholder (invalid controller).
-  return `https://sandboxsecure.mobilpay.ro?paymentId=${encodeURIComponent(paymentId)}`;
-}
-
-export const initNetopiaPayment = onRequest({region: "europe-west1"}, async (req, res) => {
-  if (req.method !== "POST") {
-    res.status(405).json({error: "Method not allowed"});
-    return;
-  }
-
-  try {
-    const uid = await getUidFromRequest(req);
-    const ronAmountRaw = Number(req.body?.ronAmount);
-    if (!Number.isFinite(ronAmountRaw) || ronAmountRaw <= 0) {
-      res.status(400).json({error: "Invalid ronAmount"});
-      return;
-    }
-
-    const ronAmount = Math.round(ronAmountRaw * 100) / 100;
-    const creditsToAdd = calcCreditsFromRon(ronAmount);
-    if (creditsToAdd <= 0) {
-      res.status(400).json({error: "Amount too small for at least 1 credit"});
-      return;
-    }
-
-    const paymentsCol = admin.firestore().collection("creditPayments");
-    const paymentRef = paymentsCol.doc();
-    const paymentReference = `netopia_${paymentRef.id}`;
-
-    const docData: NetopiaPaymentDoc = {
-      userId: uid,
-      status: "pending",
-      ronAmount,
-      creditsToAdd,
-      paymentReference,
-      provider: "netopia",
-      netopiaSignatureValid: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    await paymentRef.set(docData);
-
-    res.status(200).json({
-      paymentId: paymentRef.id,
-      paymentReference,
-      paymentUrl: buildNetopiaPlaceholderUrl(paymentRef.id),
-    });
-  } catch (error: any) {
-    logger.error("initNetopiaPayment failed", {error: error?.message || error});
-    res.status(401).json({error: error?.message || "Unauthorized"});
-  }
-});
-
-export const initNetopiaPaymentCallable = onCall({region: "europe-west1"}, async (request) => {
+/**
+ * Create a Stripe PaymentIntent for credit purchase
+ */
+export const createStripePaymentIntentCallable = onCall({region: "europe-west1"}, async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Missing auth");
   }
@@ -121,161 +71,354 @@ export const initNetopiaPaymentCallable = onCall({region: "europe-west1"}, async
     throw new HttpsError("invalid-argument", "Amount too small for at least 1 credit");
   }
 
-  const paymentsCol = admin.firestore().collection("creditPayments");
-  const paymentRef = paymentsCol.doc();
-  const paymentReference = `netopia_${paymentRef.id}`;
-
-  const docData: NetopiaPaymentDoc = {
-    userId: uid,
-    status: "pending",
-    ronAmount,
-    creditsToAdd,
-    paymentReference,
-    provider: "netopia",
-    netopiaSignatureValid: false,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  };
-
-  await paymentRef.set(docData);
-
-  return {
-    paymentId: paymentRef.id,
-    paymentReference,
-    paymentUrl: buildNetopiaPlaceholderUrl(paymentRef.id),
-  };
-});
-
-export const getNetopiaPaymentStatus = onRequest({region: "europe-west1"}, async (req, res) => {
-  if (req.method !== "GET") {
-    res.status(405).json({error: "Method not allowed"});
-    return;
+  if (!STRIPE_SECRET_KEY) {
+    throw new HttpsError("failed-precondition", "Stripe is not configured");
   }
 
   try {
-    const uid = await getUidFromRequest(req);
-    const paymentId = String(req.query.paymentId || "").trim();
-    if (!paymentId) {
-      res.status(400).json({error: "paymentId is required"});
-      return;
-    }
-
-    const paymentRef = admin.firestore().collection("creditPayments").doc(paymentId);
-    const snap = await paymentRef.get();
-    if (!snap.exists) {
-      res.status(404).json({error: "Payment not found"});
-      return;
-    }
-
-    const data = snap.data() as any;
-    if (data.userId !== uid) {
-      res.status(403).json({error: "Forbidden"});
-      return;
-    }
-
-    res.status(200).json({
-      paymentId: snap.id,
-      status: data.status,
-      creditsAdded: data.status === "paid" ? data.creditsToAdd : 0,
-      ronAmount: data.ronAmount,
-      paymentReference: data.paymentReference,
+    // Create Stripe PaymentIntent
+    const stripeResponse = await fetch("https://api.stripe.com/v1/payment_intents", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        amount: String(Math.round(ronAmount * 100)), // Stripe expects amount in smallest currency unit (bani for RON)
+        currency: "ron",
+        automatic_payment_methods: JSON.stringify({enabled: true}),
+        metadata: JSON.stringify({
+          userId: uid,
+          creditsToAdd: String(creditsToAdd),
+        }),
+      }).toString(),
     });
+
+    if (!stripeResponse.ok) {
+      const errorText = await stripeResponse.text();
+      logger.error("Stripe PaymentIntent creation failed", {
+        status: stripeResponse.status,
+        error: errorText,
+      });
+      throw new HttpsError("internal", "Failed to create payment intent");
+    }
+
+    const paymentIntent = await stripeResponse.json() as any;
+    const paymentIntentId = paymentIntent.id;
+    const clientSecret = paymentIntent.client_secret;
+
+    // Store payment record in Firestore
+    const paymentsCol = admin.firestore().collection("creditPayments");
+    const paymentRef = paymentsCol.doc();
+    const paymentReference = `stripe_${paymentRef.id}`;
+
+    const docData: StripePaymentDoc = {
+      userId: uid,
+      status: "pending",
+      ronAmount,
+      creditsToAdd,
+      paymentReference,
+      provider: "stripe",
+      stripePaymentIntentId: paymentIntentId,
+      stripeClientSecret: clientSecret,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await paymentRef.set(docData);
+
+    return {
+      paymentIntentId,
+      clientSecret,
+      paymentReference,
+      amount: ronAmount,
+      currency: "RON",
+    };
   } catch (error: any) {
-    logger.error("getNetopiaPaymentStatus failed", {error: error?.message || error});
-    res.status(401).json({error: error?.message || "Unauthorized"});
+    logger.error("createStripePaymentIntentCallable failed", {error: error?.message || error});
+    throw new HttpsError("internal", error?.message || "Failed to create payment intent");
   }
 });
 
-export const getNetopiaPaymentStatusCallable = onCall({region: "europe-west1"}, async (request) => {
+/**
+ * Confirm a Stripe payment and credit the user
+ */
+export const confirmStripePaymentCallable = onCall({region: "europe-west1"}, async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "Missing auth");
   }
 
   const uid = request.auth.uid;
-  const paymentId = String((request.data as any)?.paymentId || "").trim();
-  if (!paymentId) {
-    throw new HttpsError("invalid-argument", "paymentId is required");
+  const paymentIntentId = String((request.data as any)?.paymentIntentId || "").trim();
+  if (!paymentIntentId) {
+    throw new HttpsError("invalid-argument", "paymentIntentId is required");
   }
 
-  const paymentRef = admin.firestore().collection("creditPayments").doc(paymentId);
-  const snap = await paymentRef.get();
-  if (!snap.exists) {
-    throw new HttpsError("not-found", "Payment not found");
+  if (!STRIPE_SECRET_KEY) {
+    throw new HttpsError("failed-precondition", "Stripe is not configured");
   }
 
-  const data = snap.data() as any;
-  if (data.userId !== uid) {
-    throw new HttpsError("permission-denied", "Forbidden");
+  try {
+    // Retrieve PaymentIntent from Stripe
+    const stripeResponse = await fetch(`https://api.stripe.com/v1/payment_intents/${paymentIntentId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+      },
+    });
+
+    if (!stripeResponse.ok) {
+      const errorText = await stripeResponse.text();
+      logger.error("Stripe PaymentIntent retrieval failed", {
+        status: stripeResponse.status,
+        error: errorText,
+      });
+      throw new HttpsError("internal", "Failed to retrieve payment intent");
+    }
+
+    const paymentIntent = await stripeResponse.json() as any;
+    const stripeStatus = paymentIntent.status;
+
+    // Find the payment record
+    const paymentsQuery = await admin.firestore()
+      .collection("creditPayments")
+      .where("stripePaymentIntentId", "==", paymentIntentId)
+      .where("userId", "==", uid)
+      .limit(1)
+      .get();
+
+    if (paymentsQuery.empty) {
+      throw new HttpsError("not-found", "Payment record not found");
+    }
+
+    const paymentDoc = paymentsQuery.docs[0];
+    const paymentData = paymentDoc.data();
+
+    // Map Stripe status to our status
+    let mappedStatus: PaymentStatus;
+    if (stripeStatus === "succeeded") {
+      mappedStatus = "paid";
+    } else if (stripeStatus === "canceled") {
+      mappedStatus = "cancelled";
+    } else if (["requires_payment_method", "requires_confirmation", "requires_action"].includes(stripeStatus)) {
+      mappedStatus = "pending";
+    } else {
+      mappedStatus = "failed";
+    }
+
+    // If payment succeeded and not already processed, credit the user
+    if (mappedStatus === "paid" && paymentData.status !== "paid") {
+      const db = admin.firestore();
+      await db.runTransaction(async (tx) => {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await tx.get(userRef);
+        
+        if (!userSnap.exists) {
+          throw new Error("User not found");
+        }
+
+        const currentCredits = Number(userSnap.data()?.credits || 0);
+        const creditsToAdd = Number(paymentData.creditsToAdd || 0);
+        const newCredits = currentCredits + creditsToAdd;
+
+        tx.update(userRef, {
+          credits: newCredits,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        tx.update(paymentDoc.ref, {
+          status: "paid",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        // Create credit transaction record
+        const txRef = db.collection("users").doc(uid).collection("creditTransactions").doc();
+        tx.set(txRef, {
+          userId: uid,
+          type: "purchase_stripe",
+          provider: "stripe",
+          paymentReference: paymentData.paymentReference,
+          ronAmount: paymentData.ronAmount,
+          amount: creditsToAdd,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+    } else {
+      // Just update the status
+      await paymentDoc.ref.update({
+        status: mappedStatus,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return {
+      paymentIntentId,
+      status: mappedStatus,
+      creditsAdded: mappedStatus === "paid" ? paymentData.creditsToAdd : 0,
+      ronAmount: paymentData.ronAmount,
+    };
+  } catch (error: any) {
+    logger.error("confirmStripePaymentCallable failed", {error: error?.message || error});
+    throw new HttpsError("internal", error?.message || "Failed to confirm payment");
   }
+});
+
+/**
+ * Get Stripe payment status
+ */
+export const getStripePaymentStatusCallable = onCall({region: "europe-west1"}, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Missing auth");
+  }
+
+  const uid = request.auth.uid;
+  const paymentIntentId = String((request.data as any)?.paymentIntentId || "").trim();
+  if (!paymentIntentId) {
+    throw new HttpsError("invalid-argument", "paymentIntentId is required");
+  }
+
+  // Find the payment record
+  const paymentsQuery = await admin.firestore()
+    .collection("creditPayments")
+    .where("stripePaymentIntentId", "==", paymentIntentId)
+    .where("userId", "==", uid)
+    .limit(1)
+    .get();
+
+  if (paymentsQuery.empty) {
+    throw new HttpsError("not-found", "Payment record not found");
+  }
+
+  const paymentDoc = paymentsQuery.docs[0];
+  const paymentData = paymentDoc.data();
 
   return {
-    paymentId: snap.id,
-    status: data.status,
-    creditsAdded: data.status === "paid" ? data.creditsToAdd : 0,
-    ronAmount: data.ronAmount,
-    paymentReference: data.paymentReference,
+    paymentIntentId,
+    status: paymentData.status,
+    creditsAdded: paymentData.status === "paid" ? paymentData.creditsToAdd : 0,
+    ronAmount: paymentData.ronAmount,
+    paymentReference: paymentData.paymentReference,
   };
 });
 
-export const netopiaIpnCallback = onRequest({region: "europe-west1"}, async (req, res) => {
-  if (req.method !== "POST") {
-    res.status(405).json({error: "Method not allowed"});
-    return;
+// IAP Product ID to credits mapping
+const IAP_PRODUCT_CREDITS: Record<string, number> = {
+  "ro.enumismatica.credits.20": 20,
+  "ro.enumismatica.credits.50": 50,
+  "ro.enumismatica.credits.100": 100,
+  "ro.enumismatica.credits.200": 200,
+};
+
+/**
+ * Validate In-App Purchase and credit the user
+ * Supports both Apple App Store and Google Play Store
+ */
+export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError("unauthenticated", "Missing auth");
   }
 
-  const paymentId = String(req.body?.paymentId || req.query?.paymentId || "").trim();
-  const reportedStatus = String(req.body?.status || "").trim().toLowerCase();
+  const uid = request.auth.uid;
+  const data = request.data as {
+    productId?: string;
+    purchaseToken?: string;
+    transactionId?: string;
+    platform?: string;
+  };
 
-  if (!paymentId) {
-    res.status(400).json({error: "paymentId is required"});
-    return;
+  const productId = data.productId || "";
+  const purchaseToken = data.purchaseToken || "";
+  const transactionId = data.transactionId || "";
+  const platform = data.platform || "";
+
+  if (!productId) {
+    throw new HttpsError("invalid-argument", "productId is required");
   }
 
-  const normalizedStatus: PaymentStatus =
-    reportedStatus === "paid" ? "paid" :
-    reportedStatus === "failed" ? "failed" :
-    reportedStatus === "cancelled" ? "cancelled" :
-    "pending";
+  if (!purchaseToken) {
+    throw new HttpsError("invalid-argument", "purchaseToken is required");
+  }
 
-  const db = admin.firestore();
-  const paymentRef = db.collection("creditPayments").doc(paymentId);
+  // Get credits for this product
+  const creditsToAdd = IAP_PRODUCT_CREDITS[productId] || 0;
+  if (creditsToAdd === 0) {
+    throw new HttpsError("invalid-argument", "Unknown product ID");
+  }
+
+  // Create a unique payment reference
+  const paymentReference = `iap_${platform}_${transactionId || purchaseToken.substring(0, 20)}`;
+
+  // Check if this purchase has already been processed (idempotency)
+  const existingPaymentQuery = await admin.firestore()
+    .collection("creditPayments")
+    .where("paymentReference", "==", paymentReference)
+    .where("userId", "==", uid)
+    .limit(1)
+    .get();
+
+  if (!existingPaymentQuery.empty) {
+    const existingPayment = existingPaymentQuery.docs[0].data();
+    logger.info("IAP purchase already processed", {
+      userId: uid,
+      paymentReference,
+      status: existingPayment.status,
+    });
+    
+    return {
+      success: existingPayment.status === "paid",
+      creditsAdded: existingPayment.status === "paid" ? existingPayment.creditsToAdd : 0,
+      alreadyProcessed: true,
+    };
+  }
 
   try {
+    // For development/testing, we'll trust the purchase token
+    // In production, you should validate with Apple/Google servers
+    // 
+    // Apple App Store Server API:
+    // https://developer.apple.com/documentation/appstoreserverapi
+    // 
+    // Google Play Developer API:
+    // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.products/get
+    
+    // TODO: Implement server-side receipt validation for production
+    // For now, we trust the client (development mode)
+    const isValid = true; // In production, validate with Apple/Google
+
+    if (!isValid) {
+      throw new Error("Purchase validation failed");
+    }
+
+    // Create payment record
+    const paymentRef = admin.firestore().collection("creditPayments").doc();
+    
+    await paymentRef.set({
+      userId: uid,
+      status: "pending",
+      provider: "iap",
+      platform: platform,
+      productId: productId,
+      purchaseToken: purchaseToken,
+      transactionId: transactionId,
+      paymentReference: paymentReference,
+      creditsToAdd: creditsToAdd,
+      ronAmount: creditsToAdd, // 1 RON = 1 credit
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Credit the user in a transaction
+    const db = admin.firestore();
     await db.runTransaction(async (tx) => {
-      const paySnap = await tx.get(paymentRef);
-      if (!paySnap.exists) {
-        throw new Error("Payment not found");
-      }
-
-      const payData = paySnap.data() as any;
-      const existingStatus = payData.status as PaymentStatus;
-
-      if (existingStatus === "paid") {
-        tx.update(paymentRef, {
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          callbackRaw: req.body || null,
-        });
-        return;
-      }
-
-      if (normalizedStatus !== "paid") {
-        tx.update(paymentRef, {
-          status: normalizedStatus,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          callbackRaw: req.body || null,
-          netopiaSignatureValid: false,
-        });
-        return;
-      }
-
-      const userRef = db.collection("users").doc(payData.userId);
+      const userRef = db.collection("users").doc(uid);
       const userSnap = await tx.get(userRef);
+      
       if (!userSnap.exists) {
         throw new Error("User not found");
       }
 
       const currentCredits = Number(userSnap.data()?.credits || 0);
-      const creditsToAdd = Number(payData.creditsToAdd || 0);
       const newCredits = currentCredits + creditsToAdd;
 
       tx.update(userRef, {
@@ -285,28 +428,49 @@ export const netopiaIpnCallback = onRequest({region: "europe-west1"}, async (req
 
       tx.update(paymentRef, {
         status: "paid",
-        netopiaSignatureValid: false,
-        callbackRaw: req.body || null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         completedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      const txRef = db.collection("users").doc(payData.userId).collection("creditTransactions").doc();
-      tx.set(txRef, {
-        userId: payData.userId,
-        type: "purchase_netopia",
-        provider: "netopia",
-        paymentReference: payData.paymentReference,
-        ronAmount: payData.ronAmount,
+      // Create credit transaction record
+      const txRecordRef = db.collection("users").doc(uid).collection("creditTransactions").doc();
+      tx.set(txRecordRef, {
+        userId: uid,
+        type: "purchase_iap",
+        provider: "iap",
+        platform: platform,
+        productId: productId,
+        paymentReference: paymentReference,
+        ronAmount: creditsToAdd,
         amount: creditsToAdd,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
 
-    res.status(200).json({ok: true});
+    logger.info("IAP purchase validated and credited", {
+      userId: uid,
+      productId,
+      creditsToAdd,
+      paymentReference,
+    });
+
+    return {
+      success: true,
+      creditsAdded: creditsToAdd,
+    };
   } catch (error: any) {
-    logger.error("netopiaIpnCallback failed", {error: error?.message || error, paymentId});
-    res.status(500).json({error: error?.message || "Internal error"});
+    logger.error("IAP validation failed", {
+      error: error?.message || error,
+      userId: uid,
+      productId,
+      purchaseToken: purchaseToken.substring(0, 20) + "...",
+    });
+    
+    return {
+      success: false,
+      creditsAdded: 0,
+      error: error?.message || "Purchase validation failed",
+    };
   }
 });
 
