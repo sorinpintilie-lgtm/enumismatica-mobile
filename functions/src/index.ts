@@ -1,8 +1,8 @@
 
 import * as admin from "firebase-admin";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
-import {onRequest} from "firebase-functions/v2/https";
 import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 
 // Initialize Firebase Admin SDK
@@ -34,21 +34,6 @@ interface StripePaymentDoc {
 function calcCreditsFromRon(ronAmount: number): number {
   if (!ronAmount || ronAmount <= 0) return 0;
   return Math.floor(ronAmount / CREDIT_PRICE_RON);
-}
-
-function getBearerToken(req: any): string | null {
-  const authHeader = req.headers.authorization || req.headers.Authorization;
-  if (!authHeader || typeof authHeader !== "string") return null;
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0] !== "Bearer") return null;
-  return parts[1];
-}
-
-async function getUidFromRequest(req: any): Promise<string> {
-  const token = getBearerToken(req);
-  if (!token) throw new Error("Missing Authorization token");
-  const decoded = await admin.auth().verifyIdToken(token);
-  return decoded.uid;
 }
 
 /**
@@ -562,15 +547,33 @@ async function retryWithBackoff<T>(
   throw lastError;
 }
 
+interface ExpoPushTicket {
+  status: "ok" | "error";
+  id?: string;
+  message?: string;
+  details?: {
+    error?: string;
+    expoPushToken?: string;
+    fault?: "developer" | "device";
+  };
+}
+
+interface ExpoPushResponse {
+  data: ExpoPushTicket[];
+}
+
 /**
  * Send Expo push notifications in batches of 100.
+ * Parses and logs individual ticket errors so delivery failures are visible.
+ * Returns array of ticket IDs for optional receipt checking.
  */
 async function sendExpoPushNotifications(
   messages: ExpoPushMessage[]
-): Promise<void> {
-  if (messages.length === 0) return;
+): Promise<string[]> {
+  if (messages.length === 0) return [];
 
   const chunks = chunkArray(messages, 100);
+  const allTicketIds: string[] = [];
 
   await Promise.all(
     chunks.map(async (chunk) => {
@@ -585,18 +588,72 @@ async function sendExpoPushNotifications(
 
       const bodyText = await response.text();
       if (!response.ok) {
-        logger.error("Expo push send failed", {
+        logger.error("Expo push HTTP request failed", {
           status: response.status,
           body: bodyText,
         });
-      } else {
-        logger.info("Expo push sent", {
-          status: response.status,
-          body: bodyText,
-        });
+        return;
       }
+
+      // Parse the response to check individual ticket statuses
+      let parsed: ExpoPushResponse | null = null;
+      try {
+        parsed = JSON.parse(bodyText) as ExpoPushResponse;
+      } catch {
+        logger.error("Failed to parse Expo push response", { body: bodyText });
+        return;
+      }
+
+      const tickets = parsed?.data ?? [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      tickets.forEach((ticket, idx) => {
+        if (ticket.status === "ok") {
+          successCount++;
+          if (ticket.id) allTicketIds.push(ticket.id);
+        } else {
+          errorCount++;
+          const targetToken = chunk[idx]?.to ?? "unknown";
+          logger.error("Expo push ticket error - notification NOT delivered", {
+            ticketIndex: idx,
+            ticketStatus: ticket.status,
+            ticketMessage: ticket.message,
+            ticketErrorCode: ticket.details?.error,
+            ticketFault: ticket.details?.fault,
+            targetToken: targetToken.substring(0, 25) + "...",
+            // Common error codes:
+            // DeviceNotRegistered - token is invalid/stale, delete it from Firestore
+            // MessageTooBig - message payload too large
+            // InvalidCredentials - APNs/FCM credentials not configured in Expo
+            // MessageRateExceeded - too many messages sent to device
+          });
+
+          // If the token is no longer valid, we should flag it
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            logger.warn("DeviceNotRegistered: token should be removed from Firestore", {
+              targetToken: targetToken.substring(0, 25) + "...",
+            });
+          }
+
+          if (ticket.details?.error === "InvalidCredentials") {
+            logger.error("InvalidCredentials: APNs key or FCM credentials are NOT configured in Expo dashboard!", {
+              hint: "Go to https://expo.dev > Project > Credentials and add APNs key for iOS",
+            });
+          }
+        }
+      });
+
+      logger.info("Expo push sent", {
+        httpStatus: response.status,
+        batchSize: chunk.length,
+        successTickets: successCount,
+        errorTickets: errorCount,
+      });
     })
   );
+
+  return allTicketIds;
 }
 
 /**
@@ -830,5 +887,68 @@ export const sendNotificationPush = onDocumentCreated(
       userId: params.userId,
       notificationId: params.notificationId,
     });
+  }
+);
+
+/**
+ * Auto-process orders where buyer marked payment but seller did not confirm in 10 days.
+ * Flags admin and moves order to paid automatically.
+ */
+export const autoResolveUnconfirmedOrderPayments = onSchedule(
+  {
+    region: "europe-west1",
+    schedule: "every 24 hours",
+    timeZone: "Europe/Bucharest",
+  },
+  async () => {
+    const db = admin.firestore();
+    const cutoffMs = Date.now() - (10 * 24 * 60 * 60 * 1000);
+    const cutoff = admin.firestore.Timestamp.fromMillis(cutoffMs);
+
+    const snapshot = await db
+      .collection("orders")
+      .where("status", "==", "payment_marked_by_buyer")
+      .where("buyerMarkedPaidAt", "<=", cutoff)
+      .get();
+
+    if (snapshot.empty) {
+      logger.info("No overdue payment confirmations found");
+      return;
+    }
+
+    let processed = 0;
+    for (const orderDoc of snapshot.docs) {
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(orderDoc.ref);
+        if (!fresh.exists) return;
+        const data = fresh.data() as any;
+        if (data.status !== "payment_marked_by_buyer") return;
+
+        const flagRef = db.collection("adminPaymentFlags").doc();
+        tx.update(orderDoc.ref, {
+          status: "paid",
+          paymentFlaggedForAdmin: true,
+          paymentFlaggedAt: admin.firestore.FieldValue.serverTimestamp(),
+          autoPaidBySystem: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        tx.set(flagRef, {
+          type: "order_payment_timeout_auto_paid",
+          orderId: orderDoc.id,
+          buyerId: data.buyerId || null,
+          sellerId: data.sellerId || null,
+          buyerMarkedPaidAt: data.buyerMarkedPaidAt || null,
+          note: "Seller did not confirm payment within 10 days; order auto-marked paid.",
+          status: "open",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        processed += 1;
+      });
+    }
+
+    logger.info("Processed overdue payment confirmations", {processed});
   }
 );

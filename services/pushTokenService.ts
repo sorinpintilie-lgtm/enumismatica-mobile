@@ -86,27 +86,54 @@ export async function registerPushTokenForUser(userId: string) {
 
     // Get push token only if permissions are granted
     if (granted) {
-      // Get device push token (FCM token on Android, APNS on iOS)
-      console.log('[pushTokenService] Getting device push token...');
-      const deviceTokenRes = await Notifications.getDevicePushTokenAsync();
-      console.log('[pushTokenService] Device push token response:', JSON.stringify(deviceTokenRes, null, 2));
-      devicePushToken = deviceTokenRes?.data ?? null;
-      devicePushTokenRaw = deviceTokenRes ?? null;
+      // Get device push token (FCM on Android only - skip on iOS to avoid conflicts with Firebase)
+      if (Platform.OS === 'android') {
+        try {
+          console.log('[pushTokenService] Getting device push token (Android)...');
+          const deviceTokenRes = await Notifications.getDevicePushTokenAsync();
+          console.log('[pushTokenService] Device push token response:', JSON.stringify(deviceTokenRes, null, 2));
+          devicePushToken = deviceTokenRes?.data ?? null;
+          devicePushTokenRaw = deviceTokenRes ?? null;
+        } catch (deviceTokenError: any) {
+          console.warn('[pushTokenService] Failed to get device push token (non-fatal):', deviceTokenError?.message);
+        }
+      }
 
-      // Get Expo push token
+      // Get Expo push token - this is the token used for sending notifications
+      // Retry up to 3 times with increasing delay (APNs registration can be async on iOS)
       console.log('[pushTokenService] Getting Expo push token...');
-      const expoTokenRes = await Notifications.getExpoPushTokenAsync({ 
-        projectId: projectId as string 
-      });
-      console.log('[pushTokenService] Expo push token response:', JSON.stringify(expoTokenRes, null, 2));
-      expoPushToken = expoTokenRes?.data ?? null;
-      expoPushTokenRaw = expoTokenRes ?? null;
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (attempt > 1) {
+            const delayMs = attempt * 2000;
+            console.log(`[pushTokenService] Retrying Expo push token (attempt ${attempt}/${maxAttempts}) after ${delayMs}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+          const expoTokenRes = await Notifications.getExpoPushTokenAsync({
+            projectId: projectId as string
+          });
+          console.log('[pushTokenService] Expo push token response:', JSON.stringify(expoTokenRes, null, 2));
+          expoPushToken = expoTokenRes?.data ?? null;
+          expoPushTokenRaw = expoTokenRes ?? null;
 
-      // Check if we got a valid Expo token
-      if (!expoPushToken || expoPushToken.trim() === '') {
-        tokenError = 'Failed to retrieve valid push token from Expo';
-        console.error('[pushTokenService]', tokenError);
-        expoPushToken = null;
+          // Check if we got a valid Expo token
+          if (!expoPushToken || expoPushToken.trim() === '') {
+            tokenError = 'Failed to retrieve valid push token from Expo (empty)';
+            console.error('[pushTokenService]', tokenError);
+            expoPushToken = null;
+          } else {
+            tokenError = null; // Clear any previous error
+            break; // Success - exit retry loop
+          }
+        } catch (expoTokenError: any) {
+          tokenError = expoTokenError?.message ?? String(expoTokenError);
+          console.error(`[pushTokenService] Attempt ${attempt}/${maxAttempts} failed to get Expo push token:`, tokenError);
+          expoPushToken = null;
+          if (attempt === maxAttempts) {
+            console.error('[pushTokenService] All attempts to get Expo push token failed. tokenError:', tokenError);
+          }
+        }
       }
     } else {
       console.log('[pushTokenService] Skipping push token retrieval - permissions denied');

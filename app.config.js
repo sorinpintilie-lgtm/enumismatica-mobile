@@ -7,13 +7,22 @@ export default {
     name: "eNumismatica",
     slug: "enumismatica",
     description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
-    version: "1.1.5",
+    version: "1.1.9",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     plugins: [
       "@react-native-firebase/app",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/eNumismatica.ro_logo.png",
+          "color": "#e7b73c",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
       [
         "expo-build-properties",
         {

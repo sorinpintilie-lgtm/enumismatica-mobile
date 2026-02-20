@@ -95,10 +95,33 @@ export async function requestNotificationPermissions() {
     return true;
   }
 
-  // On iOS, just check if permissions are granted
-  const { status } = await Notifications.getPermissionsAsync();
-  console.log('[notificationService] iOS permission status:', status);
-  return status === 'granted';
+  // On iOS, request permissions if not already granted
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  console.log('[notificationService] iOS current permission status:', existingStatus);
+
+  if (existingStatus === 'granted') {
+    return true;
+  }
+
+  console.log('[notificationService] Requesting iOS notification permissions...');
+  const { status: newStatus } = await Notifications.requestPermissionsAsync({
+    ios: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+      allowCriticalAlerts: false,
+      provideAppNotificationSettings: false,
+    },
+  });
+  console.log('[notificationService] iOS new permission status:', newStatus);
+
+  if (newStatus !== 'granted') {
+    console.log('[notificationService] iOS permission denied - push notifications will not work');
+    return false;
+  }
+
+  console.log('[notificationService] iOS notification permissions granted successfully');
+  return true;
 }
 
 // Get push token with retry mechanism (directly using Notifications API)
@@ -133,13 +156,9 @@ export async function getPushToken(retries: number = 3, delay: number = 1000): P
     try {
       console.log('[notificationService] Attempt', attempt, 'to get push token');
       
-      let token;
-      if (Platform.OS === 'android') {
-        token = await Notifications.getExpoPushTokenAsync({ projectId });
-        console.log('[notificationService] Android token response:', JSON.stringify(token, null, 2));
-      } else {
-        token = await Notifications.getExpoPushTokenAsync();
-      }
+      // Always pass projectId - required for both Android and iOS standalone/EAS builds
+      const token = await Notifications.getExpoPushTokenAsync({ projectId });
+      console.log('[notificationService] Token response:', JSON.stringify(token, null, 2));
 
       if (!token.data || typeof token.data !== 'string' || token.data.trim() === '') {
         console.error('[notificationService] Attempt', attempt, ' - Invalid push token received:', token);
