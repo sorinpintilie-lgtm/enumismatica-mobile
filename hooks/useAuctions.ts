@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   collection,
   query,
@@ -24,6 +24,17 @@ export function useAuctions(status?: 'active' | 'ended' | 'cancelled', pageSize:
   const [hasMore, setHasMore] = useState(true);
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
+  // Keep `fields` stable even when callers pass inline arrays.
+  const fieldsKey = useMemo(() => {
+    const list = Array.isArray(fields) ? fields : DEFAULT_AUCTION_FIELDS;
+    return Array.from(new Set(list)).sort().join('|');
+  }, [fields]);
+
+  const normalizedFields = useMemo(() => {
+    if (!fieldsKey) return DEFAULT_AUCTION_FIELDS;
+    return fieldsKey.split('|').filter(Boolean);
+  }, [fieldsKey]);
+
   useEffect(() => {
     setLoading(true);
     let q = query(collection(db, 'auctions'), orderBy('createdAt', 'desc'), limit(pageSize));
@@ -48,23 +59,23 @@ export function useAuctions(status?: 'active' | 'ended' | 'cancelled', pageSize:
           const auctionData: any = { id: doc.id };
 
           // Only include requested fields for performance
-          fields.forEach(field => {
+          normalizedFields.forEach(field => {
             if (data[field] !== undefined) {
               auctionData[field] = data[field];
             }
           });
 
           // Always include dates for proper typing
-          if (fields.includes('startTime')) {
+          if (normalizedFields.includes('startTime')) {
             auctionData.startTime = data.startTime?.toDate() || new Date();
           }
-          if (fields.includes('endTime')) {
+          if (normalizedFields.includes('endTime')) {
             auctionData.endTime = data.endTime?.toDate() || new Date();
           }
-          if (fields.includes('createdAt')) {
+          if (normalizedFields.includes('createdAt')) {
             auctionData.createdAt = data.createdAt?.toDate() || new Date();
           }
-          if (fields.includes('updatedAt')) {
+          if (normalizedFields.includes('updatedAt')) {
             auctionData.updatedAt = data.updatedAt?.toDate() || new Date();
           }
 
@@ -91,8 +102,11 @@ export function useAuctions(status?: 'active' | 'ended' | 'cancelled', pageSize:
       }
     );
 
-    return () => unsubscribe();
-  }, [status, pageSize, fields]);
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
+  }, [status, pageSize, normalizedFields]);
 
   const loadMore = useCallback(() => {
     if (hasMore && lastVisible && !loading) {

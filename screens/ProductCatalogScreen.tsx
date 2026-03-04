@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import {
   Keyboard,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -27,6 +26,7 @@ import { romanianCoinOptions } from '../utils/romanianCoinData';
 import { WatchlistButton } from '../components/WatchlistButton';
 import { useAuth } from '../context/AuthContext';
 import AuthPromptModal from '../components/AuthPromptModal';
+import { DIAMETER_RANGE_OPTIONS, GRADE_OPTIONS, normalizeDiameterRange, normalizeGrade, normalizeWeight, sortWeightsAsc } from '../utils/coinClassification';
 
 // Sort options aligned with web E-shop page (products only use a subset)
 type SortOption = 'best-match' | 'price-asc' | 'price-desc' | 'newly-listed';
@@ -42,7 +42,10 @@ interface FilterOptions {
   metal: string;
   rarity: string;
   gradeGroup: string;
-  gradeNumber: string;
+  gradeMode: 'any' | 'exact' | 'min' | 'range';
+  gradeExact: string;
+  gradeMin: string;
+  gradeMax: string;
   sortBy: SortOption;
   // Romanian coin specific filters
   faceValue: string;
@@ -58,6 +61,7 @@ const categories = ['Toate Categoriile', 'Monede', 'Bancnote'];
 // Countries / metals aligned with web FilterBar (Romanian labels)
 const countries = [
   'Toate Țările',
+  'România',
   'Rusia',
   'SUA',
   'Germania',
@@ -67,7 +71,6 @@ const countries = [
   'Spania',
   'Danemarca',
   'Mexic',
-  'România',
   'Austria',
 ];
 
@@ -83,19 +86,7 @@ const rarities = [
   { value: 'extremely-rare', label: 'Extrem de rară' },
 ];
 
-const sheldonGradeGroups = [
-  { key: 'all', label: 'Toate Gradele', min: 0, max: 0 },
-  { key: 'MS', label: 'MS (Mint State)', min: 60, max: 70 },
-  { key: 'AU', label: 'AU (About Uncirculated)', min: 50, max: 58 },
-  { key: 'EF', label: 'EF (Extremely Fine)', min: 40, max: 45 },
-  { key: 'VF', label: 'VF (Very Fine)', min: 20, max: 35 },
-  { key: 'F', label: 'F (Fine)', min: 12, max: 15 },
-  { key: 'VG', label: 'VG (Very Good)', min: 8, max: 10 },
-  { key: 'G', label: 'G (Good)', min: 4, max: 6 },
-  { key: 'AG', label: 'AG (About Good)', min: 3, max: 3 },
-  { key: 'FR', label: 'FR (Fair)', min: 2, max: 2 },
-  { key: 'PO', label: 'PO (Poor)', min: 1, max: 1 },
-];
+const sheldonGradeGroups = [{ key: '', label: 'Toate Gradele', min: 0, max: 0 }, ...GRADE_OPTIONS.map((g) => ({ key: g, label: g, min: 0, max: 0 }))];
 
 const styles = StyleSheet.create({
   screen: {
@@ -351,23 +342,10 @@ const styles = StyleSheet.create({
     color: '#000940',
     fontWeight: '600',
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: 'rgba(231, 183, 60, 0.55)',
-    borderRadius: 10,
-    backgroundColor: '#020617',
+  gradeHintText: {
+    color: '#94a3b8',
+    fontSize: 12,
     marginBottom: 8,
-    height: 42,
-    overflow: 'hidden',
-  },
-  picker: {
-    color: '#e5e7eb',
-    height: 42,
-    fontSize: 13,
-  },
-  pickerItem: {
-    color: '#e5e7eb',
-    fontSize: 14,
   },
   rangeRow: {
     flexDirection: 'row',
@@ -497,11 +475,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   cardPrice: {
     fontSize: 16,
     fontWeight: '700',
     color: '#e7b73c',
+    flexShrink: 1,
   },
   cardRarityPill: {
     paddingHorizontal: 6,
@@ -510,15 +490,41 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(231, 183, 60, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(231, 183, 60, 0.4)',
+    maxWidth: '56%',
+    overflow: 'hidden',
+    flexShrink: 1,
   },
   cardRarityText: {
     fontSize: 10,
     color: '#facc6b',
     textTransform: 'capitalize',
   },
+  gradeModeHint: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 8,
+  },
 });
 
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
+const formatRarityLabel = (rarity: string): string => {
+  switch (rarity) {
+    case 'common':
+      return 'comună';
+    case 'uncommon':
+      return 'neobișnuită';
+    case 'rare':
+      return 'rară';
+    case 'very-rare':
+      return 'foarte rară';
+    case 'extremely-rare':
+      return 'extrem rară';
+    default:
+      return String(rarity).replace('-', ' ');
+  }
+};
+
+const ProductCardComponent: React.FC<{ product: Product }> = ({ product }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -597,13 +603,33 @@ const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <Text style={styles.cardPrice}>{formatEUR(product.price)}</Text>
         {product.rarity && (
           <View style={styles.cardRarityPill}>
-            <Text style={styles.cardRarityText}>{String(product.rarity).replace('-', ' ')}</Text>
+            <Text style={styles.cardRarityText} numberOfLines={1} ellipsizeMode="tail">
+              {formatRarityLabel(String(product.rarity))}
+            </Text>
           </View>
         )}
       </View>
     </TouchableOpacity>
   );
 };
+
+const ProductCard = memo(
+  ProductCardComponent,
+  (prevProps, nextProps) => {
+    const prev = prevProps.product;
+    const next = nextProps.product;
+
+    return (
+      prev.id === next.id &&
+      prev.name === next.name &&
+      prev.price === next.price &&
+      prev.country === next.country &&
+      prev.year === next.year &&
+      prev.rarity === next.rarity &&
+      (prev.images?.[0] ?? null) === (next.images?.[0] ?? null)
+    );
+  },
+);
 
 const ProductCatalogScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -657,34 +683,14 @@ const ProductCatalogScreen: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const getGradeGroupAndNumber = (rawGrade?: string | null): { group: string; number: number | null } => {
-    if (!rawGrade) return { group: '', number: null };
-
-    const grade = String(rawGrade).trim().toUpperCase();
-
-    const normalized = grade.replace(/\s+/g, '').replace('EXTREMELYFINE', 'EF').replace('VERYFINE', 'VF').replace('FINE', 'F').replace('VERYGOOD', 'VG').replace('GOOD', 'G');
-
-    const specialPrefixMatch = normalized.match(/^(AG|FR|PO)(\d{1,2})?$/);
-    if (specialPrefixMatch) {
-      return {
-        group: specialPrefixMatch[1],
-        number: specialPrefixMatch[2] ? parseInt(specialPrefixMatch[2], 10) : null,
-      };
-    }
-
-    const prefixNumberMatch = normalized.match(/^(MS|AU|EF|VF|VG|F|G)[-]?(\d{1,2})$/);
-    if (prefixNumberMatch) {
-      return {
-        group: prefixNumberMatch[1],
-        number: parseInt(prefixNumberMatch[2], 10),
-      };
-    }
-
-    const standalonePrefixMatch = normalized.match(/^(MS|AU|EF|VF|VG|F|G)$/);
-    if (standalonePrefixMatch) {
-      return { group: standalonePrefixMatch[1], number: null };
-    }
-
-    return { group: '', number: null };
+    const group = normalizeGrade(rawGrade);
+    if (!rawGrade) return { group, number: null };
+    const match = String(rawGrade).toUpperCase().match(/(\d{1,3})/);
+    const number = match ? Number.parseInt(match[1], 10) : null;
+    return {
+      group,
+      number: Number.isFinite(number as number) ? number : null,
+    };
   };
 
   const [filters, setFilters] = useState<FilterOptions>({
@@ -699,8 +705,11 @@ const ProductCatalogScreen: React.FC = () => {
     maxYear: 0,
     metal: 'Toate Metalele',
     rarity: 'all',
-    gradeGroup: 'all',
-    gradeNumber: 'Toate Numerele',
+    gradeGroup: '',
+    gradeMode: 'any',
+    gradeExact: '',
+    gradeMin: '',
+    gradeMax: '',
     sortBy: 'best-match',
     // Romanian coin specific filters
     faceValue: 'Toate Valorile',
@@ -711,18 +720,11 @@ const ProductCatalogScreen: React.FC = () => {
     era: 'Toate Epocile',
   });
 
-  const gradeNumberOptions = useMemo(() => {
-    if (filters.gradeGroup === 'all') return ['Toate Numerele'];
-    const group = sheldonGradeGroups.find((g) => g.key === filters.gradeGroup);
-    if (!group || group.min === 0 || group.max === 0) return ['Toate Numerele'];
-    const values = Array.from({ length: group.max - group.min + 1 }, (_, i) => String(group.min + i));
-    return ['Toate Numerele', ...values];
-  }, [filters.gradeGroup]);
-
   const totalInCatalog = products.length;
 
   const allFilteredProducts = useMemo(() => {
     let filtered = [...products];
+    const activeGradeGroup = sheldonGradeGroups.some((g) => g.key === filters.gradeGroup) ? filters.gradeGroup : '';
 
     // Search by name / description / country / denomination
     if (filters.searchTerm) {
@@ -782,15 +784,35 @@ const ProductCatalogScreen: React.FC = () => {
       filtered = filtered.filter((product) => product.rarity === filters.rarity);
     }
 
-    // Grade filter
-    if (filters.gradeGroup && filters.gradeGroup !== 'all') {
+    // Grade filter (category + optional numeric logic)
+    const hasNumericGradeFilter = filters.gradeMode !== 'any';
+    const exactGrade = Number.parseInt(filters.gradeExact, 10);
+    const minGrade = Number.parseInt(filters.gradeMin, 10);
+    const maxGrade = Number.parseInt(filters.gradeMax, 10);
+
+    if (activeGradeGroup || hasNumericGradeFilter) {
       filtered = filtered.filter((product) => {
         const parsed = getGradeGroupAndNumber((product as any).grade);
-        if (parsed.group !== filters.gradeGroup) return false;
 
-        if (filters.gradeNumber !== 'Toate Numerele') {
-          if (parsed.number === null) return false;
-          return String(parsed.number) === filters.gradeNumber;
+        if (activeGradeGroup && parsed.group !== activeGradeGroup) return false;
+
+        if (filters.gradeMode === 'exact') {
+          if (!Number.isFinite(exactGrade) || parsed.number === null) return false;
+          return parsed.number === exactGrade;
+        }
+
+        if (filters.gradeMode === 'min') {
+          if (!Number.isFinite(minGrade) || parsed.number === null) return false;
+          return parsed.number >= minGrade;
+        }
+
+        if (filters.gradeMode === 'range') {
+          if (!Number.isFinite(minGrade) || !Number.isFinite(maxGrade) || parsed.number === null) {
+            return false;
+          }
+          const low = Math.min(minGrade, maxGrade);
+          const high = Math.max(minGrade, maxGrade);
+          return parsed.number >= low && parsed.number <= high;
         }
 
         return true;
@@ -832,14 +854,14 @@ const ProductCatalogScreen: React.FC = () => {
 
         // Apply diameter filter
         if (filters.diameter && filters.diameter !== 'Toate Diametrele') {
-          if (detailedProduct.diameter !== filters.diameter) {
+          if (normalizeDiameterRange(detailedProduct.diameter) !== filters.diameter) {
             return false;
           }
         }
 
         // Apply weight filter
         if (filters.weight && filters.weight !== 'Toate Greutățile') {
-          if (detailedProduct.weight !== filters.weight) {
+          if (normalizeWeight(detailedProduct.weight) !== filters.weight) {
             return false;
           }
         }
@@ -902,8 +924,11 @@ const ProductCatalogScreen: React.FC = () => {
       maxYear: 0,
       metal: 'Toate Metalele',
       rarity: 'all',
-      gradeGroup: 'all',
-      gradeNumber: 'Toate Numerele',
+      gradeGroup: '',
+      gradeMode: 'any',
+      gradeExact: '',
+      gradeMin: '',
+      gradeMax: '',
       sortBy: 'best-match',
       faceValue: 'Toate Valorile',
       issueYear: 'Toți Anii',
@@ -913,6 +938,13 @@ const ProductCatalogScreen: React.FC = () => {
       era: 'Toate Epocile',
     });
   };
+
+  const keyExtractor = useCallback((item: Product) => item.id, []);
+
+  const renderProductItem = useCallback(
+    ({ item }: { item: Product }) => <ProductCard product={item} />,
+    [],
+  );
 
   if (loading) {
     return (
@@ -1057,8 +1089,8 @@ const ProductCatalogScreen: React.FC = () => {
         {/* Products Grid - 2 columns, similar density to web grid */}
         <Animated.FlatList
           data={displayProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ProductCard product={item} />}
+          keyExtractor={keyExtractor}
+          renderItem={renderProductItem}
           numColumns={2}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
@@ -1180,44 +1212,102 @@ const ProductCatalogScreen: React.FC = () => {
               </View>
 
               {/* Sheldon Grade Filter */}
-              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Grad (Sheldon) - Categorie</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={filters.gradeGroup}
-                  onValueChange={(value) =>
-                    setFilters({
-                      ...filters,
-                      gradeGroup: String(value),
-                      gradeNumber: 'Toate Numerele',
-                    })
-                  }
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                  dropdownIconColor="#e5e7eb"
-                  mode="dropdown"
-                >
-                  {sheldonGradeGroups.map((group) => (
-                    <Picker.Item key={group.key} label={group.label} value={group.key} />
-                  ))}
-                </Picker>
+              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Grad categorie</Text>
+              <View style={styles.filterChipsRow}>
+                {sheldonGradeGroups.map((group) => {
+                  const active = filters.gradeGroup === group.key;
+                  return (
+                    <TouchableOpacity
+                      key={group.key || 'all-grade-groups'}
+                      style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                      onPress={() =>
+                        setFilters({
+                          ...filters,
+                          gradeGroup: group.key,
+                        })
+                      }
+                    >
+                      <Text style={active ? [styles.filterChipText, styles.filterChipTextActive] : styles.filterChipText}>
+                        {group.key ? group.key : 'Toate'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
-              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Grad (Sheldon) - Număr</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={filters.gradeNumber}
-                  onValueChange={(value) => setFilters({ ...filters, gradeNumber: String(value) })}
-                  enabled={filters.gradeGroup !== 'all'}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItem}
-                  dropdownIconColor="#e5e7eb"
-                  mode="dropdown"
-                >
-                  {gradeNumberOptions.map((num) => (
-                    <Picker.Item key={num} label={num} value={num} />
-                  ))}
-                </Picker>
+              <Text style={styles.gradeHintText}>Grade standardizate: PF, MS, AU, XF/EF.</Text>
+
+              <Text style={[styles.filterLabel, { fontSize: 14, marginBottom: 4 }]}>Filtrare numerică grad</Text>
+              <View style={styles.filterChipsRow}>
+                {[
+                  { key: 'any', label: 'Orice' },
+                  { key: 'exact', label: 'Exact' },
+                  { key: 'min', label: 'Minim (61+)' },
+                  { key: 'range', label: 'Interval' },
+                ].map((mode) => {
+                  const active = filters.gradeMode === mode.key;
+                  return (
+                    <TouchableOpacity
+                      key={mode.key}
+                      style={active ? [styles.filterChip, styles.filterChipActive] : styles.filterChip}
+                      onPress={() => setFilters({ ...filters, gradeMode: mode.key as FilterOptions['gradeMode'] })}
+                    >
+                      <Text style={active ? [styles.filterChipText, styles.filterChipTextActive] : styles.filterChipText}>
+                        {mode.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+
+              {filters.gradeMode === 'exact' && (
+                <View style={styles.rangeRow}>
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="Ex: 61"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.gradeExact}
+                    onChangeText={(text) => setFilters({ ...filters, gradeExact: text.replace(/[^0-9]/g, '') })}
+                  />
+                </View>
+              )}
+
+              {filters.gradeMode === 'min' && (
+                <View style={styles.rangeRow}>
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="Minim (ex: 61)"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.gradeMin}
+                    onChangeText={(text) => setFilters({ ...filters, gradeMin: text.replace(/[^0-9]/g, '') })}
+                  />
+                </View>
+              )}
+
+              {filters.gradeMode === 'range' && (
+                <View style={styles.rangeRow}>
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="Min"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.gradeMin}
+                    onChangeText={(text) => setFilters({ ...filters, gradeMin: text.replace(/[^0-9]/g, '') })}
+                  />
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="Max"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                    value={filters.gradeMax}
+                    onChangeText={(text) => setFilters({ ...filters, gradeMax: text.replace(/[^0-9]/g, '') })}
+                  />
+                </View>
+              )}
+
+              <Text style={styles.gradeModeHint}>Exemple: exact 63, minim 61+, interval 61-65.</Text>
 
               {/* Price Range */}
               <Text style={styles.filterLabel}>
@@ -1357,7 +1447,7 @@ const ProductCatalogScreen: React.FC = () => {
                     {/* Diameter Filter */}
                     <Text style={styles.filterLabel}>Diametru</Text>
                     <View style={styles.filterChipsRow}>
-                      {romanianCoinOptions.diameters.slice(0, 10).map((diameter) => {
+                      {DIAMETER_RANGE_OPTIONS.map((diameter) => {
                         const active = filters.diameter === diameter;
                         return (
                           <TouchableOpacity
@@ -1377,17 +1467,12 @@ const ProductCatalogScreen: React.FC = () => {
                           </TouchableOpacity>
                         );
                       })}
-                      {romanianCoinOptions.diameters.length > 10 && (
-                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                          ... și alte {romanianCoinOptions.diameters.length - 10} dimensiuni
-                        </Text>
-                      )}
                     </View>
 
                     {/* Weight Filter */}
                     <Text style={styles.filterLabel}>Greutate</Text>
                     <View style={styles.filterChipsRow}>
-                      {romanianCoinOptions.weights.slice(0, 10).map((weight) => {
+                      {sortWeightsAsc(Array.from(new Set(romanianCoinOptions.weights.map((w) => normalizeWeight(w)).filter(Boolean)))).map((weight) => {
                         const active = filters.weight === weight;
                         return (
                           <TouchableOpacity
@@ -1407,11 +1492,6 @@ const ProductCatalogScreen: React.FC = () => {
                           </TouchableOpacity>
                         );
                       })}
-                      {romanianCoinOptions.weights.length > 10 && (
-                        <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                          ... și alte {romanianCoinOptions.weights.length - 10} greutăți
-                        </Text>
-                      )}
                     </View>
 
                     {/* Mint Filter */}

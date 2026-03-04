@@ -67,11 +67,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#e7b73c',
     marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#cbd5f5',
     marginBottom: 8,
+    textAlign: 'center',
   },
   resultsSummary: {
     fontSize: 13,
@@ -511,14 +513,14 @@ const WatchlistScreen: React.FC = () => {
               style={[styles.secondaryButton, { flex: 1 }]}
               onPress={handleClearWatchlist}
             >
-              <Text style={styles.secondaryButtonText}>Șterge tot</Text>
+              <Text style={[styles.secondaryButtonText, { textAlign: 'center' }]}>Șterge tot</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, { flex: 1 }]}
               onPress={onRefresh}
               disabled={refreshing}
             >
-              <Text style={styles.actionButtonText}>
+              <Text style={[styles.actionButtonText, { textAlign: 'center' }]}>
                 {refreshing ? 'Se reîncarcă...' : 'Reîncarcă'}
               </Text>
             </TouchableOpacity>

@@ -11,6 +11,7 @@ import { Product, Auction } from './types';
 import { addCollectionItem } from './collectionService';
 import { sendPullbackConfirmationEmail } from './emailService';
 import { logActivity } from './activityLogService';
+import { createUserNotification } from './userNotificationService';
 
 /**
  * Perform immediate pullback for a product
@@ -100,6 +101,24 @@ export async function pullbackProduct(
     );
   } catch (error) {
     console.error('Failed to send pullback confirmation email:', error);
+  }
+
+  // Create in-app notification
+  try {
+    await createUserNotification({
+      userId,
+      type: 'system',
+      title: 'Produs retras în colecție',
+      message: 'Produsul a fost retras din vânzare și readăugat în colecția ta.',
+      preferenceKey: 'systemUpdates',
+      data: {
+        productId,
+        itemType: 'product',
+        itemId: productId,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create pullback product notification:', error);
   }
 }
 
@@ -197,6 +216,24 @@ export async function pullbackAuction(
     );
   } catch (error) {
     console.error('Eroare la trimiterea emailului de confirmare:', error);
+  }
+
+  // Create in-app notification
+  try {
+    await createUserNotification({
+      userId,
+      type: 'system',
+      title: 'Licitație retrasă în colecție',
+      message: 'Licitația fără câștigător a fost retrasă și articolul a revenit în colecția ta.',
+      preferenceKey: 'systemUpdates',
+      data: {
+        auctionId,
+        itemType: 'auction',
+        itemId: auctionId,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create pullback auction notification:', error);
   }
 }
 

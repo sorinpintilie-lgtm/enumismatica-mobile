@@ -597,6 +597,15 @@ export interface ChatNotification {
     | 'outbid'
     | 'auction_won'
     | 'auction_ended_no_win'
+    | 'new_offer'
+    | 'new_support_chat'
+    | 'support_resolved'
+    | 'contract_created'
+    | 'contract_accepted'
+    | 'contract_rejected'
+    | 'contract_cancelled'
+    | 'contract_disputed'
+    | 'contract_dispute_resolved'
     | 'system';
   senderId?: string;
   senderName?: string;
@@ -606,9 +615,16 @@ export interface ChatNotification {
   pushed: boolean;
   createdAt: Date;
   conversationId?: string;
+  supportChatId?: string;
   auctionId?: string;
+  productId?: string;
+  orderId?: string;
   auctionTitle?: string;
   bidAmount?: number;
+  itemType?: 'auction' | 'product';
+  itemId?: string;
+  deepLink?: string;
+  url?: string;
 }
 
 /**
@@ -679,11 +695,42 @@ export interface Order {
 
   price: number;
   currency: 'RON';
-  status: 'pending' | 'paid' | 'cancelled' | 'failed' | 'refunded';
+  status: 'pending' | 'payment_marked_by_buyer' | 'paid' | 'cancelled' | 'failed' | 'refunded';
   paymentProvider: 'manual' | 'stripe';
   paymentReference: string | null;
+  buyerMarkedPaidAt?: Date;
+  sellerConfirmedPaidAt?: Date;
+  paymentFlaggedForAdmin?: boolean;
+  paymentFlaggedAt?: Date;
+  autoPaidBySystem?: boolean;
   isMintProduct?: boolean;
   mintProductData?: any; // RawProduct data for mint products
+  
+  /**
+   * Payment details (when buyer marks payment as made)
+   */
+  paymentDate?: Date;
+  paymentProofUrl?: string | null;
+  
+  /**
+   * Seller payment confirmation
+   */
+  sellerConfirmedPayment?: boolean;
+  paymentConfirmationDate?: Date;
+  
+  /**
+   * Shipping information (added by seller after payment confirmed)
+   */
+  awbNumber?: string | null;
+  shippingDate?: Date | null;
+  courierName?: string | null;
+  
+  /**
+   * Shipping address sharing (buyer shares address with seller)
+   */
+  shippingAddressShared?: boolean;
+  shippingAddressSharedAt?: Date | null;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -704,5 +751,29 @@ export interface Offer {
   createdAt: Date;
   updatedAt: Date;
   expiresAt?: Date; // Optional expiration date
+}
+
+/**
+ * ContractNotification - notification about contract events
+ * Stored in 'users/{userId}/notifications' collection
+ */
+export interface ContractNotification {
+  id: string;
+  userId: string;
+  type: 
+    | 'contract_created'
+    | 'contract_accepted'
+    | 'contract_rejected'
+    | 'contract_cancelled'
+    | 'contract_disputed'
+    | 'contract_dispute_resolved';
+  contractId: string;
+  contractNumber: string;
+  productName: string;
+  otherPartyName: string;
+  message: string;
+  read: boolean;
+  pushed: boolean;
+  createdAt: Date;
 }
 

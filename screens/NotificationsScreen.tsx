@@ -13,6 +13,7 @@ import InlineBackButton from '../components/InlineBackButton';
 import type { ChatNotification } from '@shared/types';
 import { db } from '@shared/firebaseConfig';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { resolveNotificationNavigationTarget } from '../services/deepLinkService';
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -46,10 +47,9 @@ export default function NotificationsScreen() {
         await markAsRead(n.id);
       }
 
-      if (n.conversationId) {
-        navigation.navigate('Messages', { conversationId: n.conversationId });
-      } else if (n.auctionId) {
-        navigation.navigate('AuctionDetails', { auctionId: n.auctionId });
+      const target = resolveNotificationNavigationTarget(n as unknown as Record<string, unknown>);
+      if (target) {
+        (navigation as any).navigate(target.screen, target.params);
       } else {
         showToast({ type: 'info', title: 'Notificare', message: 'Această notificare nu are o țintă de navigare.' });
       }
@@ -151,13 +151,21 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <InlineBackButton />
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Notificări</Text>
-          <Text style={styles.subtitle}>{headerSubtitle}</Text>
+      <View style={styles.topBar}>
+        <View style={styles.topBarLeft}>
+          <InlineBackButton />
         </View>
 
+        <View style={styles.topBarCenter}>
+          <Text style={styles.title}>Notificări</Text>
+        </View>
+
+        <View style={styles.topBarRight}>
+          <Text style={styles.subtitle} numberOfLines={1}>{headerSubtitle}</Text>
+        </View>
+      </View>
+
+      <View style={styles.headerRow}>
         <View style={styles.headerActions}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Settings')}
@@ -231,10 +239,29 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerRow: {
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    minHeight: 42,
+  },
+  topBarLeft: {
+    width: 96,
+    justifyContent: 'center',
+  },
+  topBarCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarRight: {
+    width: 120,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   headerActionButton: {
     width: 40,
@@ -255,9 +282,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   subtitle: {
-    marginTop: 4,
     fontSize: 12,
     color: colors.textSecondary,
+    textAlign: 'right',
   },
   center: {
     flex: 1,

@@ -14,6 +14,31 @@ type SendTemplateEmailInput = {
 
 const DEFAULT_SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://enumismatica.ro';
+const APP_SCHEME_PREFIX = 'enumismatica://';
+
+function encodeSegment(value: string): string {
+  return encodeURIComponent(value.trim());
+}
+
+function buildAppAuctionLink(auctionId: string): string {
+  return `${APP_SCHEME_PREFIX}auction/${encodeSegment(auctionId)}`;
+}
+
+function buildAppProductLink(productId: string): string {
+  return `${APP_SCHEME_PREFIX}product/${encodeSegment(productId)}`;
+}
+
+function buildAppOrderLink(orderId: string): string {
+  return `${APP_SCHEME_PREFIX}order/${encodeSegment(orderId)}`;
+}
+
+function buildAppConversationLink(conversationId: string): string {
+  return `${APP_SCHEME_PREFIX}messages/${encodeSegment(conversationId)}`;
+}
+
+function buildAppMessagesLink(): string {
+  return `${APP_SCHEME_PREFIX}messages`;
+}
 
 function isBrowser() {
   return typeof window !== 'undefined';
@@ -104,9 +129,14 @@ export async function sendPurchaseConfirmationEmail(
     conversationId?: string;
   },
 ): Promise<void> {
+  const appConversationLink = options?.conversationId
+    ? buildAppConversationLink(options.conversationId)
+    : buildAppMessagesLink();
   const conversationLink = options?.conversationId
     ? `${DEFAULT_SITE_URL}/messages?conversation=${options.conversationId}`
     : `${DEFAULT_SITE_URL}/messages`;
+  const appOrderLink = buildAppOrderLink(orderId);
+  const webOrderLink = `${DEFAULT_SITE_URL}/orders/${orderId}`;
 
   return sendTemplateEmail({
     to: email,
@@ -116,8 +146,10 @@ export async function sendPurchaseConfirmationEmail(
       listing_title: productName,
       amount: price.toFixed(2),
       currency: 'EUR',
-      transaction_link: `${DEFAULT_SITE_URL}/orders/${orderId}`,
-      conversation_link: conversationLink,
+      transaction_link: appOrderLink,
+      conversation_link: appConversationLink,
+      web_transaction_link: webOrderLink,
+      web_conversation_link: conversationLink,
       seller_name: options?.sellerName || 'Vânzător',
     },
     fallbackKey: 'fallback_transaction',
@@ -130,6 +162,9 @@ export async function sendOutbidEmail(
   currentBid: number,
   auctionId: string,
 ): Promise<void> {
+  const appAuctionLink = buildAppAuctionLink(auctionId);
+  const webAuctionLink = `${DEFAULT_SITE_URL}/auctions/${auctionId}`;
+
   return sendTemplateEmail({
     to: email,
     templateKey: 'bid_outbid',
@@ -138,7 +173,8 @@ export async function sendOutbidEmail(
       listing_title: auctionTitle,
       current_price: currentBid.toFixed(2),
       currency: 'EUR',
-      auction_link: `${DEFAULT_SITE_URL}/auctions/${auctionId}`,
+      auction_link: appAuctionLink,
+      web_auction_link: webAuctionLink,
     },
     fallbackKey: 'fallback_default',
   });
@@ -154,9 +190,14 @@ export async function sendAuctionWonEmail(
     conversationId?: string;
   },
 ): Promise<void> {
+  const appConversationLink = options?.conversationId
+    ? buildAppConversationLink(options.conversationId)
+    : buildAppMessagesLink();
   const conversationLink = options?.conversationId
     ? `${DEFAULT_SITE_URL}/messages?conversation=${options.conversationId}`
     : `${DEFAULT_SITE_URL}/messages`;
+  const appAuctionLink = buildAppAuctionLink(auctionId);
+  const webAuctionLink = `${DEFAULT_SITE_URL}/auctions/${auctionId}`;
 
   return sendTemplateEmail({
     to: email,
@@ -167,8 +208,10 @@ export async function sendAuctionWonEmail(
       amount: finalBid.toFixed(2),
       currency: 'EUR',
       seller_name: options?.sellerName || 'Vânzător',
-      transaction_link: `${DEFAULT_SITE_URL}/auctions/${auctionId}`,
-      conversation_link: conversationLink,
+      transaction_link: appAuctionLink,
+      conversation_link: appConversationLink,
+      web_transaction_link: webAuctionLink,
+      web_conversation_link: conversationLink,
     },
     fallbackKey: 'fallback_transaction',
   });
@@ -184,9 +227,18 @@ export async function sendProductSoldEmail(
     orderId?: string;
   },
 ): Promise<void> {
+  const appConversationLink = options?.conversationId
+    ? buildAppConversationLink(options.conversationId)
+    : buildAppMessagesLink();
   const conversationLink = options?.conversationId
     ? `${DEFAULT_SITE_URL}/messages?conversation=${options.conversationId}`
     : `${DEFAULT_SITE_URL}/messages`;
+  const appActionLink = options?.orderId
+    ? buildAppOrderLink(options.orderId)
+    : buildAppMessagesLink();
+  const webActionLink = options?.orderId
+    ? `${DEFAULT_SITE_URL}/orders/${options.orderId}`
+    : `${DEFAULT_SITE_URL}/dashboard`;
 
   return sendTemplateEmail({
     to: email,
@@ -197,10 +249,10 @@ export async function sendProductSoldEmail(
       amount: price.toFixed(2),
       currency: 'EUR',
       buyer_name: buyerName,
-      action_link: options?.orderId
-        ? `${DEFAULT_SITE_URL}/orders/${options.orderId}`
-        : `${DEFAULT_SITE_URL}/dashboard`,
-      conversation_link: conversationLink,
+      action_link: appActionLink,
+      conversation_link: appConversationLink,
+      web_action_link: webActionLink,
+      web_conversation_link: conversationLink,
     },
     fallbackKey: 'fallback_transaction',
   });
@@ -216,9 +268,14 @@ export async function sendAuctionSoldEmail(
     conversationId?: string;
   },
 ): Promise<void> {
+  const appConversationLink = options?.conversationId
+    ? buildAppConversationLink(options.conversationId)
+    : buildAppMessagesLink();
   const conversationLink = options?.conversationId
     ? `${DEFAULT_SITE_URL}/messages?conversation=${options.conversationId}`
     : `${DEFAULT_SITE_URL}/messages`;
+  const appAuctionLink = buildAppAuctionLink(auctionId);
+  const webAuctionLink = `${DEFAULT_SITE_URL}/auctions/${auctionId}`;
 
   return sendTemplateEmail({
     to: email,
@@ -229,8 +286,10 @@ export async function sendAuctionSoldEmail(
       amount: finalBid.toFixed(2),
       currency: 'EUR',
       buyer_name: winnerName,
-      action_link: `${DEFAULT_SITE_URL}/auctions/${auctionId}`,
-      conversation_link: conversationLink,
+      action_link: appAuctionLink,
+      conversation_link: appConversationLink,
+      web_action_link: webAuctionLink,
+      web_conversation_link: conversationLink,
     },
     fallbackKey: 'fallback_transaction',
   });
@@ -241,14 +300,19 @@ export async function sendProductApprovedEmail(
   productName: string,
   productId: string,
 ): Promise<void> {
+  const appProductLink = buildAppProductLink(productId);
+  const webProductLink = `${DEFAULT_SITE_URL}/products/${productId}`;
+
   return sendTemplateEmail({
     to: email,
     templateKey: 'product_approved',
     vars: {
       user_name: 'Utilizator',
       listing_title: productName,
-      listing_link: `${DEFAULT_SITE_URL}/products/${productId}`,
-      action_link: `${DEFAULT_SITE_URL}/products/${productId}`,
+      listing_link: appProductLink,
+      action_link: appProductLink,
+      web_listing_link: webProductLink,
+      web_action_link: webProductLink,
     },
     fallbackKey: 'fallback_default',
   });
@@ -277,14 +341,19 @@ export async function sendAuctionApprovedEmail(
   auctionTitle: string,
   auctionId: string,
 ): Promise<void> {
+  const appAuctionLink = buildAppAuctionLink(auctionId);
+  const webAuctionLink = `${DEFAULT_SITE_URL}/auctions/${auctionId}`;
+
   return sendTemplateEmail({
     to: email,
     templateKey: 'auction_approved',
     vars: {
       user_name: 'Utilizator',
       listing_title: auctionTitle,
-      auction_link: `${DEFAULT_SITE_URL}/auctions/${auctionId}`,
-      action_link: `${DEFAULT_SITE_URL}/auctions/${auctionId}`,
+      auction_link: appAuctionLink,
+      action_link: appAuctionLink,
+      web_auction_link: webAuctionLink,
+      web_action_link: webAuctionLink,
     },
     fallbackKey: 'fallback_default',
   });
@@ -486,6 +555,125 @@ export async function sendPullbackConfirmationEmail(
       user_link: `${DEFAULT_SITE_URL}/dashboard`,
     },
     fallbackKey: 'fallback_default',
+  });
+}
+
+// =============================================================================
+// Contract Email Functions
+// =============================================================================
+
+export async function sendContractCreatedEmail(
+  email: string,
+  contractNumber: string,
+  productName: string,
+  otherPartyName: string,
+  role: 'buyer' | 'seller',
+  price: number
+): Promise<void> {
+  const roleText = role === 'buyer' ? 'Cumpărător' : 'Vânzător';
+  
+  return sendTemplateEmail({
+    to: email,
+    templateKey: 'contract_created',
+    vars: {
+      user_name: otherPartyName,
+      contract_number: contractNumber,
+      product_name: productName,
+      other_party_name: otherPartyName,
+      role: roleText,
+      price: price.toFixed(2),
+      currency: 'EUR',
+      action_link: `${DEFAULT_SITE_URL}/contracts`,
+    },
+    fallbackKey: 'fallback_transaction',
+  });
+}
+
+export async function sendContractAcceptedEmail(
+  email: string,
+  contractNumber: string,
+  productName: string,
+  otherPartyName: string,
+  role: 'buyer' | 'seller'
+): Promise<void> {
+  const roleText = role === 'buyer' ? 'Cumpărător' : 'Vânzător';
+  
+  return sendTemplateEmail({
+    to: email,
+    templateKey: 'contract_accepted',
+    vars: {
+      user_name: otherPartyName,
+      contract_number: contractNumber,
+      product_name: productName,
+      other_party_name: otherPartyName,
+      role: roleText,
+      action_link: `${DEFAULT_SITE_URL}/contracts`,
+    },
+    fallbackKey: 'fallback_transaction',
+  });
+}
+
+export async function sendContractRejectedEmail(
+  email: string,
+  contractNumber: string,
+  productName: string,
+  otherPartyName: string,
+  reason: string
+): Promise<void> {
+  return sendTemplateEmail({
+    to: email,
+    templateKey: 'contract_rejected',
+    vars: {
+      user_name: otherPartyName,
+      contract_number: contractNumber,
+      product_name: productName,
+      other_party_name: otherPartyName,
+      reason: reason,
+      action_link: `${DEFAULT_SITE_URL}/contracts`,
+    },
+    fallbackKey: 'fallback_transaction',
+  });
+}
+
+export async function sendContractDisputedEmail(
+  email: string,
+  contractNumber: string,
+  productName: string,
+  disputedBy: string,
+  disputeReason: string
+): Promise<void> {
+  return sendTemplateEmail({
+    to: email,
+    templateKey: 'contract_disputed',
+    vars: {
+      user_name: 'Utilizator',
+      contract_number: contractNumber,
+      product_name: productName,
+      disputed_by: disputedBy,
+      dispute_reason: disputeReason,
+      action_link: `${DEFAULT_SITE_URL}/admin/contracts`,
+    },
+    fallbackKey: 'fallback_transaction',
+  });
+}
+
+export async function sendContractDisputeResolvedEmail(
+  email: string,
+  contractNumber: string,
+  productName: string,
+  resolution: string
+): Promise<void> {
+  return sendTemplateEmail({
+    to: email,
+    templateKey: 'contract_dispute_resolved',
+    vars: {
+      user_name: 'Utilizator',
+      contract_number: contractNumber,
+      product_name: productName,
+      resolution: resolution,
+      action_link: `${DEFAULT_SITE_URL}/contracts`,
+    },
+    fallbackKey: 'fallback_transaction',
   });
 }
 

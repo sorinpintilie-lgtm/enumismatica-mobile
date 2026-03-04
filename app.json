@@ -2,11 +2,12 @@
   "expo": {
     "name": "eNumismatica",
     "slug": "enumismatica",
-    "version": "1.0.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/eNumismatica.ro_logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "jsEngine": "hermes",
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
@@ -38,7 +39,7 @@
         "UIViewControllerBasedStatusBarAppearance": true,
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "ro.enumismatica.mobile",
+      "bundleIdentifier": "ro.recordtrust.enumismatica",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
@@ -66,7 +67,13 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "eNumismatica",
+      "shortName": "eNumismatica",
+      "description": "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
+      "lang": "ro-RO",
+      "themeColor": "#00020d",
+      "backgroundColor": "#00020d"
     },
     "scheme": "enumismatica",
     "extra": {

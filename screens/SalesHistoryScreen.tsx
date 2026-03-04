@@ -255,6 +255,12 @@ const SalesHistoryScreen: React.FC = () => {
                     Cumpărător ID: {order.buyerId}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, { flex: 1 }]}
+                      onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}
+                    >
+                      <Text style={styles.primaryButtonText}>Detalii comandă</Text>
+                    </TouchableOpacity>
                     {product && (
                       <TouchableOpacity
                         style={[styles.secondaryButton, { flex: 1 }]}

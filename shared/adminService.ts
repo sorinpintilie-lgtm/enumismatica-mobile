@@ -23,6 +23,7 @@ import {
 } from './emailService';
 import { endAuction } from './auctionService';
 import { LISTING_EXPIRY_ROLLOUT_AT } from './listingExpiry';
+import { createUserNotification } from './userNotificationService';
 
 function getDefaultDirectListingExpiryDate(base: Date = new Date()): Date {
   const d = new Date(base);
@@ -444,6 +445,21 @@ export async function approveProduct(productId: string): Promise<{ success: bool
           ).catch(error => {
             console.error('Failed to send product approved email:', error);
           });
+
+          createUserNotification({
+            userId: productData.ownerId,
+            type: 'system',
+            title: 'Produs aprobat',
+            message: `Produsul „${productData.name || 'Produs'}” a fost aprobat.`,
+            preferenceKey: 'systemUpdates',
+            data: {
+              productId,
+              itemType: 'product',
+              itemId: productId,
+            },
+          }).catch((error) => {
+            console.error('Failed to create product approved notification:', error);
+          });
         }
 
         // Remove the collection item if it was created from collection
@@ -500,6 +516,21 @@ export async function rejectProduct(productId: string, reason: string = 'Produsu
             reason
           ).catch(error => {
             console.error('Failed to send product rejected email:', error);
+          });
+
+          createUserNotification({
+            userId: productData.ownerId,
+            type: 'system',
+            title: 'Produs respins',
+            message: `Produsul „${productData.name || 'Produs'}” a fost respins. Motiv: ${reason}`,
+            preferenceKey: 'systemUpdates',
+            data: {
+              productId,
+              itemType: 'product',
+              itemId: productId,
+            },
+          }).catch((error) => {
+            console.error('Failed to create product rejected notification:', error);
           });
         }
       }
@@ -589,6 +620,21 @@ export async function approveAuction(auctionId: string): Promise<{ success: bool
         ).catch(error => {
           console.error('Failed to send auction approved email:', error);
         });
+
+        createUserNotification({
+          userId: auctionData.ownerId,
+          type: 'system',
+          title: 'Licitație aprobată',
+          message: `Licitația „${auctionTitle}” a fost aprobată și este activă.`,
+          preferenceKey: 'systemUpdates',
+          data: {
+            auctionId,
+            itemType: 'auction',
+            itemId: auctionId,
+          },
+        }).catch((error) => {
+          console.error('Failed to create auction approved notification:', error);
+        });
       }
 
       // Remove the collection item if it was created from collection
@@ -645,6 +691,21 @@ export async function rejectAuction(auctionId: string, reason: string = 'Licita�
             reason
           ).catch(error => {
             console.error('Failed to send auction rejected email:', error);
+          });
+
+          createUserNotification({
+            userId: auctionData.ownerId,
+            type: 'system',
+            title: 'Licitație respinsă',
+            message: `Licitația „${auctionTitle}” a fost respinsă. Motiv: ${reason}`,
+            preferenceKey: 'systemUpdates',
+            data: {
+              auctionId,
+              itemType: 'auction',
+              itemId: auctionId,
+            },
+          }).catch((error) => {
+            console.error('Failed to create auction rejected notification:', error);
           });
         }
       }

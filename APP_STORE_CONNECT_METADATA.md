@@ -10,7 +10,7 @@ Use this as the source of truth when filling the App Store Connect listing.
 ## App identification
 
 - App Name: **eNumismatica**
-- Bundle ID: **ro.enumismatica.mobile**
+- Bundle ID: **ro.recordtrust.enumismatica**
 - SKU (suggested): **ENUMISMATICA-IOS-001**
 - Primary Language: **Romanian (ro-RO)**
 

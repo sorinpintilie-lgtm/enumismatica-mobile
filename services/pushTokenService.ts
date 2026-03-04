@@ -86,21 +86,24 @@ export async function registerPushTokenForUser(userId: string) {
 
     // Get push token only if permissions are granted
     if (granted) {
-      // Get device push token (FCM on Android only - skip on iOS to avoid conflicts with Firebase)
-      if (Platform.OS === 'android') {
-        try {
-          console.log('[pushTokenService] Getting device push token (Android)...');
-          const deviceTokenRes = await Notifications.getDevicePushTokenAsync();
-          console.log('[pushTokenService] Device push token response:', JSON.stringify(deviceTokenRes, null, 2));
-          devicePushToken = deviceTokenRes?.data ?? null;
-          devicePushTokenRaw = deviceTokenRes ?? null;
-        } catch (deviceTokenError: any) {
-          console.warn('[pushTokenService] Failed to get device push token (non-fatal):', deviceTokenError?.message);
-        }
+      // Step 1: Get the raw native device push token (APNs on iOS, FCM on Android).
+      // On iOS we ALWAYS retrieve the native token so we can pass it explicitly to
+      // getExpoPushTokenAsync. This forces Expo's server to update its internal
+      // mapping to the CURRENT native APNs token – critical when the APNs
+      // environment changes (e.g. development → production) or after a reinstall
+      // where the local SDK cache may still hold a stale ExponentPushToken.
+      try {
+        console.log('[pushTokenService] Getting native device push token...');
+        const deviceTokenRes = await Notifications.getDevicePushTokenAsync();
+        console.log('[pushTokenService] Device push token response:', JSON.stringify(deviceTokenRes, null, 2));
+        devicePushToken = deviceTokenRes?.data ?? null;
+        devicePushTokenRaw = deviceTokenRes ?? null;
+      } catch (deviceTokenError: any) {
+        console.warn('[pushTokenService] Failed to get native device push token (non-fatal):', deviceTokenError?.message);
       }
 
-      // Get Expo push token - this is the token used for sending notifications
-      // Retry up to 3 times with increasing delay (APNs registration can be async on iOS)
+      // Step 2: Get the Expo push token, passing the freshly-obtained native token
+      // so Expo's server must update its mapping. Retry up to 3 times.
       console.log('[pushTokenService] Getting Expo push token...');
       const maxAttempts = 3;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -110,9 +113,17 @@ export async function registerPushTokenForUser(userId: string) {
             console.log(`[pushTokenService] Retrying Expo push token (attempt ${attempt}/${maxAttempts}) after ${delayMs}ms...`);
             await new Promise(resolve => setTimeout(resolve, delayMs));
           }
-          const expoTokenRes = await Notifications.getExpoPushTokenAsync({
-            projectId: projectId as string
-          });
+
+          // Build the options object – always pass projectId; pass the native device
+          // token when available so Expo MUST refresh its server-side mapping.
+          const expoTokenOptions: Notifications.ExpoPushTokenOptions = {
+            projectId: projectId as string,
+          };
+          if (devicePushTokenRaw) {
+            expoTokenOptions.devicePushToken = devicePushTokenRaw as Notifications.DevicePushToken;
+          }
+
+          const expoTokenRes = await Notifications.getExpoPushTokenAsync(expoTokenOptions);
           console.log('[pushTokenService] Expo push token response:', JSON.stringify(expoTokenRes, null, 2));
           expoPushToken = expoTokenRes?.data ?? null;
           expoPushTokenRaw = expoTokenRes ?? null;
@@ -124,7 +135,7 @@ export async function registerPushTokenForUser(userId: string) {
             expoPushToken = null;
           } else {
             tokenError = null; // Clear any previous error
-            break; // Success - exit retry loop
+            break; // Success – exit retry loop
           }
         } catch (expoTokenError: any) {
           tokenError = expoTokenError?.message ?? String(expoTokenError);
@@ -191,6 +202,17 @@ export async function registerPushTokenForUser(userId: string) {
       await setDoc(deviceRef, {
         expoPushToken: token?.data ?? null,
         expoPushTokenRaw: token ?? null,
+        tokenFetchedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    });
+    
+    // Add token refresh listener to handle expiring tokens
+    const tokenRefreshListener = Notifications.addPushTokenListener(async (newToken) => {
+      console.log('[pushTokenService] Push token refreshed:', newToken);
+      await setDoc(deviceRef, {
+        expoPushToken: newToken?.data ?? null,
+        expoPushTokenRaw: newToken ?? null,
         tokenFetchedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }, { merge: true });

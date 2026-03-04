@@ -46,3 +46,9 @@ Desktop.ini
 # generated native folders
 /ios
 /android
+
+# local build/reverse-engineering artifacts (do not commit)
+temp_ipa_extract/
+temp_v*_extract/
+temp_v*.zip
+functions/serviceAccountKey.json

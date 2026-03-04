@@ -1,19 +1,58 @@
 import { auth, functions } from './firebaseConfig';
 import { httpsCallable } from 'firebase/functions';
-import {
-  initConnection,
-  endConnection,
-  fetchProducts,
-  requestPurchase,
-  finishTransaction,
-  getAvailablePurchases,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  Product,
-  Purchase,
-  ErrorCode,
-} from 'expo-iap';
 import { Platform } from 'react-native';
+
+type IapProductRaw = {
+  id: string;
+  title?: string;
+  description?: string;
+  price?: string;
+};
+
+type IapPurchaseRaw = {
+  id: string;
+  transactionId?: string | null;
+  purchaseToken?: string;
+};
+
+type IapSubscription = { remove: () => void };
+
+type IapModule = {
+  initConnection: () => Promise<boolean>;
+  endConnection: () => Promise<void>;
+  fetchProducts: (params: { skus: string[]; type: 'in-app' | 'subs' }) => Promise<IapProductRaw[]>;
+  requestPurchase: (params: {
+    request: { apple: { sku: string }; google: { skus: string[] } };
+    type: 'in-app' | 'subs';
+  }) => Promise<unknown>;
+  finishTransaction: (params: { purchase: IapPurchaseRaw; isConsumable: boolean }) => Promise<void>;
+  getAvailablePurchases: () => Promise<IapPurchaseRaw[]>;
+  purchaseUpdatedListener: (listener: (purchase: IapPurchaseRaw) => void | Promise<void>) => IapSubscription;
+  purchaseErrorListener: (listener: (error: any) => void) => IapSubscription;
+  ErrorCode?: {
+    UserCancelled?: string;
+  };
+};
+
+function getIapModule(): IapModule | null {
+  try {
+    return require('expo-iap') as IapModule;
+  } catch (error) {
+    console.warn('expo-iap native module is unavailable in this client (Expo Go).', error);
+    return null;
+  }
+}
+
+function isUserCancelledError(error: any, iap: IapModule | null): boolean {
+  const code = error?.code;
+  if (!code) return false;
+
+  return (
+    code === 'E_USER_CANCELLED' ||
+    code === 'USER_CANCELLED' ||
+    code === iap?.ErrorCode?.UserCancelled
+  );
+}
 
 // In-App Purchase product IDs
 // These must match the products configured in App Store Connect and Google Play Console
@@ -69,7 +108,12 @@ async function getAuthTokenOrThrow(): Promise<string> {
  */
 export async function initIAP(): Promise<boolean> {
   try {
-    const result = await initConnection();
+    const iap = getIapModule();
+    if (!iap) {
+      return false;
+    }
+
+    const result = await iap.initConnection();
     console.log('IAP connection initialized:', result);
     return result;
   } catch (error) {
@@ -83,7 +127,10 @@ export async function initIAP(): Promise<boolean> {
  */
 export async function endIAP(): Promise<void> {
   try {
-    await endConnection();
+    const iap = getIapModule();
+    if (!iap) return;
+
+    await iap.endConnection();
   } catch (error) {
     console.error('Failed to end IAP connection:', error);
   }
@@ -94,11 +141,16 @@ export async function endIAP(): Promise<void> {
  */
 export async function getIAPProducts(): Promise<IAPProduct[]> {
   const productIds = Object.values(IAP_PRODUCTS);
+  const iap = getIapModule();
+
+  if (!iap) {
+    return [];
+  }
   
   try {
     // fetchProducts returns an array of products.
     // In TestFlight, if only some SKUs exist/are attached, a bulk query can return empty.
-    let products = await fetchProducts({ skus: productIds, type: 'in-app' });
+    let products = await iap.fetchProducts({ skus: productIds, type: 'in-app' });
 
     // Retry strategy: query each SKU individually and merge unique results.
     if (!products || products.length === 0) {
@@ -107,7 +159,7 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
 
       for (const sku of productIds) {
         try {
-          const partial = await fetchProducts({ skus: [sku], type: 'in-app' });
+          const partial = await iap.fetchProducts({ skus: [sku], type: 'in-app' });
           for (const p of partial) {
             if (!seen.has(p.id)) {
               seen.add(p.id);
@@ -147,6 +199,17 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
  */
 export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
   return new Promise((resolve, reject) => {
+    const iap = getIapModule();
+    if (!iap) {
+      resolve({
+        success: false,
+        creditsAdded: 0,
+        transactionId: null,
+        error: 'Achizițiile in-app nu sunt disponibile în Expo Go. Folosește development build.',
+      });
+      return;
+    }
+
     // Verify product ID
     if (!Object.values(IAP_PRODUCTS).includes(productId)) {
       reject(new Error('ID produs invalid'));
@@ -175,7 +238,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     };
 
     // Set up purchase update listener
-    purchaseSubscription = purchaseUpdatedListener(async (purchase: Purchase) => {
+    purchaseSubscription = iap.purchaseUpdatedListener(async (purchase: IapPurchaseRaw) => {
       if (resolved) return;
       
       // Check if this purchase is for our product
@@ -200,7 +263,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
         if (validationResult.success) {
           // Finish the transaction
           try {
-            await finishTransaction({ purchase, isConsumable: true });
+            await iap.finishTransaction({ purchase, isConsumable: true });
           } catch (finishError) {
             console.warn('Failed to finish transaction:', finishError);
           }
@@ -229,14 +292,14 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     });
 
     // Set up error listener
-    errorSubscription = purchaseErrorListener((error) => {
+    errorSubscription = iap.purchaseErrorListener((error) => {
       if (resolved) return;
       
       resolved = true;
       cleanup();
 
       // Handle user cancellation
-      if (error.code === ErrorCode.UserCancelled) {
+      if (isUserCancelledError(error, iap)) {
         resolve({
           success: false,
           creditsAdded: 0,
@@ -254,7 +317,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     });
 
     // Request purchase - expo-iap API
-    requestPurchase({
+    iap.requestPurchase({
       request: {
         apple: { sku: productId },
         google: { skus: [productId] },
@@ -267,7 +330,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
         cleanup();
         
         // Handle user cancellation
-        if (error.code === ErrorCode.UserCancelled) {
+        if (isUserCancelledError(error, iap)) {
           resolve({
             success: false,
             creditsAdded: 0,
@@ -318,9 +381,12 @@ async function validatePurchaseWithBackend(
 /**
  * Get pending purchases (for restoration)
  */
-export async function getPendingPurchases(): Promise<Purchase[]> {
+export async function getPendingPurchases(): Promise<IapPurchaseRaw[]> {
   try {
-    const purchases = await getAvailablePurchases();
+    const iap = getIapModule();
+    if (!iap) return [];
+
+    const purchases = await iap.getAvailablePurchases();
     return purchases || [];
   } catch (error) {
     console.error('Failed to get pending purchases:', error);
@@ -333,7 +399,10 @@ export async function getPendingPurchases(): Promise<Purchase[]> {
  */
 export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
   try {
-    const purchases = await getAvailablePurchases();
+    const iap = getIapModule();
+    if (!iap) return [];
+
+    const purchases = await iap.getAvailablePurchases();
     const results: IAPPurchaseResult[] = [];
 
     if (!purchases || purchases.length === 0) {
@@ -342,7 +411,7 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
 
     for (const purchase of purchases) {
       const productId = purchase.id;
-      const purchaseToken = purchase.purchaseToken;
+      const purchaseToken = purchase.purchaseToken || '';
       const transactionId = purchase.transactionId || null;
 
       // Validate with backend
@@ -356,7 +425,7 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
       if (validationResult.success) {
         // Finish the transaction
         try {
-          await finishTransaction({ purchase, isConsumable: true });
+          await iap.finishTransaction({ purchase, isConsumable: true });
         } catch (finishError) {
           console.warn('Failed to finish transaction:', finishError);
         }

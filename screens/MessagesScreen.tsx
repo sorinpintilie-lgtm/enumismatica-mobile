@@ -1,13 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Platform, KeyboardAvoidingView, Keyboard, Dimensions } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import { Conversation, ChatMessage } from '@shared/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ro } from 'date-fns/locale';
 import { subscribeToUserConversations, subscribeToConversationMessages, sendPrivateMessage, markConversationAsRead } from '@shared/chatService';
+import {
+  subscribeToAllSupportChats,
+  subscribeToUserSupportChats,
+  subscribeToSupportChatMessages,
+  sendSupportMessage,
+  markSupportChatAsRead,
+  SupportChat,
+} from '@shared/supportChatService';
+import { isAdmin } from '@shared/adminService';
 import { sharedStyles, colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
 
@@ -27,22 +37,60 @@ const WebContainer = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+type TabType = 'conversations' | 'support';
+
 const MessagesScreen: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Messages'>>();
+  
+  const initialConversationId = route.params?.conversationId || route.params?.conversation || null;
+  // Check if we're opening a specific support chat
+  const initialSupportChatId = route.params?.supportChatId || null;
+  
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [supportChats, setSupportChats] = useState<SupportChat[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationId);
+  const [selectedSupportChatId, setSelectedSupportChatId] = useState<string | null>(initialSupportChatId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabType>(initialSupportChatId ? 'support' : 'conversations');
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
   const messagesContainerRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
 
+  // Handle navigation to specific chat targets (e.g. from push notification taps)
+  useEffect(() => {
+    const supportChatId = route.params?.supportChatId || null;
+    const conversationId = route.params?.conversationId || route.params?.conversation || null;
+
+    if (supportChatId) {
+      setActiveTab('support');
+      setSelectedSupportChatId(supportChatId);
+      setSelectedConversationId(null);
+      return;
+    }
+
+    if (conversationId) {
+      setActiveTab('conversations');
+      setSelectedConversationId(conversationId);
+      setSelectedSupportChatId(null);
+    }
+  }, [route.params?.conversationId, route.params?.conversation, route.params?.supportChatId]);
+
   // Web-specific styling adjustments
   const isWeb = Platform.OS === 'web';
+
+  // Check if user is admin
+  useEffect(() => {
+    if (user) {
+      isAdmin(user.uid).then(setUserIsAdmin);
+    }
+  }, [user]);
 
   // Keyboard height tracking
   useEffect(() => {
@@ -50,7 +98,6 @@ const MessagesScreen: React.FC = () => {
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
         setKeyboardHeight(e.endCoordinates.height);
-        // Scroll to bottom when keyboard opens
         setTimeout(() => {
           if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollToEnd({ animated: true });
@@ -71,13 +118,13 @@ const MessagesScreen: React.FC = () => {
     };
   }, []);
 
+  // Load regular conversations
   useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    // Load user conversations
     const unsubscribeConversations = subscribeToUserConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
@@ -88,10 +135,37 @@ const MessagesScreen: React.FC = () => {
     };
   }, [user]);
 
+  // Load support chats
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let unsubscribeSupport: (() => void) | undefined;
+
+    if (userIsAdmin) {
+      // Admins see all support chats
+      unsubscribeSupport = subscribeToAllSupportChats((chats) => {
+        setSupportChats(chats);
+      });
+    } else {
+      // Regular users see only their own support chats
+      unsubscribeSupport = subscribeToUserSupportChats(user.uid, (chats) => {
+        setSupportChats(chats);
+      });
+    }
+
+    return () => {
+      if (unsubscribeSupport) {
+        unsubscribeSupport();
+      }
+    };
+  }, [user, userIsAdmin]);
+
+  // Subscribe to regular conversation messages
   useEffect(() => {
     if (!selectedConversationId || !user) return;
 
-    // Mark conversation as read when selected
     const markRead = async () => {
       try {
         await markConversationAsRead(selectedConversationId, user.uid);
@@ -101,10 +175,8 @@ const MessagesScreen: React.FC = () => {
     };
     markRead();
 
-    // Subscribe to messages
     const unsubscribeMessages = subscribeToConversationMessages(selectedConversationId, (msgs) => {
       setMessages(msgs);
-      // Auto-scroll to bottom when new messages arrive
       setTimeout(() => {
         if (messagesContainerRef.current) {
           messagesContainerRef.current.scrollToEnd({ animated: true });
@@ -117,14 +189,46 @@ const MessagesScreen: React.FC = () => {
     };
   }, [selectedConversationId, user]);
 
+  // Subscribe to support chat messages
+  useEffect(() => {
+    if (!selectedSupportChatId || !user) return;
+
+    const markRead = async () => {
+      try {
+        await markSupportChatAsRead(selectedSupportChatId, user.uid, userIsAdmin);
+      } catch (error) {
+        console.error('Failed to mark support chat as read:', error);
+      }
+    };
+    markRead();
+
+    const unsubscribeMessages = subscribeToSupportChatMessages(selectedSupportChatId, (msgs) => {
+      setMessages(msgs);
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollToEnd({ animated: true });
+        }
+      }, 100);
+    });
+
+    return () => {
+      unsubscribeMessages();
+    };
+  }, [selectedSupportChatId, user, userIsAdmin]);
+
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !user || !selectedConversationId) return;
+    if (!messageText.trim() || !user) return;
 
     setSending(true);
     try {
-      await sendPrivateMessage(selectedConversationId, user.uid, messageText);
+      if (selectedSupportChatId) {
+        // Send support message
+        await sendSupportMessage(selectedSupportChatId, user.uid, messageText, userIsAdmin);
+      } else if (selectedConversationId) {
+        // Send regular message
+        await sendPrivateMessage(selectedConversationId, user.uid, messageText);
+      }
       setMessageText('');
-      // Re-focus the input after sending
       if (inputRef.current) {
         inputRef.current.focus();
       }
@@ -154,6 +258,13 @@ const MessagesScreen: React.FC = () => {
     return `Utilizator (${short})`;
   };
 
+  const getSupportChatDisplayName = (chat: SupportChat) => {
+    if (userIsAdmin) {
+      return chat.userName || `Utilizator (${chat.userId.slice(-4)})`;
+    }
+    return 'Suport Tehnic';
+  };
+
   const filteredConversations = conversations.filter(conv => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -164,9 +275,31 @@ const MessagesScreen: React.FC = () => {
     );
   });
 
+  const filteredSupportChats = supportChats.filter(chat => {
+    if (!searchTerm) return true;
+    const search = searchTerm.toLowerCase();
+    const userName = chat.userName?.toLowerCase() || '';
+    return (
+      userName.includes(search) ||
+      chat.lastMessage?.toLowerCase().includes(search)
+    );
+  });
+
   // Add missing color definitions
   const textTertiary = '#6b7280';
   const disabledButton = '#4b5563';
+
+  // Calculate unread counts
+  const regularUnreadCount = conversations.reduce((total, conv) => {
+    return total + (user?.uid && conv.unreadCount ? ((conv.unreadCount as any)[user.uid] || 0) : 0);
+  }, 0);
+
+  const supportUnreadCount = supportChats.reduce((total, chat) => {
+    if (userIsAdmin) {
+      return total + (chat.unreadCountAdmin || 0);
+    }
+    return total + (chat.unreadCountUser || 0);
+  }, 0);
 
   if (!user) {
     return (
@@ -193,8 +326,294 @@ const MessagesScreen: React.FC = () => {
     );
   }
 
+  // Determine if we're viewing a chat
+  const isViewingChat = selectedConversationId || selectedSupportChatId;
+  const isViewingSupportChat = !!selectedSupportChatId;
+
+  // Get current chat info for header
+  const getCurrentChatTitle = () => {
+    if (selectedSupportChatId) {
+      const chat = supportChats.find(c => c.id === selectedSupportChatId);
+      return chat ? getSupportChatDisplayName(chat) : 'Suport';
+    }
+    if (selectedConversationId) {
+      const conv = conversations.find(c => c.id === selectedConversationId);
+      return conv ? getOtherUserName(conv) : 'Conversație';
+    }
+    return '';
+  };
+
   // Mobile layout - split view for larger screens, stacked for mobile
   const isLargeScreen = isWeb ? true : false;
+
+  // Render tab bar for mobile
+  const renderTabBar = () => (
+    <View style={styles.tabBar}>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === 'conversations' && styles.tabActive]}
+        onPress={() => {
+          setActiveTab('conversations');
+          setSelectedConversationId(null);
+          setSelectedSupportChatId(null);
+          setMessages([]);
+        }}
+      >
+        <Text style={[styles.tabText, activeTab === 'conversations' && styles.tabTextActive]}>
+          Mesaje
+        </Text>
+        {regularUnreadCount > 0 && (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>{regularUnreadCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      
+      {(userIsAdmin || supportChats.length > 0) && (
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'support' && styles.tabActive]}
+          onPress={() => {
+            setActiveTab('support');
+            setSelectedConversationId(null);
+            setSelectedSupportChatId(null);
+            setMessages([]);
+          }}
+        >
+          <Text style={[styles.tabText, activeTab === 'support' && styles.tabTextActive]}>
+            {userIsAdmin ? 'Suport' : 'Tichete Suport'}
+          </Text>
+          {supportUnreadCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{supportUnreadCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  // Render conversations list
+  const renderConversationsList = () => (
+    <>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={[styles.searchInput, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Caută conversații..."
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      <ScrollView style={styles.conversationsScroll} contentContainerStyle={styles.conversationsScrollContent}>
+        {activeTab === 'conversations' ? (
+          filteredConversations.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {searchTerm ? 'Niciun rezultat găsit' : 'Nicio conversație'}
+            </Text>
+          ) : (
+            filteredConversations.map((conversation) => {
+              const isSelected = conversation.id === selectedConversationId;
+              const unreadCount = typeof conversation.unreadCount === 'object' && user?.uid
+                ? (conversation.unreadCount[user.uid] || 0)
+                : 0;
+              const isAdminChat = conversation.isAdminSupport;
+
+              return (
+                <TouchableOpacity
+                  key={conversation.id}
+                  onPress={() => {
+                    setSelectedConversationId(conversation.id);
+                    setSelectedSupportChatId(null);
+                  }}
+                  style={[styles.conversationItem,
+                    isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
+                    isAdminChat ? styles.conversationItemAdmin : null
+                  ]}
+                >
+                  <View style={styles.conversationItemHeader}>
+                    <View style={styles.conversationItemInfo}>
+                      <Text style={[styles.conversationItemTitle, { color: colors.textPrimary }]}>
+                        {getOtherUserName(conversation)}
+                      </Text>
+                      {conversation.lastMessage && (
+                        <Text style={[styles.conversationItemLastMessage, { color: colors.textSecondary }]}>
+                          {conversation.lastMessage}
+                        </Text>
+                      )}
+                      {conversation.lastMessageAt && (
+                        <Text style={[styles.conversationItemTimestamp, { color: textTertiary }]}>
+                          {formatDistanceToNow(conversation.lastMessageAt, { addSuffix: true, locale: ro })}
+                        </Text>
+                      )}
+                    </View>
+                    {unreadCount > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )
+        ) : (
+          // Support chats list
+          filteredSupportChats.length === 0 ? (
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {searchTerm ? 'Niciun rezultat găsit' : 'Nicio conversație de suport'}
+            </Text>
+          ) : (
+            filteredSupportChats.map((chat) => {
+              const isSelected = chat.id === selectedSupportChatId;
+              const unreadCount = userIsAdmin ? chat.unreadCountAdmin : chat.unreadCountUser;
+
+              return (
+                <TouchableOpacity
+                  key={chat.id}
+                  onPress={() => {
+                    setSelectedSupportChatId(chat.id);
+                    setSelectedConversationId(null);
+                  }}
+                  style={[styles.conversationItem,
+                    isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
+                    styles.supportChatItem
+                  ]}
+                >
+                  <View style={styles.conversationItemHeader}>
+                    <View style={styles.conversationItemInfo}>
+                      <View style={styles.supportChatTitleRow}>
+                        <Text style={[styles.conversationItemTitle, { color: colors.textPrimary }]}>
+                          {getSupportChatDisplayName(chat)}
+                        </Text>
+                        <View style={[styles.statusBadge, 
+                          chat.status === 'open' && styles.statusBadgeOpen,
+                          chat.status === 'in_progress' && styles.statusBadgeInProgress,
+                          chat.status === 'resolved' && styles.statusBadgeResolved,
+                        ]}>
+                          <Text style={styles.statusText}>
+                            {chat.status === 'open' ? 'Deschis' : 
+                             chat.status === 'in_progress' ? 'În progres' : 
+                             chat.status === 'resolved' ? 'Rezolvat' : chat.status}
+                          </Text>
+                        </View>
+                      </View>
+                      {chat.lastMessage && (
+                        <Text style={[styles.conversationItemLastMessage, { color: colors.textSecondary }]}>
+                          {chat.lastMessage}
+                        </Text>
+                      )}
+                      {chat.lastMessageAt && (
+                        <Text style={[styles.conversationItemTimestamp, { color: textTertiary }]}>
+                          {formatDistanceToNow(chat.lastMessageAt, { addSuffix: true, locale: ro })}
+                        </Text>
+                      )}
+                    </View>
+                    {unreadCount > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )
+        )}
+      </ScrollView>
+    </>
+  );
+
+  // Render chat view
+  const renderChatView = () => (
+    <>
+      {/* Messages Area */}
+      <ScrollView
+        ref={messagesContainerRef}
+        style={styles.messagesArea}
+        contentContainerStyle={styles.messagesContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
+      >
+        {messages.length === 0 ? (
+          <View style={styles.messagesEmpty}>
+            <Text style={[styles.messagesEmptyText, { color: colors.textSecondary }]}>Niciun mesaj încă</Text>
+            <Text style={[styles.messagesEmptySubtext, { color: textTertiary }]}>Începe conversația trimițând un mesaj!</Text>
+          </View>
+        ) : (
+          messages.map((message) => {
+            const isOwnMessage = message.senderId === user?.uid;
+            const isRead = message.readBy && message.readBy.length > 1;
+            const isFromAdmin = (message as any).isFromAdmin;
+
+            return (
+              <View
+                key={message.id}
+                style={[styles.messageBubbleContainer, isOwnMessage ? styles.messageBubbleContainerOwn : styles.messageBubbleContainerOther]}
+              >
+                <View style={[styles.messageBubble, isOwnMessage ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
+                  {isViewingSupportChat && userIsAdmin && !isOwnMessage && (
+                    <Text style={[styles.messageSender, { color: textTertiary }]}>
+                      {message.senderName || 'Utilizator'}
+                    </Text>
+                  )}
+                  {isViewingSupportChat && isFromAdmin && !isOwnMessage && (
+                    <Text style={[styles.messageSender, { color: colors.primary }]}>
+                      {message.senderName || 'Admin'} (Admin)
+                    </Text>
+                  )}
+                  {!isViewingSupportChat && (
+                    <Text style={[styles.messageSender, { color: textTertiary }]}>
+                      {message.senderName || 'Utilizator'}
+                    </Text>
+                  )}
+                  <Text style={[styles.messageText, { color: isOwnMessage ? colors.primaryText : colors.textPrimary }]}>
+                    {message.message}
+                  </Text>
+                  <View style={styles.messageFooter}>
+                    <Text style={[styles.messageTimestamp, { color: textTertiary }]}>
+                      {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ro })}
+                    </Text>
+                    {isOwnMessage && isRead && (
+                      <Text style={[styles.messageReadReceipt, { color: colors.primary }]}>✓✓</Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+
+      {/* Input Area */}
+      <View style={[styles.inputContainer, { borderTopColor: colors.borderColor, paddingBottom: keyboardHeight > 0 ? keyboardHeight / 2 : 12 }]}>
+        <TextInput
+          ref={inputRef}
+          style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
+          value={messageText}
+          onChangeText={setMessageText}
+          placeholder="Scrie un mesaj..."
+          placeholderTextColor={colors.textSecondary}
+          editable={!sending}
+          maxLength={500}
+          returnKeyType="send"
+          blurOnSubmit={true}
+          onSubmitEditing={handleSendMessage}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
+          onPress={handleSendMessage}
+          disabled={!messageText.trim() || sending}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color={colors.primaryText} />
+          ) : (
+            <Text style={[styles.sendButtonText, { color: colors.primaryText }]}>Trimite</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </>
+  );
 
   return (
     <WebContainer>
@@ -202,79 +621,19 @@ const MessagesScreen: React.FC = () => {
         {isLargeScreen ? (
           // Desktop/Web layout - split view
           <View style={styles.desktopContainer}>
-            {/* Conversations List - Left Sidebar */}
+            {/* Left Sidebar - Conversations List */}
             <View style={[styles.conversationsListContainer, { backgroundColor: colors.cardBackground }]}>
               <View style={styles.conversationsHeader}>
-                <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesajele Mele</Text>
-                  <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-                    Conversații cu vânzători și cumpărători
-                  </Text>
+                <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesaje</Text>
               </View>
 
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={[styles.searchInput, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                  placeholder="Caută conversații..."
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-
-              <ScrollView style={styles.conversationsScroll} contentContainerStyle={styles.conversationsScrollContent}>
-                {filteredConversations.length === 0 ? (
-                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                    {searchTerm ? 'Niciun rezultat găsit' : 'Nicio conversație'}
-                  </Text>
-                ) : (
-                  filteredConversations.map((conversation) => {
-                    const isSelected = conversation.id === selectedConversationId;
-                    const unreadCount = typeof conversation.unreadCount === 'object' && user?.uid
-                      ? (conversation.unreadCount[user.uid] || 0)
-                      : 0;
-                    const isAdminChat = conversation.isAdminSupport;
-
-                    return (
-                      <TouchableOpacity
-                        key={conversation.id}
-                        onPress={() => setSelectedConversationId(conversation.id)}
-                        style={[styles.conversationItem,
-                          isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
-                          isAdminChat ? styles.conversationItemAdmin : null
-                        ]}
-                      >
-                        <View style={styles.conversationItemHeader}>
-                          <View style={styles.conversationItemInfo}>
-                            <Text style={[styles.conversationItemTitle, { color: colors.textPrimary }]}>
-                              {getOtherUserName(conversation)}
-                            </Text>
-                            {conversation.lastMessage && (
-                              <Text style={[styles.conversationItemLastMessage, { color: colors.textSecondary }]}>
-                                {conversation.lastMessage}
-                              </Text>
-                            )}
-										{conversation.lastMessageAt && (
-										<Text style={[styles.conversationItemTimestamp, { color: textTertiary }]}>
-                                {formatDistanceToNow(conversation.lastMessageAt, { addSuffix: true, locale: ro })}
-                              </Text>
-                            )}
-                          </View>
-                          {unreadCount > 0 && (
-                            <View style={styles.unreadBadge}>
-                              <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
-                            </View>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
+              {renderTabBar()}
+              {renderConversationsList()}
             </View>
 
-            {/* Chat Area - Main Content */}
+            {/* Main Content - Chat Area */}
             <View style={[styles.chatContainer, { backgroundColor: colors.cardBackground }]}>
-              {!selectedConversationId ? (
+              {!isViewingChat ? (
                 <View style={styles.chatEmptyContainer}>
                   <Text style={[styles.chatEmptyTitle, { color: colors.textPrimary }]}>Selectează o conversație</Text>
                   <Text style={[styles.chatEmptySubtitle, { color: colors.textSecondary }]}>
@@ -291,83 +650,15 @@ const MessagesScreen: React.FC = () => {
                   {/* Chat Header */}
                   <View style={[styles.chatHeader, { borderBottomColor: colors.borderColor }]}>
                     <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
-                      {conversations.find(c => c.id === selectedConversationId)?.isAdminSupport ? 'Suport Admin' : 'Conversație Privată'}
+                      {getCurrentChatTitle()}
                     </Text>
-                  </View>
-
-                  {/* Messages Area */}
-                  <ScrollView
-                    ref={messagesContainerRef}
-                    style={styles.messagesArea}
-                    contentContainerStyle={styles.messagesContent}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                    onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
-                  >
-                    {messages.length === 0 ? (
-                      <View style={styles.messagesEmpty}>
-                        <Text style={[styles.messagesEmptyText, { color: colors.textSecondary }]}>Niciun mesaj încă</Text>
-                        <Text style={[styles.messagesEmptySubtext, { color: textTertiary }]}>Începe conversația trimițând un mesaj!</Text>
-                      </View>
-                    ) : (
-                      messages.map((message) => {
-                        const isOwnMessage = message.senderId === user?.uid;
-                        const isRead = message.readBy && message.readBy.length > 1;
-
-                        return (
-                          <View
-                            key={message.id}
-                            style={[styles.messageBubbleContainer, isOwnMessage ? styles.messageBubbleContainerOwn : styles.messageBubbleContainerOther]}
-                          >
-                            <View style={[styles.messageBubble, isOwnMessage ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
-                              <Text style={[styles.messageSender, { color: textTertiary }]}>
-                                {message.senderName || 'Utilizator'}
-                              </Text>
-                              <Text style={[styles.messageText, { color: isOwnMessage ? colors.primaryText : colors.textPrimary }]}>
-                                {message.message}
-                              </Text>
-                              <View style={styles.messageFooter}>
-                                <Text style={[styles.messageTimestamp, { color: textTertiary }]}>
-                                  {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ro })}
-                                </Text>
-                                {isOwnMessage && isRead && (
-                                  <Text style={[styles.messageReadReceipt, { color: colors.primary }]}>✓✓</Text>
-                                )}
-                              </View>
-                            </View>
-                          </View>
-                        );
-                      })
+                    {isViewingSupportChat && (
+                      <Text style={[styles.chatHeaderSubtitle, { color: colors.textSecondary }]}>
+                        {userIsAdmin ? 'Conversație de suport' : 'Echipa de suport'}
+                      </Text>
                     )}
-                  </ScrollView>
-
-                  {/* Input Area */}
-                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor, paddingBottom: keyboardHeight > 0 ? keyboardHeight / 2 : 12 }]}>
-                    <TextInput
-                      ref={inputRef}
-                      style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
-                      value={messageText}
-                      onChangeText={setMessageText}
-                      placeholder="Scrie un mesaj..."
-                      placeholderTextColor={colors.textSecondary}
-                      editable={!sending}
-                      maxLength={500}
-                      returnKeyType="send"
-                      blurOnSubmit={true}
-                      onSubmitEditing={handleSendMessage}
-                    />
-                    <TouchableOpacity
-                      style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
-                      onPress={handleSendMessage}
-                      disabled={!messageText.trim() || sending}
-                    >
-                      {sending ? (
-                        <ActivityIndicator size="small" color={colors.primaryText} />
-                      ) : (
-                        <Text style={[styles.sendButtonText, { color: colors.primaryText }]}>Trimite</Text>
-                      )}
-                    </TouchableOpacity>
                   </View>
+                  {renderChatView()}
                 </KeyboardAvoidingView>
               )}
             </View>
@@ -375,76 +666,16 @@ const MessagesScreen: React.FC = () => {
         ) : (
           // Mobile layout - stacked view
           <View style={styles.mobileContainer}>
-            {!selectedConversationId ? (
-              // Conversations List View
+            {!isViewingChat ? (
+              // List View
               <View style={styles.mobileConversationsContainer}>
                 <View style={styles.conversationsHeader}>
                   <InlineBackButton />
-                  <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesajele Mele</Text>
-                  <Text style={[styles.conversationsHeaderSubtitle, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-                    Conversații cu vânzători și cumpărători
-                  </Text>
+                  <Text style={[styles.conversationsHeaderTitle, { color: colors.textPrimary }]}>Mesaje</Text>
                 </View>
 
-                <View style={styles.searchContainer}>
-                  <TextInput
-                    style={[styles.searchInput, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
-                    value={searchTerm}
-                    onChangeText={setSearchTerm}
-                    placeholder="Caută conversații..."
-                    placeholderTextColor={colors.textSecondary}
-                  />
-                </View>
-
-                <ScrollView style={styles.conversationsScroll} contentContainerStyle={styles.conversationsScrollContent}>
-                  {filteredConversations.length === 0 ? (
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                      {searchTerm ? 'Niciun rezultat găsit' : 'Nicio conversație'}
-                    </Text>
-                  ) : (
-                    filteredConversations.map((conversation) => {
-                      const isSelected = conversation.id === selectedConversationId;
-                      const unreadCount = typeof conversation.unreadCount === 'object' && user?.uid
-                        ? (conversation.unreadCount[user.uid] || 0)
-                        : 0;
-                      const isAdminChat = conversation.isAdminSupport;
-
-                      return (
-                        <TouchableOpacity
-                          key={conversation.id}
-                          onPress={() => setSelectedConversationId(conversation.id)}
-                          style={[styles.conversationItem,
-                            isSelected ? styles.conversationItemActive : styles.conversationItemInactive,
-                            isAdminChat ? styles.conversationItemAdmin : null
-                          ]}
-                        >
-                          <View style={styles.conversationItemHeader}>
-                            <View style={styles.conversationItemInfo}>
-                              <Text style={[styles.conversationItemTitle, { color: colors.textPrimary }]}>
-                                {getOtherUserName(conversation)}
-                              </Text>
-                              {conversation.lastMessage && (
-                                <Text style={[styles.conversationItemLastMessage, { color: colors.textSecondary }]}>
-                                  {conversation.lastMessage}
-                                </Text>
-                              )}
-									{conversation.lastMessageAt && (
-										<Text style={[styles.conversationItemTimestamp, { color: textTertiary }]}>
-                                  {formatDistanceToNow(conversation.lastMessageAt, { addSuffix: true, locale: ro })}
-                                </Text>
-                              )}
-                            </View>
-                            {unreadCount > 0 && (
-                              <View style={styles.unreadBadge}>
-                                <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-                </ScrollView>
+                {renderTabBar()}
+                {renderConversationsList()}
               </View>
             ) : (
               // Chat View
@@ -455,86 +686,25 @@ const MessagesScreen: React.FC = () => {
                 enabled={!isWeb}
               >
                 <View style={[styles.chatHeader, { borderBottomColor: colors.borderColor }]}>
-                  <InlineBackButton onPress={() => setSelectedConversationId(null)} />
-                  <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
-                    {conversations.find(c => c.id === selectedConversationId)?.isAdminSupport ? 'Suport Admin' : getOtherUserName(conversations.find(c => c.id === selectedConversationId) as Conversation)}
-                  </Text>
+                  <InlineBackButton onPress={() => {
+                    setSelectedConversationId(null);
+                    setSelectedSupportChatId(null);
+                    setMessages([]);
+                  }} />
+                  <View>
+                    <Text style={[styles.chatHeaderTitle, { color: colors.textPrimary }]}>
+                      {getCurrentChatTitle()}
+                    </Text>
+                    {isViewingSupportChat && (
+                      <Text style={[styles.chatHeaderSubtitle, { color: colors.textSecondary }]}>
+                        {userIsAdmin ? 'Conversație de suport' : 'Echipa de suport'}
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
                 <View style={styles.mobileMessagesWrapper}>
-                  <ScrollView
-                    ref={messagesContainerRef}
-                    style={styles.messagesArea}
-                    contentContainerStyle={styles.messagesContent}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="interactive"
-                    onContentSizeChange={() => messagesContainerRef.current?.scrollToEnd({ animated: true })}
-                    nestedScrollEnabled={true}
-                  >
-                    {messages.length === 0 ? (
-                      <View style={styles.messagesEmpty}>
-                        <Text style={[styles.messagesEmptyText, { color: colors.textSecondary }]}>Niciun mesaj încă</Text>
-                        <Text style={[styles.messagesEmptySubtext, { color: textTertiary }]}>Începe conversația trimițând un mesaj!</Text>
-                      </View>
-                    ) : (
-                      messages.map((message) => {
-                        const isOwnMessage = message.senderId === user?.uid;
-                        const isRead = message.readBy && message.readBy.length > 1;
-
-                        return (
-                          <View
-                            key={message.id}
-                            style={[styles.messageBubbleContainer, isOwnMessage ? styles.messageBubbleContainerOwn : styles.messageBubbleContainerOther]}
-                          >
-                            <View style={[styles.messageBubble, isOwnMessage ? styles.messageBubbleOwn : styles.messageBubbleOther]}>
-                              <Text style={[styles.messageSender, { color: textTertiary }]}>
-                                {message.senderName || 'Utilizator'}
-                              </Text>
-                              <Text style={[styles.messageText, { color: isOwnMessage ? colors.primaryText : colors.textPrimary }]}>
-                                {message.message}
-                              </Text>
-                              <View style={styles.messageFooter}>
-                                <Text style={[styles.messageTimestamp, { color: textTertiary }]}>
-                                  {formatDistanceToNow(message.timestamp, { addSuffix: true, locale: ro })}
-                                </Text>
-                                {isOwnMessage && isRead && (
-                                  <Text style={[styles.messageReadReceipt, { color: colors.primary }]}>✓✓</Text>
-                                )}
-                              </View>
-                            </View>
-                          </View>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-
-                  <View style={[styles.inputContainer, { borderTopColor: colors.borderColor, paddingBottom: keyboardHeight > 0 ? keyboardHeight / 2 : 12 }]}>
-                    <TextInput
-                      ref={inputRef}
-                      style={[styles.input, { backgroundColor: colors.inputBackground, color: colors.textPrimary }]}
-                      value={messageText}
-                      onChangeText={setMessageText}
-                      placeholder="Scrie un mesaj..."
-                      placeholderTextColor={colors.textSecondary}
-                      editable={!sending}
-                      maxLength={500}
-                      returnKeyType="send"
-                      blurOnSubmit={true}
-                      onSubmitEditing={handleSendMessage}
-                      enablesReturnKeyAutomatically={true}
-                    />
-                    <TouchableOpacity
-                      style={[styles.sendButton, { backgroundColor: messageText.trim() ? colors.primary : disabledButton }]}
-                      onPress={handleSendMessage}
-                      disabled={!messageText.trim() || sending}
-                    >
-                      {sending ? (
-                        <ActivityIndicator size="small" color={colors.primaryText} />
-                      ) : (
-                        <Text style={[styles.sendButtonText, { color: colors.primaryText }]}>Trimite</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                  {renderChatView()}
                 </View>
               </KeyboardAvoidingView>
             )}
@@ -578,7 +748,44 @@ const styles = StyleSheet.create({
   },
   conversationsHeaderSubtitle: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(231, 183, 60, 0.3)',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.primary,
+  },
+  tabBadge: {
+    backgroundColor: '#E7B73C',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 18,
+  },
+  tabBadgeText: {
+    color: '#000940',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   searchContainer: {
     padding: 12,
@@ -618,6 +825,10 @@ const styles = StyleSheet.create({
     borderRightWidth: 3,
     borderRightColor: '#e7b73c',
   },
+  supportChatItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#3b82f6',
+  },
   conversationItemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -639,6 +850,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 6,
     fontWeight: '500',
+  },
+  supportChatTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  statusBadgeOpen: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  statusBadgeInProgress: {
+    backgroundColor: 'rgba(234, 179, 8, 0.2)',
+  },
+  statusBadgeResolved: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   unreadBadge: {
     backgroundColor: '#E7B73C',
@@ -691,6 +927,10 @@ const styles = StyleSheet.create({
   chatHeaderTitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  chatHeaderSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   messagesArea: {
     flex: 1,
@@ -811,4 +1051,3 @@ const styles = StyleSheet.create({
 });
 
 export default MessagesScreen;
-

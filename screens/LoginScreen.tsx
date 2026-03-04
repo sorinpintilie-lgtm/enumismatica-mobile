@@ -472,6 +472,9 @@ const LoginScreen: React.FC = () => {
       }
 
       await startSessionOnServer();
+      
+      // Refresh auth state to update AuthContext with 2FA verified status
+      await refreshAuth();
 
       navigation.reset({
         index: 0,

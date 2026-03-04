@@ -22,6 +22,17 @@ function getTypeLabel(type: ChatNotification['type'] | AuctionNotification['type
       return 'Mesaj citit';
     case 'system':
       return 'Actualizare sistem';
+    case 'contract_created':
+      return 'Contract creat';
+    case 'contract_accepted':
+      return 'Contract acceptat';
+    case 'contract_rejected':
+    case 'contract_cancelled':
+      return 'Contract respins/anulat';
+    case 'contract_disputed':
+      return 'Contract în dispută';
+    case 'contract_dispute_resolved':
+      return 'Dispută contract rezolvată';
     default:
       return 'Notificare';
   }

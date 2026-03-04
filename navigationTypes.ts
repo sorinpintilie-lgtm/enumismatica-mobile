@@ -12,7 +12,7 @@ export type RootStackParamList = {
   HelpArticle: { articleId: string };
   Notifications: undefined;
   /** Private messages / support chat */
-  Messages: { conversationId?: string; conversation?: string };
+  Messages: { conversationId?: string; conversation?: string; supportChatId?: string };
   UserProducts: undefined;
   UserAuctions: undefined;
   HelpCenter: undefined;

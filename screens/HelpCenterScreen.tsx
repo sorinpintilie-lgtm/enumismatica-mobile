@@ -8,13 +8,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
 import InlineBackButton from '../components/InlineBackButton';
 import { useAuth } from '../context/AuthContext';
-import { useConversations } from '../hooks/useChat';
-import { SUPPORT_ADMIN_UID } from '@shared/adminService';
-import { sendPrivateMessage } from '@shared/chatService';
+import { createSupportChat } from '@shared/supportChatService';
 
 export default function HelpCenterScreen() {
   const { user } = useAuth();
-  const { startConversation } = useConversations(user?.uid ?? null);
   const [articles, setArticles] = useState<HelpArticle[]>([]);
   const [categories, setCategories] = useState<HelpCategory[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,10 +182,9 @@ export default function HelpCenterScreen() {
 
     try {
       setSupportSending(true);
-      const conversationId = await startConversation(SUPPORT_ADMIN_UID, undefined, undefined, true);
-      await sendPrivateMessage(conversationId, user.uid, supportMessage.trim());
+      const chatId = await createSupportChat(user.uid, supportMessage.trim());
       setSupportMessage('');
-      navigation.navigate('Messages', { conversationId });
+      navigation.navigate('Messages', { supportChatId: chatId });
     } catch (err) {
       console.error('Failed to start support conversation', err);
       Alert.alert('Eroare', 'Nu s-a putut trimite mesajul către suport. Încearcă din nou.');

@@ -19,6 +19,17 @@ import { colors } from '../styles/sharedStyles';
 import InlineBackButton from '../components/InlineBackButton';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart';
+import {
+  DEFAULT_QUALITY_OPTION,
+  DIAMETER_RANGE_OPTIONS,
+  MATERIAL_OPTIONS,
+  normalizeDiameterRange,
+  normalizeMaterial as normalizeMaterialStd,
+  normalizeQuality,
+  normalizeWeight,
+  sortQualitiesAlpha,
+  sortWeightsAsc,
+} from '../utils/coinClassification';
 
 interface RawProduct {
   title: string;
@@ -52,68 +63,15 @@ interface TransformedProduct {
   era: string;
 }
 
-const normalizeMaterial = (material: string): string => {
-  if (!material) return '';
-  const normalized = material
-    .toLowerCase()
-    .replace(/[\u200B\n\r]+/g, ' ')
-    .replace(/[:\s]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const materialMap: Record<string, string> = {
-    'argint 999‰': 'Argint 999‰',
-    'argint 925‰': 'Argint 925‰',
-    'aliaj de cupru': 'Aliaj de cupru',
-    'aliaj cupru': 'Aliaj de cupru',
-    'aliaj: cupru': 'Aliaj de cupru',
-    'aliaj din cupru': 'Aliaj de cupru',
-    cupru: 'Aliaj de cupru',
-    'tombac argintat': 'Tombac argintat',
-  };
-
-  return materialMap[normalized] || material.trim();
-};
-
-const normalizeDiameter = (diameter: string): string => {
-  if (!diameter) return '';
-  return diameter
-    .replace(/[\u200B\n\r]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\s*mm\s*/i, ' mm')
-    .trim();
-};
-
-const normalizeWeight = (weight: string): string => {
+const getWeightRange = (weight: string): string => {
   if (!weight) return '';
-  return weight
-    .replace(/[\u200B\n\r]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\s*gram\s*/i, ' grame')
-    .replace(/\s*grame\s*/i, ' grame')
-    .trim();
-};
-
-const normalizeQuality = (quality: string): string => {
-  if (!quality) return '';
-  const normalized = quality
-    .toLowerCase()
-    .replace(/[\u200B\n\r]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/-\s+/g, '-')
-    .replace(/\s+-/g, '-')
-    .trim();
-
-  const qualityMap: Record<string, string> = {
-    patinata: 'patinată',
-    'sablata - patinata': 'sablată - patinată',
-    'sablata-patinata': 'sablată - patinată',
-    'proof like': 'proof like',
-    proof: 'proof',
-    clasica: 'clasică',
-  };
-
-  return qualityMap[normalized] || quality.trim();
+  const match = weight.match(/(\d+(?:[\.,]\d+)?)/);
+  if (!match) return '';
+  const value = parseFloat(match[1].replace(',', '.'));
+  if (!Number.isFinite(value)) return '';
+  if (value < 50) return '0-50 g';
+  if (value < 100) return '50-100 g';
+  return '100+ g';
 };
 
 const extractSpec = (text: string, key: 'Material' | 'Diametru' | 'Greutate' | 'Calitate'): string => {
@@ -141,8 +99,8 @@ const extractSpec = (text: string, key: 'Material' | 'Diametru' | 'Greutate' | '
 
 const transformRawProduct = (p: RawProduct): TransformedProduct => {
   const specs = p.specifications || '';
-  const material = normalizeMaterial(extractSpec(specs, 'Material'));
-  const diameter = normalizeDiameter(extractSpec(specs, 'Diametru'));
+  const material = normalizeMaterialStd(extractSpec(specs, 'Material'));
+  const diameter = normalizeDiameterRange(extractSpec(specs, 'Diametru'));
   const weight = normalizeWeight(extractSpec(specs, 'Greutate'));
   const quality = normalizeQuality(extractSpec(specs, 'Calitate'));
 
@@ -178,7 +136,7 @@ export default function MonetariaStatuluiScreen() {
   const [material, setMaterial] = useState<string>('Toate Materialele');
   const [diameter, setDiameter] = useState<string>('Toate Diametrele');
   const [weight, setWeight] = useState<string>('Toate Greutățile');
-  const [quality, setQuality] = useState<string>('Toate Calitățile');
+  const [quality, setQuality] = useState<string>(DEFAULT_QUALITY_OPTION);
 
   useEffect(() => {
     const loadData = async () => {
@@ -261,15 +219,15 @@ export default function MonetariaStatuluiScreen() {
 
     // Apply current filters EXCEPT the one we're calculating options for
     if (excludeFilter !== 'material' && material !== 'Toate Materialele') {
-      baseProducts = baseProducts.filter(p => normalizeMaterial(p.mint) === normalizeMaterial(material));
+      baseProducts = baseProducts.filter(p => normalizeMaterialStd(p.mint) === normalizeMaterialStd(material));
     }
     if (excludeFilter !== 'diameter' && diameter !== 'Toate Diametrele') {
-      baseProducts = baseProducts.filter(p => normalizeDiameter(p.diameter) === normalizeDiameter(diameter));
+      baseProducts = baseProducts.filter(p => normalizeDiameterRange(p.diameter) === normalizeDiameterRange(diameter));
     }
     if (excludeFilter !== 'weight' && weight !== 'Toate Greutățile') {
-      baseProducts = baseProducts.filter(p => normalizeWeight(p.weight) === normalizeWeight(weight));
+      baseProducts = baseProducts.filter(p => getWeightRange(normalizeWeight(p.weight)) === weight);
     }
-    if (excludeFilter !== 'quality' && quality !== 'Toate Calitățile') {
+    if (excludeFilter !== 'quality' && quality !== DEFAULT_QUALITY_OPTION) {
       baseProducts = baseProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));
     }
 
@@ -277,25 +235,25 @@ export default function MonetariaStatuluiScreen() {
   };
 
   // Calculate available options for each filter based on other filters
-  const availableMaterials = ['Toate Materialele', ...new Set(getFilteredProductsExcluding('material').map(p => normalizeMaterial(p.mint)).filter(Boolean))];
-  const availableDiameters = ['Toate Diametrele', ...new Set(getFilteredProductsExcluding('diameter').map(p => normalizeDiameter(p.diameter)).filter(Boolean))];
-  const availableWeights = ['Toate Greutățile', ...new Set(getFilteredProductsExcluding('weight').map(p => normalizeWeight(p.weight)).filter(Boolean))];
-  const availableQualities = ['Toate Calitățile', ...new Set(getFilteredProductsExcluding('quality').map(p => normalizeQuality(p.era)).filter(Boolean))];
+  const availableMaterials = ['Toate Materialele', ...MATERIAL_OPTIONS.filter((m) => getFilteredProductsExcluding('material').some((p) => normalizeMaterialStd(p.mint) === m))];
+  const availableDiameters = ['Toate Diametrele', ...DIAMETER_RANGE_OPTIONS.filter((d) => getFilteredProductsExcluding('diameter').some((p) => normalizeDiameterRange(p.diameter) === d))];
+  const availableWeights = ['Toate Greutățile', ...sortWeightsAsc(Array.from(new Set(getFilteredProductsExcluding('weight').map(p => normalizeWeight(p.weight)).filter(Boolean))))];
+  const availableQualities = [DEFAULT_QUALITY_OPTION, ...sortQualitiesAlpha(Array.from(new Set(getFilteredProductsExcluding('quality').map(p => normalizeQuality(p.era)).filter(Boolean))))];
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
   let filteredProducts = selectedCategory === 'all' ? products : products.filter(p => p.category === selectedCategory);
 
   // Apply Monetaria Statului filters
   if (material !== 'Toate Materialele') {
-    filteredProducts = filteredProducts.filter(p => normalizeMaterial(p.mint) === normalizeMaterial(material));
+    filteredProducts = filteredProducts.filter(p => normalizeMaterialStd(p.mint) === normalizeMaterialStd(material));
   }
   if (diameter !== 'Toate Diametrele') {
-    filteredProducts = filteredProducts.filter(p => normalizeDiameter(p.diameter) === normalizeDiameter(diameter));
+    filteredProducts = filteredProducts.filter(p => normalizeDiameterRange(p.diameter) === normalizeDiameterRange(diameter));
   }
   if (weight !== 'Toate Greutățile') {
-    filteredProducts = filteredProducts.filter(p => normalizeWeight(p.weight) === normalizeWeight(weight));
+    filteredProducts = filteredProducts.filter(p => getWeightRange(normalizeWeight(p.weight)) === weight);
   }
-  if (quality !== 'Toate Calitățile') {
+  if (quality !== DEFAULT_QUALITY_OPTION) {
     filteredProducts = filteredProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));
   }
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
+import {
+  View,
+  Text,
+  TextInput,
   TouchableOpacity, 
   ScrollView, 
   ActivityIndicator, 
@@ -10,7 +10,6 @@ import {
   FlatList,
   StyleSheet,
   Share,
-  Linking,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -29,6 +28,7 @@ import PullbackStatusIndicator from '../components/PullbackStatusIndicator';
 import InlineBackButton from '../components/InlineBackButton';
 import { isAuctionEligibleForPullbackData } from '@shared/pullbackEligibility';
 import { formatEUR } from '../utils/currency';
+import { buildAuctionDeepLink, buildAuctionWebLink } from '../services/deepLinkService';
 
 const bidSchema = z.object({
   amount: z.number().positive('Bid amount must be positive'),
@@ -125,12 +125,14 @@ const AuctionDetailsScreen: React.FC = () => {
 
   const handleShareAuction = async () => {
     if (!auction) return;
-    const deepLinkUrl = `enumismatica://auction/${auction.id}`;
-    const message = `Licitație #${auction.id.slice(-6)} - ${formatEUR(currentBid)}\n\n${deepLinkUrl}`;
+    const deepLinkUrl = buildAuctionDeepLink(auction.id);
+    const webLinkUrl = buildAuctionWebLink(auction.id);
+    const message = `Licitație #${auction.id.slice(-6)} - ${formatEUR(currentBid)}\n\nDeschide în aplicație: ${deepLinkUrl}\nFallback web: ${webLinkUrl}`;
 
     try {
       await Share.share({
         message,
+        url: webLinkUrl,
         title: `Licitație #${auction.id.slice(-6)}`,
       });
     } catch (error) {

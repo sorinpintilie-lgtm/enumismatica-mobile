@@ -31,6 +31,7 @@ import {
   uploadMultipleImagesFromUris,
   type ImageAsset
 } from '../utils/imageUpload';
+import { GRADE_OPTIONS, normalizeGrade } from '../utils/coinClassification';
 
 // Constants copied from web /products/new page for parity
 const COUNTRIES = [
@@ -46,13 +47,6 @@ const RARITIES = [
   { value: 'rare', label: 'Rar' },
   { value: 'very-rare', label: 'Foarte Rar' },
   { value: 'extremely-rare', label: 'Extrem de Rar' },
-];
-
-const GRADES = [
-  'VF (Very Fine)', 'XF (Extremely Fine)', 'AU (Almost Uncirculated)', 'MS (Mint State)',
-  'MS-60', 'MS-61', 'MS-62', 'MS-63', 'MS-64', 'MS-65', 'MS-66', 'MS-67', 'MS-68', 'MS-69', 'MS-70',
-  'F (Fine)', 'VG (Very Good)', 'G (Good)', 'AG (About Good)', 'FA (Fair)', 'PR (Poor)',
-  'UNC (Uncirculated)', 'BU (Brilliant Uncirculated)', 'Proof', 'Proof-like',
 ];
 
 const CERTIFICATION_COMPANIES = [
@@ -235,7 +229,7 @@ const NewListingScreen: React.FC = () => {
           setWeight(productData.weight ? String(productData.weight) : '');
           setMintLocation(productData.mintLocation || '');
           setRarity(productData.rarity || '');
-          setGrade(productData.grade || '');
+          setGrade(normalizeGrade(productData.grade || ''));
           setHasCertification(!!productData.hasCertification);
           setCertificationCompany(productData.certificationCompany || 'NGC');
           setCertificationCode(productData.certificationCode || '');
@@ -441,7 +435,7 @@ const NewListingScreen: React.FC = () => {
           weight: weight ? Number(weight) : null,
           mintLocation: mintLocation || null,
           rarity: rarity || null,
-          grade: grade || null,
+          grade: normalizeGrade(grade) || null,
           hasCertification: hasCertification || false,
           certificationCompany: hasCertification ? certificationCompany : null,
           certificationCode: hasCertification ? certificationCode.trim() : null,
@@ -471,7 +465,7 @@ const NewListingScreen: React.FC = () => {
           weight: weight ? Number(weight) : null,
           mintLocation: mintLocation || null,
           rarity: rarity || null,
-          grade: grade || null,
+          grade: normalizeGrade(grade) || null,
           hasCertification: hasCertification || false,
           certificationCompany: hasCertification ? certificationCompany : null,
           certificationCode: hasCertification ? certificationCode.trim() : null,
@@ -958,15 +952,30 @@ const NewListingScreen: React.FC = () => {
             <Text style={styles.label}>Grad / stare</Text>
             <InfoIcon
               title="Grad / stare"
-              description="Indică starea de conservare a piesei. Sistemul standard de notare include grade precum VF (Very Fine), XF (Extremely Fine), AU (Almost Uncirculated), MS (Mint State), etc."
+              description="Indică starea de conservare a piesei. Opțiunile standardizate sunt: PF, MS, AU și XF/EF."
             />
           </View>
-          <TextInput
-            style={styles.input}
-            value={grade}
-            onChangeText={setGrade}
-            placeholderTextColor="#6b7280"
-          />
+          <HorizontalPillScroll>
+            {GRADE_OPTIONS.map((g) => (
+              <TouchableOpacity
+                key={g}
+                style={[
+                  styles.pill,
+                  grade === g && styles.pillActive,
+                ]}
+                onPress={() => setGrade(g)}
+              >
+                <Text
+                  style={[
+                    styles.pillText,
+                    grade === g && styles.pillTextActive,
+                  ]}
+                >
+                  {g}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </HorizontalPillScroll>
         </>
       )}
 

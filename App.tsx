@@ -13,7 +13,8 @@ import {
 import SplashScreen from './components/SplashScreen';
 import Header from './components/Header';
 import AuthGuard from './components/AuthGuard';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, useNavigation, getStateFromPath as defaultGetStateFromPath } from '@react-navigation/native';
+import type { LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
@@ -26,6 +27,11 @@ import type { RootStackParamList } from './navigationTypes';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { setupNotificationListeners, ensureNotificationChannelCreated } from './services/notificationService';
 import crashlyticsService from './shared/crashlyticsService';
+import ErrorBoundary from './components/ErrorBoundary';
+import {
+  resolveDeepLinkNavigationTarget,
+  resolveNotificationNavigationTarget,
+} from './services/deepLinkService';
 
 // Import all screens
 import DashboardScreen from './screens/DashboardScreen';
@@ -87,10 +93,121 @@ import AdminTransactionsScreen from './screens/admin/TransactionsScreen';
 const Stack = createStackNavigator();
 const TopTab = createMaterialTopTabNavigator();
 
+function normalizeIncomingLinkPath(path: string): string {
+  // Accept both singular app routes and plural web routes.
+  // Examples:
+  //  - auction/abc -> auction/abc
+  //  - auctions/abc -> auction/abc
+  //  - products/xyz -> product/xyz
+  const [rawPath, rawQuery = ''] = path.split('?');
+  const normalizedPath = rawPath
+    .replace(/^\/?auctions\//, 'auction/')
+    .replace(/^\/?products\//, 'product/')
+    .replace(/^\/?orders\//, 'order/');
+
+  return rawQuery ? `${normalizedPath}?${rawQuery}` : normalizedPath;
+}
+
+const APP_LINKING_CONFIG: LinkingOptions<RootStackParamList> = {
+  prefixes: ['enumismatica://', 'https://enumismatica.ro', 'https://www.enumismatica.ro'],
+  getStateFromPath: (path, options) => {
+    const normalizedPath = normalizeIncomingLinkPath(path);
+    return defaultGetStateFromPath(normalizedPath, options);
+  },
+  config: {
+    screens: {
+      ProductDetails: {
+        path: 'product/:productId',
+      },
+      AuctionDetails: {
+        path: 'auction/:auctionId',
+      },
+      OrderDetails: {
+        path: 'order/:orderId',
+      },
+      Messages: {
+        path: 'messages/:conversationId?',
+      },
+      MonetariaStatuluiProductDetails: {
+        path: 'monetaria-statului/:productId',
+      },
+    },
+  },
+};
+
+const WEB_META = {
+  title: 'eNumismatica – Monede de colecție, licitații și tranzacții sigure',
+  description:
+    'Platformă românească pentru numismatică: monede de colecție, licitații active, istoric tranzacții și mesagerie între colecționari.',
+  image: 'https://enumismatica.ro/assets/icon.png',
+};
+
+function upsertMetaTag(kind: 'name' | 'property', key: string, content: string) {
+  if (typeof document === 'undefined') return;
+
+  const selector = `meta[${kind}="${key}"]`;
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement('meta');
+    element.setAttribute(kind, key);
+    document.head.appendChild(element);
+  }
+  element.setAttribute('content', content);
+}
+
+function upsertLinkTag(rel: string, href: string) {
+  if (typeof document === 'undefined') return;
+
+  const selector = `link[rel="${rel}"]`;
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement('link');
+    element.setAttribute('rel', rel);
+    document.head.appendChild(element);
+  }
+  element.setAttribute('href', href);
+}
+
+function applyWebMetadata() {
+  if (Platform.OS !== 'web') return;
+  if (typeof document === 'undefined') return;
+
+  const canonicalBase = typeof window !== 'undefined' && window.location?.origin
+    ? window.location.origin
+    : 'https://enumismatica.ro';
+  const canonicalPath = typeof window !== 'undefined' && window.location?.pathname
+    ? window.location.pathname
+    : '/';
+  const canonicalUrl = `${canonicalBase}${canonicalPath}`;
+
+  document.title = WEB_META.title;
+
+  upsertMetaTag('name', 'description', WEB_META.description);
+  upsertMetaTag('name', 'robots', 'index,follow,max-image-preview:large');
+  upsertMetaTag('name', 'application-name', 'eNumismatica');
+  upsertMetaTag('name', 'theme-color', '#00020d');
+
+  upsertMetaTag('property', 'og:type', 'website');
+  upsertMetaTag('property', 'og:title', WEB_META.title);
+  upsertMetaTag('property', 'og:description', WEB_META.description);
+  upsertMetaTag('property', 'og:url', canonicalUrl);
+  upsertMetaTag('property', 'og:site_name', 'eNumismatica');
+  upsertMetaTag('property', 'og:image', WEB_META.image);
+
+  upsertMetaTag('name', 'twitter:card', 'summary_large_image');
+  upsertMetaTag('name', 'twitter:title', WEB_META.title);
+  upsertMetaTag('name', 'twitter:description', WEB_META.description);
+  upsertMetaTag('name', 'twitter:image', WEB_META.image);
+
+  upsertLinkTag('canonical', canonicalUrl);
+}
+
 function WebRootLayoutFix() {
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     if (typeof document === 'undefined') return;
+
+    applyWebMetadata();
 
     const style = document.createElement('style');
     style.setAttribute('data-enumismatica', 'web-root-fix');
@@ -342,6 +459,23 @@ function AppContent() {
   const { user, loading } = useAuth();
   const [splashFinished, setSplashFinished] = useState(false);
   const insets = useSafeAreaInsets();
+  const navigationRef = React.useRef<any>(null);
+  const pendingNotificationRouteRef = React.useRef<{ screen: string; params: any } | null>(null);
+
+  const navigateFromNotificationData = React.useCallback((data: Record<string, unknown>) => {
+    const target = resolveNotificationNavigationTarget(data);
+    if (!target) {
+      console.log('[App] Notification tap has no navigation target:', data);
+      return;
+    }
+
+    if (navigationRef.current?.isReady()) {
+      navigationRef.current.navigate(target.screen, target.params);
+      return;
+    }
+
+    pendingNotificationRouteRef.current = target;
+  }, []);
 
   useEffect(() => {
     // Ensure notification channel is created (Android only)
@@ -351,7 +485,7 @@ function AppContent() {
     });
 
     // Setup notification listeners for push notifications
-    const cleanup = setupNotificationListeners();
+    const cleanup = setupNotificationListeners(navigateFromNotificationData);
 
     // Setup global error handler
     const originalError = console.error;
@@ -396,7 +530,16 @@ function AppContent() {
       cleanup();
       console.error = originalError;
     };
-  }, []);
+  }, [navigateFromNotificationData]);
+
+  useEffect(() => {
+    if (!navigationRef.current?.isReady()) return;
+    if (!pendingNotificationRouteRef.current) return;
+
+    const pending = pendingNotificationRouteRef.current;
+    pendingNotificationRouteRef.current = null;
+    navigationRef.current.navigate(pending.screen, pending.params);
+  });
 
   if (loading || !splashFinished) {
     return (
@@ -414,18 +557,22 @@ function AppContent() {
       <WebRootLayoutFix />
       <Header />
       <NavigationContainer
-        linking={{
-          prefixes: ['enumismatica://'],
-          config: {
-            screens: {
-              ProductDetails: {
-                path: 'product/:productId',
-              },
-              AuctionDetails: {
-                path: 'auction/:auctionId',
-              },
-            },
-          },
+        ref={navigationRef}
+        linking={APP_LINKING_CONFIG}
+        onReady={() => {
+          if (!pendingNotificationRouteRef.current) return;
+          const pending = pendingNotificationRouteRef.current;
+          pendingNotificationRouteRef.current = null;
+          navigationRef.current?.navigate(pending.screen, pending.params);
+        }}
+        onStateChange={() => {
+          applyWebMetadata();
+          const currentRoute = navigationRef.current?.getCurrentRoute();
+          if (!currentRoute?.path) return;
+          const target = resolveDeepLinkNavigationTarget(currentRoute.path);
+          if (target) {
+            console.log('[App] Navigated via deep link:', currentRoute.path, target);
+          }
         }}
       >
         <Stack.Navigator
@@ -789,11 +936,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -873,6 +1022,7 @@ const styles = StyleSheet.create({
   },
   tabItemActive: {
     backgroundColor: 'rgba(248, 250, 252, 0.96)',
+    paddingHorizontal: 8,
   },
   tabIcon: {
     marginBottom: 2,

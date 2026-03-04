@@ -15,6 +15,23 @@ type TrustedDevice = {
   expiresAt: string | null;
 };
 
+const getDeviceStatus = (device: TrustedDevice): { label: string; color: string } => {
+  if (!device.expiresAt) {
+    return { label: 'Activ (fără expirare)', color: '#22c55e' };
+  }
+
+  const expiresAtTime = new Date(device.expiresAt).getTime();
+  if (Number.isNaN(expiresAtTime)) {
+    return { label: 'Stare necunoscută (dată invalidă)', color: '#f59e0b' };
+  }
+
+  if (expiresAtTime > Date.now()) {
+    return { label: 'Activ', color: '#22c55e' };
+  }
+
+  return { label: 'Expirat', color: '#ef4444' };
+};
+
 const TrustedDevicesScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { showToast } = useToast();
@@ -70,6 +87,15 @@ const TrustedDevicesScreen: React.FC = () => {
         ) : (
           devices.map((d) => (
             <View key={d.id} style={styles.card}>
+              {(() => {
+                const status = getDeviceStatus(d);
+                return (
+                  <View style={styles.statusRow}>
+                    <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+                    <Text style={styles.statusText}>{status.label}</Text>
+                  </View>
+                );
+              })()}
               <Text style={styles.deviceTitle}>{d.label || 'Dispozitiv'}</Text>
               <Text style={styles.rowText}>ID: {d.id}</Text>
               {d.createdAt ? <Text style={styles.rowText}>Creat: {new Date(d.createdAt).toLocaleString()}</Text> : null}
@@ -110,6 +136,22 @@ const styles = StyleSheet.create({
     borderColor: colors.borderColor,
     backgroundColor: colors.cardBackground,
     padding: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+  },
+  statusText: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
   },
   helpText: {
     color: colors.textSecondary,

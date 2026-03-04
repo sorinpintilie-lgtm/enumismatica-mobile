@@ -18,6 +18,8 @@ import InlineBackButton from '../components/InlineBackButton';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart';
 import { Ionicons } from '@expo/vector-icons';
+import { normalizeDiameterRange, normalizeMaterial, normalizeQuality, normalizeWeight } from '../utils/coinClassification';
+import { buildMintProductDeepLink, buildMintProductWebLink } from '../services/deepLinkService';
 
 interface RawProduct {
   title: string;
@@ -127,10 +129,10 @@ export default function MonetariaStatuluiProductDetailsScreen() {
           category: rawProduct.category,
           image: `/Monetaria_statului/romanian_mint_products/${rawProduct.category_slug}/${rawProduct.image_files}`,
           link: `/monetaria-statului/${rawProduct.product_id}`,
-          diameter: productDiameter,
-          weight: productWeight,
-          mint: productMaterial,
-          era: productQuality,
+          diameter: normalizeDiameterRange(productDiameter),
+          weight: normalizeWeight(productWeight),
+          mint: normalizeMaterial(productMaterial),
+          era: normalizeQuality(productQuality),
         };
         setProduct(transformedProduct);
       } catch (err) {
@@ -178,12 +180,14 @@ export default function MonetariaStatuluiProductDetailsScreen() {
 
   const handleShareProduct = async () => {
     if (!product) return;
-    const deepLinkUrl = `enumismatica://monetaria-statului/${product.id}`;
-    const message = `${product.title} - ${product.price}\n\n${deepLinkUrl}`;
+    const deepLinkUrl = buildMintProductDeepLink(product.id);
+    const webLinkUrl = buildMintProductWebLink(product.id);
+    const message = `${product.title} - ${product.price}\n\nDeschide în aplicație: ${deepLinkUrl}\nFallback web: ${webLinkUrl}`;
 
     try {
       await Share.share({
         message,
+        url: webLinkUrl,
         title: product.title,
       });
     } catch (error) {

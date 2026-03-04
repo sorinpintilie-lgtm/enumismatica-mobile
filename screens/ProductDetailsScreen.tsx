@@ -32,6 +32,7 @@ import InlineBackButton from '../components/InlineBackButton';
 import { formatEUR } from '../utils/currency';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebaseConfig';
+import { buildProductDeepLink, buildProductWebLink } from '../services/deepLinkService';
 
 const ProductDetailsScreen: React.FC = () => {
   const route = useRoute<RouteProp<RootStackParamList, 'ProductDetails'>>();
@@ -143,12 +144,14 @@ const ProductDetailsScreen: React.FC = () => {
 
   const handleShareProduct = async () => {
     if (!product) return;
-    const deepLinkUrl = `enumismatica://product/${product.id}`;
-    const message = `${product.name} - ${formatEUR(product.price)}\n\n${deepLinkUrl}`;
+    const deepLinkUrl = buildProductDeepLink(product.id);
+    const webLinkUrl = buildProductWebLink(product.id);
+    const message = `${product.name} - ${formatEUR(product.price)}\n\nDeschide în aplicație: ${deepLinkUrl}\nFallback web: ${webLinkUrl}`;
 
     try {
       await Share.share({
         message,
+        url: webLinkUrl,
         title: product.name,
       });
     } catch (error) {

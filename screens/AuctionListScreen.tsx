@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { RootStackParamList } from '../navigationTypes';
 import { WatchlistButton } from '../components/WatchlistButton';
 import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
+import { GRADE_OPTIONS, normalizeGrade } from '../utils/coinClassification';
 
 interface FilterOptions {
   searchTerm: string;
@@ -52,6 +53,7 @@ const categories = [
 
 const countries = [
   'Toate Țările',
+  'România',
   'Rusia',
   'SUA',
   'Germania',
@@ -61,7 +63,6 @@ const countries = [
   'Spania',
   'Danemarca',
   'Mexic',
-  'România',
   'Austria',
 ];
 
@@ -86,17 +87,7 @@ const rarities = [
 
 const grades = [
   'Toate Gradele',
-  'Slabă',
-  'Acceptabilă',
-  'Bună',
-  'VG',
-  'Fină',
-  'VF',
-  'XF',
-  'AU',
-  'MS-60',
-  'MS-65',
-  'MS-70',
+  ...GRADE_OPTIONS,
 ];
 
 const styles = StyleSheet.create({
@@ -456,6 +447,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
   },
   cardPrice: {
     fontSize: 16,
@@ -469,6 +461,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(231, 183, 60, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(231, 183, 60, 0.4)',
+    maxWidth: '56%',
+    overflow: 'hidden',
+    flexShrink: 1,
   },
   cardRarityText: {
     fontSize: 10,
@@ -545,7 +540,7 @@ const CountdownTimer: React.FC<{ endTime: Date }> = ({ endTime }) => {
   );
 };
 
-const AuctionCard: React.FC<{ auction: Auction; product?: Product | null }> = ({ auction, product }) => {
+const AuctionCardComponent: React.FC<{ auction: Auction; product?: Product | null }> = ({ auction, product }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const isEnded = new Date() > auction.endTime;
@@ -617,6 +612,29 @@ const AuctionCard: React.FC<{ auction: Auction; product?: Product | null }> = ({
     </TouchableOpacity>
   );
 };
+
+const AuctionCard = memo(
+  AuctionCardComponent,
+  (prevProps, nextProps) => {
+    const prevAuction = prevProps.auction;
+    const nextAuction = nextProps.auction;
+    const prevProduct = prevProps.product;
+    const nextProduct = nextProps.product;
+
+    return (
+      prevAuction.id === nextAuction.id &&
+      prevAuction.status === nextAuction.status &&
+      prevAuction.currentBid === nextAuction.currentBid &&
+      prevAuction.reservePrice === nextAuction.reservePrice &&
+      prevAuction.endTime?.getTime?.() === nextAuction.endTime?.getTime?.() &&
+      prevProduct?.id === nextProduct?.id &&
+      prevProduct?.name === nextProduct?.name &&
+      prevProduct?.country === nextProduct?.country &&
+      prevProduct?.year === nextProduct?.year &&
+      (prevProduct?.images?.[0] ?? null) === (nextProduct?.images?.[0] ?? null)
+    );
+  },
+);
 
 const AuctionListScreen: React.FC = () => {
   const { user } = useAuth();
@@ -724,7 +742,7 @@ const AuctionListScreen: React.FC = () => {
 
       // Grade filter
       if (filters.grade && filters.grade !== 'Toate Gradele') {
-        if (product.grade !== filters.grade) return false;
+        if (normalizeGrade(product.grade) !== filters.grade) return false;
       }
 
       return true;
@@ -780,6 +798,16 @@ const AuctionListScreen: React.FC = () => {
       sortBy: 'ending-soonest',
     });
   };
+
+  const keyExtractor = useCallback((item: Auction) => item.id, []);
+
+  const renderAuctionItem = useCallback(
+    ({ item }: { item: Auction }) => {
+      const product = productMap.get(item.productId) as Product | null | undefined;
+      return <AuctionCard auction={item} product={product || null} />;
+    },
+    [productMap],
+  );
 
   const loading = auctionsLoading || productsLoading;
   const error = auctionsError;
@@ -937,11 +965,8 @@ const AuctionListScreen: React.FC = () => {
          ) : (
           <FlatList
             data={displayAuctions}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              const product = productMap.get(item.productId) as Product | null | undefined;
-              return <AuctionCard auction={item} product={product || null} />;
-            }}
+            keyExtractor={keyExtractor}
+            renderItem={renderAuctionItem}
             numColumns={2}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}

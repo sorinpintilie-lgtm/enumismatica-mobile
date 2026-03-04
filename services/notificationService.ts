@@ -275,7 +275,9 @@ export async function cancelAuctionNotifications(auctionId: string) {
 }
 
 // Initialize notification listeners
-export function setupNotificationListeners() {
+export function setupNotificationListeners(
+  onNotificationOpen?: (data: Record<string, unknown>) => void,
+) {
   if (Platform.OS === 'web') {
     console.log('[notificationService] Push notifications not supported on web');
     return () => {};
@@ -296,18 +298,51 @@ export function setupNotificationListeners() {
     console.log('[notificationService] Notification details:', JSON.stringify(notification, null, 2));
   });
 
+  const handledResponseKeys = new Set<string>();
+
+  const getResponseKey = (response: Notifications.NotificationResponse): string => {
+    const data = (response.notification.request.content.data ?? {}) as Record<string, unknown>;
+    const notificationId =
+      typeof data.notificationId === 'string' && data.notificationId.trim().length > 0
+        ? data.notificationId
+        : response.notification.request.identifier;
+    return notificationId;
+  };
+
+  const dispatchNotificationOpen = (
+    response: Notifications.NotificationResponse,
+    source: 'tap' | 'cold-start',
+  ) => {
+    const key = getResponseKey(response);
+    if (handledResponseKeys.has(key)) {
+      console.log('[notificationService] Duplicate notification response ignored:', { key, source });
+      return;
+    }
+    handledResponseKeys.add(key);
+
+    const data = (response.notification.request.content.data ?? {}) as Record<string, unknown>;
+    console.log('[notificationService] Notification response received:', { source, key, data });
+    if (onNotificationOpen) {
+      onNotificationOpen(data);
+    }
+  };
+
   // Handle notification response (when user taps on notification)
-  const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+  const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
     console.log('[notificationService] Notification response (user tapped):', response);
     console.log('[notificationService] Response details:', JSON.stringify(response, null, 2));
-    const data = response.notification.request.content.data;
-
-    // Handle navigation based on notification type
-    if (data?.auctionId) {
-      // Navigate to auction details - this would need to be handled by navigation context
-      console.log('[notificationService] Navigate to auction:', data.auctionId);
-    }
+    dispatchNotificationOpen(response, 'tap');
   });
+
+  Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (!response) return;
+      console.log('[notificationService] Found last notification response on startup');
+      dispatchNotificationOpen(response, 'cold-start');
+    })
+    .catch((error) => {
+      console.error('[notificationService] Failed to get last notification response:', error);
+    });
 
   console.log('[notificationService] Notification listeners set up successfully');
 

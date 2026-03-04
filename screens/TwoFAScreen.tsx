@@ -56,7 +56,7 @@ const TwoFAScreen: React.FC = () => {
       const data = await apiPost<SetupResponse>('/api/auth/2fa/setup');
       setSecret(data.secret);
       setQrCode(data.qrCode);
-      showToast({ type: 'info', title: '2FA', message: 'Scanează codul QR în aplicația de autentificare.' });
+      showToast({ type: 'info', title: '2FA', message: 'Secretul și QR-ul au fost generate. Scanează codul în aplicația de autentificare.' });
     } catch (err: any) {
       showToast({ type: 'error', title: 'Eroare', message: err.message || 'Nu s-a putut genera secretul.' });
     } finally {
@@ -149,10 +149,10 @@ const TwoFAScreen: React.FC = () => {
       {!twoFactorEnabled ? (
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Configurare</Text>
-          <Text style={styles.helpText}>Generează un secret, scanează QR-ul, apoi confirmă cu un cod.</Text>
+          <Text style={styles.helpText}>Generează secretul + QR, scanează codul în aplicația de autentificare, apoi confirmă cu un cod TOTP.</Text>
 
           <TouchableOpacity style={[sharedStyles.button, loading && styles.buttonDisabled]} onPress={setup} disabled={loading}>
-            <Text style={sharedStyles.buttonText}>{loading ? 'Se generează...' : 'Generează QR'}</Text>
+            <Text style={sharedStyles.buttonText}>{loading ? 'Se generează...' : 'Generează secret + QR'}</Text>
           </TouchableOpacity>
 
           {qrCode ? (

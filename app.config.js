@@ -7,11 +7,12 @@ export default {
     name: "eNumismatica",
     slug: "enumismatica",
     description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
-    version: "1.1.9",
+    version: "1.2.3",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
+    jsEngine: "hermes",
     plugins: [
       "@react-native-firebase/app",
       [
@@ -53,7 +54,10 @@ export default {
         ITSAppUsesNonExemptEncryption: false
       },
       bundleIdentifier: "ro.recordtrust.enumismatica",
-      googleServicesFile: "./GoogleService-Info.plist"
+      googleServicesFile: "./GoogleService-Info.plist",
+      entitlements: {
+        "aps-environment": "production"
+      }
     },
     android: {
       adaptiveIcon: {
@@ -80,7 +84,13 @@ export default {
       ]
     },
     web: {
-      favicon: "./assets/favicon.png"
+      favicon: "./assets/favicon.png",
+      name: "eNumismatica",
+      shortName: "eNumismatica",
+      description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
+      lang: "ro-RO",
+      themeColor: "#00020d",
+      backgroundColor: "#00020d"
     },
     scheme: "enumismatica",
     extra: {

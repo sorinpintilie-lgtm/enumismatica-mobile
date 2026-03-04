@@ -2,7 +2,7 @@
 
 This project already has the core mobile build identifiers configured in [`app.config.js`](app.config.js):
 
-- iOS bundle identifier: `ro.enumismatica.mobile`
+- iOS bundle identifier: `ro.recordtrust.enumismatica`
 - Android package: `ro.enumismatica.mobile`
 - EAS project ID configured
 - iOS build number initialized to `1`
@@ -26,7 +26,7 @@ Check these files:
 
 Configured:
 
-1. Bundle ID + Firebase iOS `BUNDLE_ID` match (`ro.enumismatica.mobile`)
+1. Bundle ID + Firebase iOS `BUNDLE_ID` match (`ro.recordtrust.enumismatica`)
 2. EAS production profile exists
 3. iOS build number is set (`buildNumber: "1"`)
 4. Non-exempt encryption flag set to false (`ITSAppUsesNonExemptEncryption: false`)

@@ -401,7 +401,7 @@ const DashboardScreen: React.FC = () => {
             </View>
 
             {/* Version Number */}
-            <Text style={dashboardStyles.versionText}>v1.1.5</Text>
+            <Text style={dashboardStyles.versionText}>v1.2.3</Text>
           </View>
         </ScrollView>
       );
@@ -541,7 +541,10 @@ const DashboardScreen: React.FC = () => {
         <View style={[dashboardStyles.section, { marginBottom: 24 }]}>
           <View style={dashboardStyles.sectionHeader}>
             <Text style={dashboardStyles.sectionTitle}>Produse listate</Text>
-            <TouchableOpacity style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6' }]}>
+            <TouchableOpacity
+              style={[dashboardStyles.actionButton, { backgroundColor: '#3B82F6' }]}
+              onPress={() => navigation.navigate('NewListing', { listingType: 'direct' })}
+            >
               <Text style={dashboardStyles.actionButtonText}>Adăugare produs</Text>
             </TouchableOpacity>
           </View>
@@ -659,7 +662,7 @@ const DashboardScreen: React.FC = () => {
         </TouchableOpacity>
 
         {/* Version Number */}
-        <Text style={dashboardStyles.versionText}>v1.1.5</Text>
+        <Text style={dashboardStyles.versionText}>v1.2.3</Text>
       </View>
     </ScrollView>
   );
