@@ -18,7 +18,7 @@ import {
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from '@shared/firebaseConfig';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc, deleteDoc } from '@shared/firebaseConfig';
 import { db } from '@shared/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../navigationTypes';
@@ -31,6 +31,7 @@ import {
   uploadMultipleImagesFromUris,
   type ImageAsset
 } from '../utils/imageUpload';
+import { chargeProductListingWithCredits, calculateProductListingCost } from '@shared/creditService';
 import { GRADE_OPTIONS, normalizeGrade } from '../utils/coinClassification';
 
 // Constants copied from web /products/new page for parity
@@ -95,6 +96,7 @@ type NewListingRouteProp = RouteProp<RootStackParamList, 'NewListing'>;
 type Nav = StackNavigationProp<RootStackParamList>;
 
 type ListingType = 'direct' | 'auction';
+const DIRECT_LISTING_DAYS = 30;
 
 // Info icon component with modal
 const InfoIcon: React.FC<{ title: string; description: string }> = ({ title, description }) => {
@@ -441,7 +443,6 @@ const NewListingScreen: React.FC = () => {
           certificationCode: hasCertification ? certificationCode.trim() : null,
           certificationGrade: hasCertification ? certificationGrade : null,
           acceptsOffers,
-          ...(mode === 'direct' ? { listingExpiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) } : {}),
           updatedAt: serverTimestamp(),
         });
       } else {
@@ -471,10 +472,23 @@ const NewListingScreen: React.FC = () => {
           certificationCode: hasCertification ? certificationCode.trim() : null,
           certificationGrade: hasCertification ? certificationGrade : null,
           acceptsOffers,
-          ...(mode === 'direct' ? { listingExpiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) } : {}),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+      }
+
+      // Charge listing credits for NEW direct products (posting fee).
+      if (!isEditing && mode === 'direct') {
+        try {
+          await chargeProductListingWithCredits(user.uid, productRef.id, DIRECT_LISTING_DAYS);
+        } catch (listingFeeError: any) {
+          // Cleanup pending product if listing fee fails (e.g. insufficient credits).
+          await deleteDoc(doc(db, 'products', productRef.id)).catch(() => undefined);
+          throw new Error(
+            listingFeeError?.message ||
+            `Nu s-a putut percepe taxa de listare (${calculateProductListingCost(DIRECT_LISTING_DAYS)} credite).`
+          );
+        }
       }
 
       // Upload images if any

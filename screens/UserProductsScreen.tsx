@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -9,7 +9,7 @@ import { colors } from '../styles/sharedStyles';
 import { formatEUR } from '../utils/currency';
 import InlineBackButton from '../components/InlineBackButton';
 import { getEffectiveListingExpiryDate, isDirectListingExpired } from '@shared/listingExpiry';
-import { relistProductWithCredits } from '@shared/creditService';
+import { relistProductWithCredits, calculateProductListingCost } from '@shared/creditService';
 
 const styles = StyleSheet.create({
   screen: {
@@ -108,6 +108,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 8,
+    marginBottom: 10,
+  },
 });
 
 const UserProductsScreen: React.FC = () => {
@@ -115,6 +122,7 @@ const UserProductsScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const userId = user?.uid || null;
+  const [relistingProductId, setRelistingProductId] = useState<string | null>(null);
 
   const { products, loading: productsLoading, error: productsError } = useProducts({
     ownerId: userId || undefined,
@@ -131,6 +139,16 @@ const UserProductsScreen: React.FC = () => {
       return bd - ad;
     });
   }, [products]);
+
+  const activeProducts = useMemo(
+    () => ownerProducts.filter((p: any) => !isDirectListingExpired(p)),
+    [ownerProducts]
+  );
+
+  const expiredProducts = useMemo(
+    () => ownerProducts.filter((p: any) => isDirectListingExpired(p) && !p?.isSold),
+    [ownerProducts]
+  );
 
   const loading = authLoading || productsLoading;
 
@@ -169,13 +187,18 @@ const UserProductsScreen: React.FC = () => {
   }
 
   const isEmpty = ownerProducts.length === 0;
+  const relistDays = 30;
+  const relistCost = calculateProductListingCost(relistDays);
 
   const handleRelist = async (productId: string) => {
     if (!user?.uid) return;
     try {
-      await relistProductWithCredits(user.uid, productId, 30);
+      setRelistingProductId(productId);
+      await relistProductWithCredits(user.uid, productId, relistDays);
     } catch (e: any) {
       alert(e?.message || 'Nu s-a putut relista produsul.');
+    } finally {
+      setRelistingProductId(null);
     }
   };
 
@@ -190,7 +213,7 @@ const UserProductsScreen: React.FC = () => {
               <Text style={styles.subtitle}>
                 {isEmpty
                   ? 'Nu există încă produse active listate în magazin.'
-                  : `Există ${ownerProducts.length} ${ownerProducts.length === 1 ? 'produs' : 'produse'} în portofoliul tău.`}
+                  : `Ai ${activeProducts.length} active și ${expiredProducts.length} expirate.`}
               </Text>
             </View>
             <TouchableOpacity
@@ -214,49 +237,92 @@ const UserProductsScreen: React.FC = () => {
           </View>
         ) : (
           <View>
-            {ownerProducts.map((product: any) => {
-              const expired = isDirectListingExpired(product);
-              const expiryDate = getEffectiveListingExpiryDate(product);
-              return <View key={product.id} style={styles.card}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {product.name}
-                    </Text>
-                    <Text style={styles.mutedText}>
-                      {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
-                    </Text>
-                    <Text style={[styles.mutedText, { marginTop: 2 }]}> 
-                      {expiryDate ? `Expirare listare: ${expiryDate.toLocaleDateString()}` : 'Fără expirare definită'}
-                    </Text>
+            <Text style={styles.sectionTitle}>Active în magazin</Text>
+            {activeProducts.length === 0 ? (
+              <View style={styles.card}>
+                <Text style={styles.mutedText}>Nu ai produse active în acest moment.</Text>
+              </View>
+            ) : (
+              activeProducts.map((product: any) => {
+                const expiryDate = getEffectiveListingExpiryDate(product);
+                return <View key={product.id} style={styles.card}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {product.name}
+                      </Text>
+                      <Text style={styles.mutedText}>
+                        {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
+                      </Text>
+                      <Text style={[styles.mutedText, { marginTop: 2 }]}>
+                        {expiryDate ? `Expirare listare: ${expiryDate.toLocaleDateString()}` : 'Fără expirare definită'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
+                    </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                    <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
-                    {expired && (
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, { flex: 1 }]}
+                      onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+                    >
+                      <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              })
+            )}
+
+            <Text style={styles.sectionTitle}>Expirate — reactivează</Text>
+            {expiredProducts.length === 0 ? (
+              <View style={styles.card}>
+                <Text style={styles.mutedText}>Nu ai produse expirate disponibile pentru reactivare.</Text>
+              </View>
+            ) : (
+              expiredProducts.map((product: any) => {
+                const expiryDate = getEffectiveListingExpiryDate(product);
+                const relisting = relistingProductId === product.id;
+                return <View key={product.id} style={styles.card}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {product.name}
+                      </Text>
+                      <Text style={styles.mutedText}>
+                        {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
+                      </Text>
+                      <Text style={[styles.mutedText, { marginTop: 2 }]}>
+                        {expiryDate ? `Expirat la: ${expiryDate.toLocaleDateString()}` : 'Expirat'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                      <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
                       <View style={styles.expiredBadge}>
                         <Text style={styles.expiredBadgeText}>EXPIRAT</Text>
                       </View>
-                    )}
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, { flex: 1 }]}
+                      onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+                    >
+                      <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.primaryButton, { flex: 1, opacity: relisting ? 0.7 : 1 }]}
+                      onPress={() => handleRelist(product.id)}
+                      disabled={relisting}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {relisting ? 'Se reactivează...' : `Reactivează (${relistCost} credite)`}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <TouchableOpacity
-                    style={[styles.secondaryButton, { flex: 1 }]}
-                    onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
-                  >
-                    <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
-                  </TouchableOpacity>
-                  {expired && !product.isSold && (
-                    <TouchableOpacity
-                      style={[styles.primaryButton, { flex: 1 }]}
-                      onPress={() => handleRelist(product.id)}
-                    >
-                      <Text style={styles.primaryButtonText}>Relistează (5 credite)</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            })}
+              })
+            )}
           </View>
         )}
       </View>

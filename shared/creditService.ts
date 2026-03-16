@@ -48,7 +48,10 @@ const AUCTION_DISCOUNTED_DURATION_HOURS = 168; // 168 hours (7 days)
 const AUCTION_DISCOUNTED_COST = 15; // 15 credits for 7 days (discount)
 
 // Product listing
-const PRODUCT_LISTING_COST_PER_30_DAYS = 5; // 5 credits / 30 days
+const PRODUCT_LISTING_COST_30_DAYS = 10; // 1-30 days
+const PRODUCT_LISTING_COST_60_DAYS = 15; // 31-60 days
+const PRODUCT_LISTING_COST_90_DAYS = 20; // 61-90 days
+const PRODUCT_LISTING_EXTRA_COST_PER_30_DAYS = 5; // each additional 30-day block after 90 days
 
 // Strong promotion (homepage / first page highlight)
 const PROMOTION_COST = 20; // 20 credits per promotion
@@ -622,12 +625,21 @@ export async function chargeAuctionCreationWithCredits(
 
 /**
  * Calculate product listing cost based on desired listing duration.
- * 5 credits per 30 days (rounded up).
+ * Pricing tiers:
+ * - 1-30 days: 10 credits
+ * - 31-60 days: 15 credits
+ * - 61-90 days: 20 credits
+ * - >90 days: +5 credits / extra started 30-day block
  */
 export function calculateProductListingCost(listingDays: number): number {
-  if (!listingDays || listingDays <= 0) return PRODUCT_LISTING_COST_PER_30_DAYS;
-  const periods = Math.ceil(listingDays / 30);
-  return periods * PRODUCT_LISTING_COST_PER_30_DAYS;
+  if (!listingDays || listingDays <= 0) return PRODUCT_LISTING_COST_30_DAYS;
+  if (listingDays <= 30) return PRODUCT_LISTING_COST_30_DAYS;
+  if (listingDays <= 60) return PRODUCT_LISTING_COST_60_DAYS;
+  if (listingDays <= 90) return PRODUCT_LISTING_COST_90_DAYS;
+
+  const extraDays = listingDays - 90;
+  const extraBlocks = Math.ceil(extraDays / 30);
+  return PRODUCT_LISTING_COST_90_DAYS + extraBlocks * PRODUCT_LISTING_EXTRA_COST_PER_30_DAYS;
 }
 
 /**
