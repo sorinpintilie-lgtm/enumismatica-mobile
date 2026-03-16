@@ -7,7 +7,7 @@ export default {
     name: "eNumismatica",
     slug: "enumismatica",
     description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
-    version: "1.2.7",
+    version: "1.2.8",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
