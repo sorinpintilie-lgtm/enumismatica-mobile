@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.2.3",
+  "version": "1.2.7",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -27,6 +27,7 @@
     "@react-navigation/stack": "^7.6.16",
     "date-fns": "^4.1.0",
     "expo": "^54.0.33",
+    "expo-apple-authentication": "~8.0.8",
     "expo-application": "^7.0.8",
     "expo-av": "~16.0.8",
     "expo-build-properties": "~1.0.10",

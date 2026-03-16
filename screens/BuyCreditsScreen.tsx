@@ -27,6 +27,8 @@ import {
   type IAPPurchaseResult,
 } from '@shared/paymentService';
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const BuyCreditsScreen: React.FC = () => {
   const { user } = useAuth();
   
@@ -42,14 +44,44 @@ const BuyCreditsScreen: React.FC = () => {
     if (!user?.uid) return;
     const credits = await getUserCredits(user.uid);
     setCurrentCredits(credits);
+    return credits;
   }, [user?.uid]);
+
+  const refreshCreditsUntilConfirmed = useCallback(
+    async (expectedCreditsAdded: number) => {
+      if (!user?.uid) return currentCredits;
+
+      const baselineCredits =
+        typeof currentCredits === 'number' ? currentCredits : (await getUserCredits(user.uid));
+      const targetCredits = baselineCredits + Math.max(0, expectedCreditsAdded);
+
+      let latestCredits = baselineCredits;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) {
+          await wait(attempt * 1000);
+        }
+
+        latestCredits = await getUserCredits(user.uid);
+        setCurrentCredits(latestCredits);
+
+        if (expectedCreditsAdded <= 0 || latestCredits >= targetCredits) {
+          break;
+        }
+      }
+
+      return latestCredits;
+    },
+    [user?.uid, currentCredits]
+  );
 
   // Initialize IAP and load products
   useEffect(() => {
     const init = async () => {
       try {
         setLoading(true);
+
         const initialized = await initIAP();
+
         if (initialized) {
           const iapProducts = await getIAPProducts();
           setProducts(iapProducts);
@@ -95,6 +127,14 @@ const BuyCreditsScreen: React.FC = () => {
       return;
     }
 
+    if (!canPurchase) {
+      Alert.alert(
+        'Achiziții indisponibile',
+        'Produsele App Store nu sunt încă disponibile pe acest dispozitiv. Încearcă din nou după câteva secunde.'
+      );
+      return;
+    }
+
     try {
       setProcessing(true);
       Keyboard.dismiss();
@@ -103,11 +143,23 @@ const BuyCreditsScreen: React.FC = () => {
       setLastPurchaseResult(result);
 
       if (result.success) {
-        await refreshCredits();
-        Alert.alert(
-          'Succes',
-          `Plata a fost procesată cu succes! S-au adăugat ${result.creditsAdded} credite.`
-        );
+        const updatedCredits = await refreshCreditsUntilConfirmed(result.creditsAdded);
+        const baselineCredits = typeof currentCredits === 'number' ? currentCredits : 0;
+        const expectedCredits = baselineCredits + Math.max(0, result.creditsAdded);
+        const creditsConfirmed =
+          result.creditsAdded <= 0 || (typeof updatedCredits === 'number' && updatedCredits >= expectedCredits);
+
+        if (creditsConfirmed) {
+          Alert.alert(
+            'Succes',
+            `Plata a fost procesată cu succes! S-au adăugat ${result.creditsAdded} credite.`
+          );
+        } else {
+          Alert.alert(
+            'Procesare în curs',
+            'Plata a fost confirmată, dar soldul nu s-a actualizat încă. Reîncearcă „Restaurează achizițiile” în câteva secunde.'
+          );
+        }
       } else {
         Alert.alert(
           'Eroare',
@@ -132,8 +184,8 @@ const BuyCreditsScreen: React.FC = () => {
       } else {
         const successful = results.filter(r => r.success);
         if (successful.length > 0) {
-          await refreshCredits();
           const totalCredits = successful.reduce((sum, r) => sum + r.creditsAdded, 0);
+          await refreshCreditsUntilConfirmed(totalCredits);
           Alert.alert('Succes', `S-au restaurat ${totalCredits} credite.`);
         } else {
           Alert.alert('Info', 'Nu s-au putut restaura achiziții.');
@@ -156,9 +208,11 @@ const BuyCreditsScreen: React.FC = () => {
     credits: PRODUCT_CREDITS_MAP[productId] || 0,
   }));
 
-  const displayedProducts = products.length > 0 ? products : fallbackProducts;
+  const storeProductsLoaded = products.length > 0;
+  const displayedProducts = storeProductsLoaded ? products : fallbackProducts;
   const selectedProduct = displayedProducts.find(p => p.productId === selectedProductId);
   const estimatedCredits = selectedProduct?.credits || 0;
+  const canPurchase = !loading && !processing && !iapError && storeProductsLoaded && !!selectedProduct;
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -230,9 +284,9 @@ const BuyCreditsScreen: React.FC = () => {
         )}
 
         {!loading && displayedProducts.length > 0 && (
-          <TouchableOpacity 
-            style={[styles.primaryButton, processing && styles.primaryButtonDisabled]} 
-            disabled={processing} 
+          <TouchableOpacity
+            style={[styles.primaryButton, !canPurchase && styles.primaryButtonDisabled]}
+            disabled={!canPurchase}
             onPress={handlePurchase}
           >
             {processing ? (
@@ -243,13 +297,15 @@ const BuyCreditsScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={styles.restoreButton} 
-          disabled={processing} 
-          onPress={handleRestorePurchases}
-        >
-          <Text style={styles.restoreButtonText}>Restaurează achizițiile</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            style={styles.restoreButton}
+            disabled={processing}
+            onPress={handleRestorePurchases}
+          >
+            <Text style={styles.restoreButtonText}>Restaurează achizițiile</Text>
+          </TouchableOpacity>
+        </View>
 
         {lastPurchaseResult ? (
           <View style={styles.statusCard}>
@@ -418,6 +474,9 @@ const styles = StyleSheet.create({
     color: colors.primaryText,
     fontWeight: '700',
     fontSize: 16,
+  },
+  actionsRow: {
+    gap: 8,
   },
   restoreButton: {
     backgroundColor: 'transparent',

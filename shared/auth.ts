@@ -3,17 +3,31 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithCredential,
+  OAuthProvider,
   GoogleAuthProvider,
   signOut,
   User,
   onAuthStateChanged,
   sendEmailVerification,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
 import { createUserProfileAfterSignup } from './creditService';
 import { logActivity } from './activityLogService';
 import { sendWelcomeEmail } from './emailService';
+import { sha256Hex } from './utils/sha256';
 
 const googleProvider = new GoogleAuthProvider();
+
+const NONCE_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+function generateNonce(length: number = 32): string {
+  let nonce = '';
+  for (let i = 0; i < length; i += 1) {
+    nonce += NONCE_CHARS.charAt(Math.floor(Math.random() * NONCE_CHARS.length));
+  }
+  return nonce;
+}
 
  export const signInWithEmail = async (email: string, password: string) => {
   console.log('[Auth] signInWithEmail called with:', email);
@@ -223,6 +237,70 @@ export const signInWithGoogle = async (referralCode?: string) => {
     return { user: result.user, error: null };
   } catch (error: any) {
     return { user: null, error: error.message };
+  }
+};
+
+export const signInWithApple = async (referralCode?: string) => {
+  if (Platform.OS !== 'ios') {
+    return { user: null, error: 'Autentificarea cu Apple este disponibilă doar pe iOS.' };
+  }
+
+  try {
+    const AppleAuthentication = await import('expo-apple-authentication');
+
+    const rawNonce = generateNonce();
+    const hashedNonce = sha256Hex(rawNonce);
+
+    const appleAuthResult = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: hashedNonce,
+    });
+
+    if (!appleAuthResult.identityToken) {
+      return { user: null, error: 'Nu s-a putut obține token-ul Apple. Reîncearcă.' };
+    }
+
+    const provider = new OAuthProvider('apple.com');
+    const credential = provider.credential({
+      idToken: appleAuthResult.identityToken,
+      rawNonce,
+    });
+
+    const result = await signInWithCredential(auth, credential);
+    const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime;
+
+    await createUserProfileAfterSignup(result.user, referralCode || null);
+
+    if (isNewUser) {
+      sendWelcomeEmail(
+        result.user.email || '',
+        result.user.displayName || 'Utilizator'
+      ).catch(error => {
+        console.error('Failed to send welcome email:', error);
+      });
+    }
+
+    try {
+      await logActivity(
+        result.user.uid,
+        isNewUser ? 'user_register' : 'user_login',
+        { method: 'apple', referralCode: referralCode || undefined },
+        result.user.email || undefined,
+        result.user.displayName || undefined
+      );
+    } catch (logError) {
+      console.warn('Failed to log Apple auth activity:', logError);
+    }
+
+    return { user: result.user, error: null };
+  } catch (error: any) {
+    if (error?.code === 'ERR_REQUEST_CANCELED') {
+      return { user: null, error: 'Autentificarea cu Apple a fost anulată.' };
+    }
+    return { user: null, error: error?.message || 'Autentificarea cu Apple a eșuat.' };
   }
 };
 

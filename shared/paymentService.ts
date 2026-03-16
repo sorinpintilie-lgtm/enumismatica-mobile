@@ -4,15 +4,22 @@ import { Platform } from 'react-native';
 
 type IapProductRaw = {
   id: string;
+  productId?: string;
   title?: string;
   description?: string;
   price?: string;
+  localizedPrice?: string;
+  displayPrice?: string;
 };
 
 type IapPurchaseRaw = {
   id: string;
+  productId?: string;
   transactionId?: string | null;
+  originalTransactionIdentifierIOS?: string | null;
   purchaseToken?: string;
+  transactionReceipt?: string;
+  verificationResultIOS?: string;
 };
 
 type IapSubscription = { remove: () => void };
@@ -58,14 +65,58 @@ function isUserCancelledError(error: any, iap: IapModule | null): boolean {
 // These must match the products configured in App Store Connect and Google Play Console
 export const IAP_PRODUCTS = {
   CREDITS_20: 'ro.enumismatica.credits.20',
+  CREDITS_25: 'ro.enumismatica.credits.25',
   CREDITS_50: 'ro.enumismatica.credits.50',
   CREDITS_100: 'ro.enumismatica.credits.100',
   CREDITS_200: 'ro.enumismatica.credits.200',
 };
 
+const IAP_PRODUCT_ALIASES: Record<string, string[]> = {
+  [IAP_PRODUCTS.CREDITS_20]: [
+    IAP_PRODUCTS.CREDITS_20,
+    'ro.recordtrust.enumismatica.credits.20',
+  ],
+  [IAP_PRODUCTS.CREDITS_25]: [
+    IAP_PRODUCTS.CREDITS_25,
+    'ro.recordtrust.enumismatica.credits.25',
+  ],
+  [IAP_PRODUCTS.CREDITS_50]: [
+    IAP_PRODUCTS.CREDITS_50,
+    'ro.recordtrust.enumismatica.credits.50',
+  ],
+  [IAP_PRODUCTS.CREDITS_100]: [
+    IAP_PRODUCTS.CREDITS_100,
+    'ro.recordtrust.enumismatica.credits.100',
+  ],
+  [IAP_PRODUCTS.CREDITS_200]: [
+    IAP_PRODUCTS.CREDITS_200,
+    'ro.recordtrust.enumismatica.credits.200',
+  ],
+};
+
+const SUPPORTED_IAP_PRODUCT_IDS = new Set(
+  Object.values(IAP_PRODUCT_ALIASES).flatMap((aliases) => aliases)
+);
+
+const CANONICAL_PRODUCT_BY_ANY_ID = Object.entries(IAP_PRODUCT_ALIASES).reduce(
+  (acc, [canonicalId, aliases]) => {
+    aliases.forEach((id) => {
+      acc[id] = canonicalId;
+    });
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
+function toCanonicalProductId(productId: string | null | undefined): string | null {
+  if (!productId) return null;
+  return CANONICAL_PRODUCT_BY_ANY_ID[productId] || null;
+}
+
 // Product ID to credits mapping
 export const PRODUCT_CREDITS_MAP: Record<string, number> = {
   [IAP_PRODUCTS.CREDITS_20]: 20,
+  [IAP_PRODUCTS.CREDITS_25]: 25,
   [IAP_PRODUCTS.CREDITS_50]: 50,
   [IAP_PRODUCTS.CREDITS_100]: 100,
   [IAP_PRODUCTS.CREDITS_200]: 200,
@@ -74,6 +125,7 @@ export const PRODUCT_CREDITS_MAP: Record<string, number> = {
 // Product ID to price mapping (for display purposes - fallback if store price unavailable)
 export const PRODUCT_PRICE_MAP: Record<string, string> = {
   [IAP_PRODUCTS.CREDITS_20]: '20 RON',
+  [IAP_PRODUCTS.CREDITS_25]: '25 RON',
   [IAP_PRODUCTS.CREDITS_50]: '50 RON',
   [IAP_PRODUCTS.CREDITS_100]: '100 RON',
   [IAP_PRODUCTS.CREDITS_200]: '200 RON',
@@ -95,6 +147,64 @@ export interface IAPPurchaseResult {
   error?: string;
 }
 
+export interface IAPDiagnosticsEntry {
+  timestamp: string;
+  stage: string;
+  message: string;
+  details?: Record<string, unknown>;
+}
+
+function sanitizeError(error: any): Record<string, unknown> {
+  if (!error) return { type: 'unknown' };
+
+  const message = typeof error?.message === 'string' ? error.message : String(error);
+  const code = typeof error?.code === 'string' ? error.code : undefined;
+  const domain = typeof error?.domain === 'string' ? error.domain : undefined;
+  const userInfo = error?.userInfo && typeof error.userInfo === 'object'
+    ? JSON.stringify(error.userInfo).slice(0, 1200)
+    : undefined;
+
+  return {
+    message,
+    code,
+    domain,
+    userInfo,
+  };
+}
+
+function pushIapDiagnostic(_stage: string, _message: string, _details?: Record<string, unknown>): void {}
+
+export function getIAPDiagnostics(): IAPDiagnosticsEntry[] {
+  return [];
+}
+
+export function clearIAPDiagnostics(): void {
+  // Diagnostics intentionally disabled in production UX flow.
+}
+
+function toUserFacingPurchaseError(message?: string): string {
+  const normalized = (message || '').toLowerCase();
+  if (normalized.includes('anulat') || normalized.includes('cancel')) {
+    return 'Achiziția a fost anulată';
+  }
+  return 'Nu s-a putut procesa achiziția. Încearcă din nou.';
+}
+
+function toDisplayPrice(localizedPrice: string, canonicalProductId: string): string {
+  const fallbackPrice = PRODUCT_PRICE_MAP[canonicalProductId] || localizedPrice;
+  const normalized = (localizedPrice || '').trim();
+
+  if (!normalized) return fallbackPrice;
+
+  // Sandbox/TestFlight accounts are often tied to a USD storefront and may return
+  // "$" even when the app communicates in RON credits. Show configured RON fallback
+  // in that case to keep package pricing consistent in the UI.
+  const lower = normalized.toLowerCase();
+  const looksUsd = normalized.includes('$') || lower.includes('usd');
+
+  return looksUsd ? fallbackPrice : normalized;
+}
+
 async function getAuthTokenOrThrow(): Promise<string> {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -108,16 +218,23 @@ async function getAuthTokenOrThrow(): Promise<string> {
  */
 export async function initIAP(): Promise<boolean> {
   try {
+    pushIapDiagnostic('init:start', 'Initializing IAP connection', {
+      platform: Platform.OS,
+    });
+
     const iap = getIapModule();
     if (!iap) {
+      pushIapDiagnostic('init:module-missing', 'expo-iap module unavailable');
       return false;
     }
 
     const result = await iap.initConnection();
-    console.log('IAP connection initialized:', result);
+    pushIapDiagnostic('init:result', 'IAP connection initialized', {
+      result,
+    });
     return result;
   } catch (error) {
-    console.error('Failed to initialize IAP:', error);
+    pushIapDiagnostic('init:error', 'Failed to initialize IAP', sanitizeError(error));
     return false;
   }
 }
@@ -131,64 +248,130 @@ export async function endIAP(): Promise<void> {
     if (!iap) return;
 
     await iap.endConnection();
-  } catch (error) {
-    console.error('Failed to end IAP connection:', error);
-  }
+  } catch {}
 }
 
 /**
  * Get available products from App Store / Google Play
  */
 export async function getIAPProducts(): Promise<IAPProduct[]> {
-  const productIds = Object.values(IAP_PRODUCTS);
+  const productIds = Array.from(SUPPORTED_IAP_PRODUCT_IDS);
   const iap = getIapModule();
 
   if (!iap) {
+    pushIapDiagnostic('products:module-missing', 'expo-iap module unavailable');
     return [];
   }
-  
+
   try {
+    pushIapDiagnostic('products:fetch:start', 'Fetching IAP products (bulk)', {
+      requestedSkus: productIds,
+      requestedCount: productIds.length,
+    });
+
     // fetchProducts returns an array of products.
     // In TestFlight, if only some SKUs exist/are attached, a bulk query can return empty.
     let products = await iap.fetchProducts({ skus: productIds, type: 'in-app' });
 
+    pushIapDiagnostic('products:fetch:bulk-result', 'Bulk fetch completed', {
+      receivedCount: products?.length || 0,
+      receivedIds: (products || []).map((p) => p.id || p.productId || 'unknown'),
+    });
+
     // Retry strategy: query each SKU individually and merge unique results.
     if (!products || products.length === 0) {
-      const merged: any[] = [];
+      const merged: IapProductRaw[] = [];
       const seen = new Set<string>();
 
       for (const sku of productIds) {
         try {
           const partial = await iap.fetchProducts({ skus: [sku], type: 'in-app' });
+          pushIapDiagnostic('products:fetch:single-result', 'Single SKU fetch completed', {
+            sku,
+            receivedCount: partial?.length || 0,
+            receivedIds: (partial || []).map((p) => p.id || p.productId || 'unknown'),
+          });
+
           for (const p of partial) {
-            if (!seen.has(p.id)) {
-              seen.add(p.id);
+            const id = p.id || p.productId || '';
+            if (id && !seen.has(id)) {
+              seen.add(id);
               merged.push(p);
             }
           }
         } catch (singleErr) {
-          console.warn(`[IAP] SKU not available yet: ${sku}`, singleErr);
+          pushIapDiagnostic('products:fetch:single-error', `SKU not available yet: ${sku}`, {
+            sku,
+            error: sanitizeError(singleErr),
+          });
         }
       }
 
       products = merged;
     }
-    
+
     if (!products || products.length === 0) {
-      console.warn('No IAP products found. Verify SKUs are attached to current App Store Connect version/TestFlight build.');
+      pushIapDiagnostic('products:empty', 'No IAP products found after retry strategy', {
+        requestedSkus: productIds,
+      });
       return [];
     }
-    
-    return products.map((product) => ({
-      productId: product.id,
-      title: product.title || 'Credite eNumismatica',
-      description: product.description || `${PRODUCT_CREDITS_MAP[product.id] || 0} credite`,
-      price: String(product.price || ''),
-      localizedPrice: String(product.price || ''), // localizedPrice may not exist on all platforms
-      credits: PRODUCT_CREDITS_MAP[product.id] || 0,
-    }));
+
+    const mapped = products
+      .map((product) => {
+        const rawId = product.id || product.productId;
+        const canonicalProductId = toCanonicalProductId(rawId);
+
+        if (!rawId || !canonicalProductId) {
+          pushIapDiagnostic('products:unknown-product', 'Unknown product returned by store', {
+            rawId: rawId || null,
+            title: product.title || null,
+          });
+          return null;
+        }
+
+        const rawLocalizedPrice = String(
+          product.localizedPrice || product.displayPrice || product.price || ''
+        ).trim();
+        const displayPrice = toDisplayPrice(rawLocalizedPrice, canonicalProductId);
+
+        return {
+          productId: rawId,
+          title: product.title || 'Credite eNumismatica',
+          description:
+            product.description || `${PRODUCT_CREDITS_MAP[canonicalProductId] || 0} credite`,
+          price: displayPrice,
+          localizedPrice: displayPrice,
+          credits: PRODUCT_CREDITS_MAP[canonicalProductId] || 0,
+          canonicalProductId,
+        };
+      })
+      .filter((item): item is (IAPProduct & { canonicalProductId: string }) => !!item);
+
+    const seenCanonical = new Set<string>();
+    const uniqueByCreditsPackage: IAPProduct[] = [];
+
+    for (const item of mapped) {
+      if (seenCanonical.has(item.canonicalProductId)) continue;
+      seenCanonical.add(item.canonicalProductId);
+      uniqueByCreditsPackage.push({
+        productId: item.productId,
+        title: item.title,
+        description: item.description,
+        price: item.price,
+        localizedPrice: item.localizedPrice,
+        credits: item.credits,
+      });
+    }
+
+    pushIapDiagnostic('products:success', 'IAP products mapped successfully', {
+      returnedCount: uniqueByCreditsPackage.length,
+      returnedIds: uniqueByCreditsPackage.map((p) => p.productId),
+    });
+
+    return uniqueByCreditsPackage;
   } catch (error) {
-    console.error('Failed to get IAP products:', error);
+    pushIapDiagnostic('products:error', 'Failed to fetch IAP products', sanitizeError(error));
     return [];
   }
 }
@@ -201,6 +384,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
   return new Promise((resolve, reject) => {
     const iap = getIapModule();
     if (!iap) {
+      pushIapDiagnostic('purchase:module-missing', 'expo-iap module unavailable');
       resolve({
         success: false,
         creditsAdded: 0,
@@ -211,22 +395,42 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     }
 
     // Verify product ID
-    if (!Object.values(IAP_PRODUCTS).includes(productId)) {
+    const canonicalProductId = toCanonicalProductId(productId);
+    if (!canonicalProductId) {
+      pushIapDiagnostic('purchase:invalid-product', 'Invalid productId passed to purchaseCredits', {
+        productId,
+      });
       reject(new Error('ID produs invalid'));
       return;
     }
 
-    const creditsToAdd = PRODUCT_CREDITS_MAP[productId] || 0;
+    const creditsToAdd = PRODUCT_CREDITS_MAP[canonicalProductId] || 0;
     if (creditsToAdd === 0) {
+      pushIapDiagnostic('purchase:no-credits-map', 'Credits mapping missing for canonical product', {
+        productId,
+        canonicalProductId,
+      });
       reject(new Error('Nu s-a putut determina numărul de credite'));
       return;
     }
 
+    pushIapDiagnostic('purchase:start', 'Starting purchase flow', {
+      productId,
+      canonicalProductId,
+      creditsToAdd,
+      platform: Platform.OS,
+    });
+
     let purchaseSubscription: { remove: () => void } | null = null;
     let errorSubscription: { remove: () => void } | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
     let resolved = false;
 
     const cleanup = () => {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = null;
+      }
       if (purchaseSubscription) {
         purchaseSubscription.remove();
         purchaseSubscription = null;
@@ -240,32 +444,63 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     // Set up purchase update listener
     purchaseSubscription = iap.purchaseUpdatedListener(async (purchase: IapPurchaseRaw) => {
       if (resolved) return;
-      
+
+      const incomingRawId = purchase.id || purchase.productId;
       // Check if this purchase is for our product
-      if (purchase.id !== productId) return;
-      
+      const purchaseProductId = toCanonicalProductId(incomingRawId);
+      if (purchaseProductId !== canonicalProductId) {
+        pushIapDiagnostic('purchase:update:ignored', 'Purchase update ignored for different SKU', {
+          incomingRawId: incomingRawId || null,
+          purchaseProductId,
+          expectedCanonicalProductId: canonicalProductId,
+        });
+        return;
+      }
+
       resolved = true;
       cleanup();
 
       try {
         // Get transaction details
-        const transactionId = purchase.transactionId || null;
-        const purchaseToken = purchase.purchaseToken || '';
+        const transactionId = purchase.transactionId || purchase.originalTransactionIdentifierIOS || null;
+        const purchaseToken =
+          purchase.purchaseToken ||
+          purchase.transactionReceipt ||
+          purchase.verificationResultIOS ||
+          transactionId ||
+          '';
+
+        pushIapDiagnostic('purchase:update:matched', 'Purchase update matched selected SKU', {
+          incomingRawId: incomingRawId || null,
+          canonicalProductId,
+          hasTransactionId: !!transactionId,
+          hasPurchaseToken: !!purchaseToken,
+          tokenLength: purchaseToken.length,
+        });
 
         // Validate receipt with backend
         const validationResult = await validatePurchaseWithBackend(
-          productId,
+          canonicalProductId,
           purchaseToken,
           transactionId,
           Platform.OS
         );
 
+        pushIapDiagnostic('purchase:validation:result', 'Backend validation result received', {
+          success: validationResult.success,
+          creditsAdded: validationResult.creditsAdded,
+          error: validationResult.error || null,
+        });
+
         if (validationResult.success) {
           // Finish the transaction
           try {
             await iap.finishTransaction({ purchase, isConsumable: true });
+            pushIapDiagnostic('purchase:finish:success', 'Transaction finished successfully');
           } catch (finishError) {
-            console.warn('Failed to finish transaction:', finishError);
+            pushIapDiagnostic('purchase:finish:error', 'Failed to finish transaction', {
+              error: sanitizeError(finishError),
+            });
           }
 
           resolve({
@@ -278,15 +513,18 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
             success: false,
             creditsAdded: 0,
             transactionId,
-            error: validationResult.error || 'Validarea achiziției a eșuat',
+            error: toUserFacingPurchaseError(validationResult.error),
           });
         }
       } catch (error: any) {
+        pushIapDiagnostic('purchase:update:error', 'Error while processing purchase update', {
+          error: sanitizeError(error),
+        });
         resolve({
           success: false,
           creditsAdded: 0,
           transactionId: null,
-          error: error?.message || 'A apărut o eroare la procesarea achiziției',
+          error: toUserFacingPurchaseError(error?.message),
         });
       }
     });
@@ -294,9 +532,14 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     // Set up error listener
     errorSubscription = iap.purchaseErrorListener((error) => {
       if (resolved) return;
-      
+
       resolved = true;
       cleanup();
+
+      pushIapDiagnostic('purchase:error-listener', 'Purchase error listener fired', {
+        error: sanitizeError(error),
+        isUserCancelled: isUserCancelledError(error, iap),
+      });
 
       // Handle user cancellation
       if (isUserCancelledError(error, iap)) {
@@ -311,10 +554,27 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
           success: false,
           creditsAdded: 0,
           transactionId: null,
-          error: error.message || 'A apărut o eroare la achiziție',
+          error: toUserFacingPurchaseError(error?.message),
         });
       }
     });
+
+    timeoutHandle = setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      pushIapDiagnostic('purchase:timeout', 'Purchase flow timed out waiting for callbacks', {
+        productId,
+        canonicalProductId,
+      });
+      resolve({
+        success: false,
+        creditsAdded: 0,
+        transactionId: null,
+        error:
+          'Achiziția a expirat înainte de confirmare. Verifică conexiunea și contul Sandbox/App Store, apoi încearcă din nou.',
+      });
+    }, 90_000);
 
     // Request purchase - expo-iap API
     iap.requestPurchase({
@@ -324,11 +584,21 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
       },
       type: 'in-app',
     })
+      .then(() => {
+        pushIapDiagnostic('purchase:request:started', 'requestPurchase accepted by native bridge', {
+          productId,
+        });
+      })
       .catch((error: any) => {
         if (resolved) return;
         resolved = true;
         cleanup();
-        
+
+        pushIapDiagnostic('purchase:request:error', 'requestPurchase rejected before listener update', {
+          error: sanitizeError(error),
+          isUserCancelled: isUserCancelledError(error, iap),
+        });
+
         // Handle user cancellation
         if (isUserCancelledError(error, iap)) {
           resolve({
@@ -342,7 +612,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
             success: false,
             creditsAdded: 0,
             transactionId: null,
-            error: error?.message || 'A apărut o eroare la achiziție',
+            error: toUserFacingPurchaseError(error?.message),
           });
         }
       });
@@ -359,6 +629,14 @@ async function validatePurchaseWithBackend(
   platform: string
 ): Promise<{ success: boolean; creditsAdded: number; error?: string }> {
   try {
+    pushIapDiagnostic('validation:start', 'Validating purchase with backend', {
+      productId,
+      platform,
+      hasTransactionId: !!transactionId,
+      hasPurchaseToken: !!purchaseToken,
+      purchaseTokenLength: purchaseToken?.length || 0,
+    });
+
     await getAuthTokenOrThrow();
     const call = httpsCallable(functions, 'validateIAPPurchaseCallable');
     const result = await call({
@@ -367,13 +645,24 @@ async function validatePurchaseWithBackend(
       transactionId,
       platform,
     });
+
+    pushIapDiagnostic('validation:success', 'Backend validation callable returned', {
+      productId,
+      platform,
+      result: result.data as Record<string, unknown>,
+    });
+
     return result.data as { success: boolean; creditsAdded: number; error?: string };
   } catch (error: any) {
-    console.error('Backend validation error:', error);
+    pushIapDiagnostic('validation:error', 'Backend validation error', {
+      productId,
+      platform,
+      error: sanitizeError(error),
+    });
     return {
       success: false,
       creditsAdded: 0,
-      error: error?.message || 'Eroare la validarea achiziției',
+      error: 'Nu s-a putut valida achiziția. Încearcă din nou.',
     };
   }
 }
@@ -389,7 +678,6 @@ export async function getPendingPurchases(): Promise<IapPurchaseRaw[]> {
     const purchases = await iap.getAvailablePurchases();
     return purchases || [];
   } catch (error) {
-    console.error('Failed to get pending purchases:', error);
     return [];
   }
 }
@@ -399,24 +687,46 @@ export async function getPendingPurchases(): Promise<IapPurchaseRaw[]> {
  */
 export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
   try {
+    pushIapDiagnostic('restore:start', 'Restoring purchases');
+
     const iap = getIapModule();
-    if (!iap) return [];
+    if (!iap) {
+      pushIapDiagnostic('restore:module-missing', 'expo-iap module unavailable');
+      return [];
+    }
 
     const purchases = await iap.getAvailablePurchases();
     const results: IAPPurchaseResult[] = [];
+
+    pushIapDiagnostic('restore:available', 'Loaded available purchases', {
+      count: purchases?.length || 0,
+    });
 
     if (!purchases || purchases.length === 0) {
       return results;
     }
 
     for (const purchase of purchases) {
-      const productId = purchase.id;
-      const purchaseToken = purchase.purchaseToken || '';
-      const transactionId = purchase.transactionId || null;
+      const productId = purchase.id || purchase.productId;
+      const canonicalProductId = toCanonicalProductId(productId);
+      if (!canonicalProductId) {
+        pushIapDiagnostic('restore:skip-unknown', 'Skipping unknown restored product', {
+          productId: productId || null,
+        });
+        continue;
+      }
+
+      const transactionId = purchase.transactionId || purchase.originalTransactionIdentifierIOS || null;
+      const purchaseToken =
+        purchase.purchaseToken ||
+        purchase.transactionReceipt ||
+        purchase.verificationResultIOS ||
+        transactionId ||
+        '';
 
       // Validate with backend
       const validationResult = await validatePurchaseWithBackend(
-        productId,
+        canonicalProductId,
         purchaseToken,
         transactionId,
         Platform.OS
@@ -427,7 +737,9 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
         try {
           await iap.finishTransaction({ purchase, isConsumable: true });
         } catch (finishError) {
-          console.warn('Failed to finish transaction:', finishError);
+          pushIapDiagnostic('restore:finish:error', 'Failed to finish restored transaction', {
+            error: sanitizeError(finishError),
+          });
         }
       }
 
@@ -439,9 +751,16 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
       });
     }
 
+    pushIapDiagnostic('restore:done', 'Restore flow finished', {
+      resultCount: results.length,
+      successfulCount: results.filter((r) => r.success).length,
+    });
+
     return results;
   } catch (error: any) {
-    console.error('Restore purchases error:', error);
+    pushIapDiagnostic('restore:error', 'Restore purchases error', {
+      error: sanitizeError(error),
+    });
     return [];
   }
 }

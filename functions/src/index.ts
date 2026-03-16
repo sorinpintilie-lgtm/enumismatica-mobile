@@ -290,10 +290,46 @@ export const getStripePaymentStatusCallable = onCall({region: "europe-west1"}, a
 // IAP Product ID to credits mapping
 const IAP_PRODUCT_CREDITS: Record<string, number> = {
   "ro.enumismatica.credits.20": 20,
+  "ro.enumismatica.credits.25": 25,
   "ro.enumismatica.credits.50": 50,
   "ro.enumismatica.credits.100": 100,
   "ro.enumismatica.credits.200": 200,
+
+  // Legacy/alternate aliases kept for App Store Connect compatibility
+  "ro.recordtrust.enumismatica.credits.20": 20,
+  "ro.recordtrust.enumismatica.credits.25": 25,
+  "ro.recordtrust.enumismatica.credits.50": 50,
+  "ro.recordtrust.enumismatica.credits.100": 100,
+  "ro.recordtrust.enumismatica.credits.200": 200,
 };
+
+function hashForIdempotency(input: string): string {
+  // FNV-1a 32-bit hash (stable, fast, deterministic for idempotency keys)
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function buildIapPaymentReference(input: {
+  platform: string;
+  productId: string;
+  transactionId: string;
+  purchaseToken: string;
+}): string {
+  const platformPart = (input.platform || "unknown").replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase() || "unknown";
+  const productPart = (input.productId || "unknown").replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  if (input.transactionId) {
+    const txPart = input.transactionId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    return `iap_${platformPart}_${productPart}_tx_${txPart}`;
+  }
+
+  const tokenHash = hashForIdempotency(input.purchaseToken || "");
+  return `iap_${platformPart}_${productPart}_tok_${tokenHash}`;
+}
 
 /**
  * Validate In-App Purchase and credit the user
@@ -321,8 +357,8 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
     throw new HttpsError("invalid-argument", "productId is required");
   }
 
-  if (!purchaseToken) {
-    throw new HttpsError("invalid-argument", "purchaseToken is required");
+  if (!purchaseToken && !transactionId) {
+    throw new HttpsError("invalid-argument", "purchaseToken or transactionId is required");
   }
 
   // Get credits for this product
@@ -332,7 +368,12 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
   }
 
   // Create a unique payment reference
-  const paymentReference = `iap_${platform}_${transactionId || purchaseToken.substring(0, 20)}`;
+  const paymentReference = buildIapPaymentReference({
+    platform,
+    productId,
+    transactionId,
+    purchaseToken,
+  });
 
   // Check if this purchase has already been processed (idempotency)
   const existingPaymentQuery = await admin.firestore()
@@ -342,17 +383,18 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
     .limit(1)
     .get();
 
-  if (!existingPaymentQuery.empty) {
-    const existingPayment = existingPaymentQuery.docs[0].data();
+  const existingPaymentDoc = existingPaymentQuery.empty ? null : existingPaymentQuery.docs[0];
+  if (existingPaymentDoc?.data()?.status === "paid") {
+    const existingPayment = existingPaymentDoc.data();
     logger.info("IAP purchase already processed", {
       userId: uid,
       paymentReference,
       status: existingPayment.status,
     });
-    
+
     return {
-      success: existingPayment.status === "paid",
-      creditsAdded: existingPayment.status === "paid" ? existingPayment.creditsToAdd : 0,
+      success: true,
+      creditsAdded: existingPayment.creditsToAdd || creditsToAdd,
       alreadyProcessed: true,
     };
   }
@@ -375,9 +417,8 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
       throw new Error("Purchase validation failed");
     }
 
-    // Create payment record
-    const paymentRef = admin.firestore().collection("creditPayments").doc();
-    
+    // Create or refresh payment record (pending) before crediting.
+    const paymentRef = existingPaymentDoc?.ref || admin.firestore().collection("creditPayments").doc();
     await paymentRef.set({
       userId: uid,
       status: "pending",
@@ -389,13 +430,18 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
       paymentReference: paymentReference,
       creditsToAdd: creditsToAdd,
       ronAmount: creditsToAdd, // 1 RON = 1 credit
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      ...(existingPaymentDoc ? {} : {createdAt: admin.firestore.FieldValue.serverTimestamp()}),
+    }, {merge: true});
 
     // Credit the user in a transaction
     const db = admin.firestore();
-    await db.runTransaction(async (tx) => {
+    const txOutcome = await db.runTransaction(async (tx) => {
+      const paymentSnap = await tx.get(paymentRef);
+      if (paymentSnap.exists && paymentSnap.data()?.status === "paid") {
+        return {alreadyPaid: true};
+      }
+
       const userRef = db.collection("users").doc(uid);
       const userSnap = await tx.get(userRef);
       
@@ -411,11 +457,11 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      tx.update(paymentRef, {
+      tx.set(paymentRef, {
         status: "paid",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         completedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      }, {merge: true});
 
       // Create credit transaction record
       const txRecordRef = db.collection("users").doc(uid).collection("creditTransactions").doc();
@@ -430,7 +476,17 @@ export const validateIAPPurchaseCallable = onCall({region: "europe-west1"}, asyn
         amount: creditsToAdd,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      return {alreadyPaid: false};
     });
+
+    if (txOutcome.alreadyPaid) {
+      return {
+        success: true,
+        creditsAdded: creditsToAdd,
+        alreadyProcessed: true,
+      };
+    }
 
     logger.info("IAP purchase validated and credited", {
       userId: uid,

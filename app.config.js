@@ -7,7 +7,7 @@ export default {
     name: "eNumismatica",
     slug: "enumismatica",
     description: "Platformă românească pentru numismatică: monede de colecție, licitații și tranzacții sigure.",
-    version: "1.2.3",
+    version: "1.2.7",
     orientation: "portrait",
     icon: "./assets/eNumismatica.ro_logo.png",
     userInterfaceStyle: "light",
@@ -15,6 +15,7 @@ export default {
     jsEngine: "hermes",
     plugins: [
       "@react-native-firebase/app",
+      "expo-apple-authentication",
       [
         "expo-notifications",
         {
@@ -51,7 +52,10 @@ export default {
       infoPlist: {
         UIStatusBarHidden: false,
         UIViewControllerBasedStatusBarAppearance: true,
-        ITSAppUsesNonExemptEncryption: false
+        ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription: "Camera access is used to photograph coins and identity documents for listings and verification (for example, front/back photos when adding an item).",
+        NSPhotoLibraryUsageDescription: "Photo Library access is used to select existing coin and document photos to upload to listings and account verification.",
+        NSPhotoLibraryAddUsageDescription: "Photo Library write access is used only when you choose to save generated or edited listing images to your device."
       },
       bundleIdentifier: "ro.recordtrust.enumismatica",
       googleServicesFile: "./GoogleService-Info.plist",

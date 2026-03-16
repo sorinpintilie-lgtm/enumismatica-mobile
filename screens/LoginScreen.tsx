@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Modal, Switch, Platform, Image, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { z } from 'zod';
-import { signInWithEmail, signInWithGoogle } from '@shared/auth';
+import { signInWithEmail, signInWithGoogle, signInWithApple } from '@shared/auth';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigationTypes';
@@ -555,6 +555,48 @@ const LoginScreen: React.FC = () => {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    const { user, error } = await signInWithApple();
+    setLoading(false);
+    if (error) {
+      setError(error);
+    } else if (user) {
+      // Check user's 2FA status
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const twoFactorEnabled = userDoc.exists() && Boolean(userDoc.data()?.twoFactorEnabled);
+
+      if (twoFactorEnabled) {
+        // Check if this session already has 2FA verified
+        const okKey = `enumismatica_2fa_ok_${user.uid}`;
+        const sessionValue = await AsyncStorage.getItem(okKey);
+
+        if (sessionValue === '1') {
+          // 2FA already verified for this session
+          await startSessionOnServer();
+          await refreshAuth();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          });
+        } else {
+          // Show 2FA form
+          setPendingUserId(user.uid);
+          setShowStepper(true);
+          setCurrentStep(1);
+        }
+      } else {
+        // No 2FA required, proceed to dashboard
+        await startSessionOnServer();
+        await refreshAuth();
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
+    }
+  };
+
   const handlePasswordReset = async () => {
     setResetError('');
     setResetSuccess('');
@@ -670,6 +712,16 @@ const LoginScreen: React.FC = () => {
         >
           <Text style={styles.secondaryButtonText}>Autentificare cu Google</Text>
         </TouchableOpacity>
+
+        {Platform.OS === 'ios' && (
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleAppleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.secondaryButtonText}>Autentificare cu Apple</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.linkContainer}>
           <TouchableOpacity onPress={() => setShowResetPassword(true)}>
