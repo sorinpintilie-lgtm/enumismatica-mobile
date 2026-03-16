@@ -43,7 +43,63 @@ type IapModule = {
 
 function getIapModule(): IapModule | null {
   try {
-    return require('expo-iap') as IapModule;
+    // We import the module but override purchaseUpdatedListener, purchaseErrorListener,
+    // and requestPurchase to bypass expo-iap's normalizePurchasePlatform which accesses
+    // native Proxy properties and throws:
+    // "Exception in HostFunction: Native state unsupported on Proxy".
+    const mod = require('expo-iap') as IapModule & {
+      emitter?: { addListener: (event: string, listener: (...args: any[]) => void) => { remove: () => void } };
+    };
+
+    // Patch listeners: listen directly on the native emitter to avoid the Proxy-crashing
+    // normalizePurchasePlatform wrapper in expo-iap's purchaseUpdatedListener.
+    if (mod.emitter) {
+      const rawEmitter = mod.emitter;
+      mod.purchaseUpdatedListener = (listener) => {
+        return rawEmitter.addListener('purchase-updated', listener);
+      };
+      mod.purchaseErrorListener = (listener) => {
+        return rawEmitter.addListener('purchase-error', listener);
+      };
+    }
+
+    // Patch requestPurchase: the original calls normalizePurchasePlatform on the result
+    // which accesses native Proxy properties. We wrap it to catch and ignore the return
+    // value since we get the purchase via the listener anyway.
+    const originalRequestPurchase = mod.requestPurchase;
+    mod.requestPurchase = async (params) => {
+      try {
+        await originalRequestPurchase(params);
+      } catch (err: any) {
+        // If the error is the Proxy crash from normalizePurchasePlatform on the RESULT,
+        // the purchase was actually initiated successfully — the listener will handle it.
+        const msg = safeReadString(err, 'message') || safeToString(err);
+        if (msg.includes('Native state') || msg.includes('HostFunction') || msg.includes('Proxy')) {
+          console.warn('[paymentService] requestPurchase threw Proxy error (purchase likely initiated):', msg);
+          return null;
+        }
+        throw err;
+      }
+      return null;
+    };
+
+    // Patch getAvailablePurchases: the original calls normalizePurchaseArray which
+    // accesses native Proxy properties. We wrap it to catch the Proxy error.
+    const originalGetAvailablePurchases = mod.getAvailablePurchases;
+    mod.getAvailablePurchases = async () => {
+      try {
+        return await originalGetAvailablePurchases();
+      } catch (err: any) {
+        const msg = safeReadString(err, 'message') || safeToString(err);
+        if (msg.includes('Native state') || msg.includes('HostFunction') || msg.includes('Proxy')) {
+          console.warn('[paymentService] getAvailablePurchases threw Proxy error:', msg);
+          return [];
+        }
+        throw err;
+      }
+    };
+
+    return mod;
   } catch (error) {
     console.warn('expo-iap native module is unavailable in this client (Expo Go).', error);
     return null;
