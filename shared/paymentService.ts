@@ -51,7 +51,7 @@ function getIapModule(): IapModule | null {
 }
 
 function isUserCancelledError(error: any, iap: IapModule | null): boolean {
-  const code = error?.code;
+  const code = safeReadString(error, 'code');
   if (!code) return false;
 
   return (
@@ -59,6 +59,24 @@ function isUserCancelledError(error: any, iap: IapModule | null): boolean {
     code === 'USER_CANCELLED' ||
     code === iap?.ErrorCode?.UserCancelled
   );
+}
+
+function safeReadString(target: any, key: string): string | undefined {
+  try {
+    if (!target || typeof target !== 'object') return undefined;
+    const value = (target as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function safeToString(value: any): string {
+  try {
+    return typeof value === 'string' ? value : String(value);
+  } catch {
+    return '[unreadable-native-error]';
+  }
 }
 
 // In-App Purchase product IDs
@@ -157,9 +175,9 @@ export interface IAPDiagnosticsEntry {
 function sanitizeError(error: any): Record<string, unknown> {
   if (!error) return { type: 'unknown' };
 
-  const message = typeof error?.message === 'string' ? error.message : String(error);
-  const code = typeof error?.code === 'string' ? error.code : undefined;
-  const domain = typeof error?.domain === 'string' ? error.domain : undefined;
+  const message = safeReadString(error, 'message') || safeToString(error);
+  const code = safeReadString(error, 'code');
+  const domain = safeReadString(error, 'domain');
 
   // expo-iap can surface native proxy/host objects on errors.
   // Accessing or JSON-stringifying them may throw runtime errors such as:
@@ -167,7 +185,7 @@ function sanitizeError(error: any): Record<string, unknown> {
   // Keep diagnostics strictly to primitive-safe fields.
   let userInfo: string | undefined;
   try {
-    if (error && typeof error === 'object' && 'userInfo' in error) {
+    if (error && typeof error === 'object') {
       const rawUserInfo = (error as Record<string, unknown>).userInfo;
 
       if (rawUserInfo && typeof rawUserInfo === 'object') {
@@ -546,7 +564,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
           success: false,
           creditsAdded: 0,
           transactionId: null,
-          error: toUserFacingPurchaseError(error?.message),
+          error: toUserFacingPurchaseError(safeReadString(error, 'message')),
         });
       }
     });
@@ -576,7 +594,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
           success: false,
           creditsAdded: 0,
           transactionId: null,
-          error: toUserFacingPurchaseError(error?.message),
+          error: toUserFacingPurchaseError(safeReadString(error, 'message')),
         });
       }
     });
@@ -634,7 +652,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
             success: false,
             creditsAdded: 0,
             transactionId: null,
-            error: toUserFacingPurchaseError(error?.message),
+            error: toUserFacingPurchaseError(safeReadString(error, 'message')),
           });
         }
       });
