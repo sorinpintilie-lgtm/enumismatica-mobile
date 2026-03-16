@@ -1,169 +1,296 @@
-import React, { useCallback, useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  Alert, 
+import React, { useCallback, useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
   ActivityIndicator,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from 'react-native';
+import { useIAP, type Purchase } from 'expo-iap';
+import { isUserCancelledError } from 'expo-iap/build/utils/errorMapping';
+import type { PurchaseError } from 'expo-iap/build/utils/errorMapping';
 import InlineBackButton from '../components/InlineBackButton';
 import { colors } from '../styles/sharedStyles';
 import { useAuth } from '../context/AuthContext';
 import { getUserCredits } from '@shared/creditService';
 import {
-  initIAP,
-  endIAP,
-  getIAPProducts,
-  purchaseCredits,
-  restorePurchases,
-  IAP_PRODUCTS,
+  IAP_PRODUCT_SKUS,
   PRODUCT_CREDITS_MAP,
   PRODUCT_PRICE_MAP,
-  type IAPProduct,
-  type IAPPurchaseResult,
+  validatePurchaseWithBackend,
 } from '@shared/paymentService';
 
 const BuyCreditsScreen: React.FC = () => {
   const { user } = useAuth();
-  
-  const [products, setProducts] = useState<IAPProduct[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  // -----------------------------------------------------------------------
+  // Local state
+  // -----------------------------------------------------------------------
+  const [selectedSku, setSelectedSku] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [currentCredits, setCurrentCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastPurchaseResult, setLastPurchaseResult] = useState<IAPPurchaseResult | null>(null);
   const [iapError, setIapError] = useState<string | null>(null);
 
+  // Track whether we're currently processing a purchase to avoid double-handling
+  const processingRef = useRef(false);
+
+  // -----------------------------------------------------------------------
+  // Credit balance
+  // -----------------------------------------------------------------------
   const refreshCredits = useCallback(async () => {
     if (!user?.uid) return;
     const credits = await getUserCredits(user.uid);
     setCurrentCredits(credits);
   }, [user?.uid]);
 
-  // Initialize IAP and load products
-  useEffect(() => {
-    const init = async () => {
-      try {
-        setLoading(true);
-        const initialized = await initIAP();
-        if (initialized) {
-          const iapProducts = await getIAPProducts();
-          setProducts(iapProducts);
-
-          if (iapProducts.length === 0) {
-            setIapError('Nu s-au putut încărca produsele. Asigură-te că ai conexiune la internet și încearcă din nou.');
-          } else {
-            setIapError(null);
-          }
-
-          // Select first product by default
-          if (iapProducts.length > 0) {
-            setSelectedProductId(iapProducts[0].productId);
-          }
-        } else {
-          setIapError('Nu s-au putut încărca produsele. Asigură-te că ai conexiune la internet și încearcă din nou.');
-        }
-      } catch (error) {
-        console.error('Failed to initialize IAP:', error);
-        setIapError('Nu s-au putut încărca produsele. Asigură-te că ai conexiune la internet și încearcă din nou.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-
-    return () => {
-      endIAP();
-    };
-  }, []);
-
-  // Load current credits
   useEffect(() => {
     refreshCredits().catch((err) => {
       console.warn('[BuyCreditsScreen] Failed to fetch credits:', err);
     });
   }, [refreshCredits]);
 
+  // -----------------------------------------------------------------------
+  // Purchase success handler — called by useIAP's onPurchaseSuccess
+  // -----------------------------------------------------------------------
+  const handlePurchaseSuccess = useCallback(
+    async (purchase: Purchase) => {
+      // Guard against double processing
+      if (processingRef.current) return;
+      processingRef.current = true;
+      setProcessing(true);
+
+      try {
+        const productId = purchase.productId || purchase.id;
+        const transactionId =
+          purchase.transactionId ??
+          (purchase as any).originalTransactionIdentifierIOS ??
+          null;
+        const purchaseToken = purchase.purchaseToken ?? '';
+
+        console.log('[BuyCreditsScreen] Purchase success, validating…', {
+          productId,
+          transactionId,
+        });
+
+        // 1. Validate with backend Cloud Function — this credits the user
+        const validation = await validatePurchaseWithBackend(
+          productId,
+          purchaseToken,
+          transactionId,
+          Platform.OS,
+        );
+
+        if (validation.success) {
+          // 2. Finish (consume) the transaction so it can be purchased again
+          try {
+            // Use the iap ref to call finishTransaction
+            await finishTransactionRef.current?.(purchase);
+          } catch (finishErr) {
+            console.warn('[BuyCreditsScreen] finishTransaction error:', finishErr);
+          }
+
+          await refreshCredits();
+          Alert.alert(
+            'Succes',
+            `Plata a fost procesată cu succes! S-au adăugat ${validation.creditsAdded} credite.`,
+          );
+        } else {
+          Alert.alert(
+            'Eroare',
+            validation.error || 'Validarea achiziției a eșuat.',
+          );
+        }
+      } catch (error: any) {
+        console.error('[BuyCreditsScreen] Purchase processing error:', error);
+        Alert.alert(
+          'Eroare',
+          error?.message || 'A apărut o eroare la procesarea achiziției.',
+        );
+      } finally {
+        setProcessing(false);
+        processingRef.current = false;
+      }
+    },
+    [refreshCredits],
+  );
+
+  // -----------------------------------------------------------------------
+  // Purchase error handler — called by useIAP's onPurchaseError
+  // -----------------------------------------------------------------------
+  const handlePurchaseError = useCallback((error: PurchaseError) => {
+    setProcessing(false);
+    processingRef.current = false;
+
+    if (isUserCancelledError(error)) {
+      // User tapped Cancel — no need to show an error
+      console.log('[BuyCreditsScreen] Purchase cancelled by user');
+      return;
+    }
+
+    console.error('[BuyCreditsScreen] Purchase error:', error);
+    Alert.alert(
+      'Eroare',
+      error?.message || 'A apărut o eroare la achiziție.',
+    );
+  }, []);
+
+  // -----------------------------------------------------------------------
+  // useIAP hook — manages connection, listeners, and state
+  // -----------------------------------------------------------------------
+  const {
+    connected,
+    products,
+    fetchProducts,
+    requestPurchase,
+    finishTransaction,
+    restorePurchases,
+  } = useIAP({
+    onPurchaseSuccess: handlePurchaseSuccess,
+    onPurchaseError: handlePurchaseError,
+  });
+
+  // Keep a ref to finishTransaction so the callback can use it
+  const finishTransactionRef = useRef<((purchase: Purchase) => Promise<void>) | undefined>(undefined);
+  useEffect(() => {
+    finishTransactionRef.current = (purchase: Purchase) =>
+      finishTransaction({ purchase, isConsumable: true });
+  }, [finishTransaction]);
+
+  // -----------------------------------------------------------------------
+  // Fetch products once connected
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (!connected) return;
+
+    (async () => {
+      try {
+        await fetchProducts({ skus: IAP_PRODUCT_SKUS, type: 'in-app' });
+        setIapError(null);
+      } catch (err) {
+        console.error('[BuyCreditsScreen] fetchProducts error:', err);
+        setIapError(
+          'Nu s-au putut încărca produsele. Asigură-te că ai conexiune la internet și încearcă din nou.',
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [connected, fetchProducts]);
+
+  // If not connected after mount, stop loading after timeout
+  useEffect(() => {
+    if (connected) return;
+    const timeout = setTimeout(() => {
+      if (!connected) {
+        setLoading(false);
+        setIapError(
+          'Nu s-a putut conecta la magazin. Asigură-te că ai conexiune la internet și încearcă din nou.',
+        );
+      }
+    }, 10_000);
+    return () => clearTimeout(timeout);
+  }, [connected]);
+
+  // When products arrive, select the first one
+  useEffect(() => {
+    if (products.length > 0 && !selectedSku) {
+      setSelectedSku(products[0].id);
+      setLoading(false);
+    }
+  }, [products, selectedSku]);
+
+  // -----------------------------------------------------------------------
+  // UI actions
+  // -----------------------------------------------------------------------
   const handlePurchase = async () => {
-    if (!selectedProductId) {
+    if (!selectedSku) {
       Alert.alert('Eroare', 'Selectează un pachet de credite.');
       return;
     }
 
     try {
       setProcessing(true);
+      processingRef.current = false; // will be set true in onPurchaseSuccess
       Keyboard.dismiss();
 
-      const result = await purchaseCredits(selectedProductId);
-      setLastPurchaseResult(result);
-
-      if (result.success) {
-        await refreshCredits();
-        Alert.alert(
-          'Succes',
-          `Plata a fost procesată cu succes! S-au adăugat ${result.creditsAdded} credite.`
-        );
-      } else {
-        Alert.alert(
-          'Eroare',
-          result.error || 'Nu s-a putut procesa plata. Încearcă din nou.'
-        );
-      }
+      await requestPurchase({
+        request: {
+          apple: { sku: selectedSku },
+          google: { skus: [selectedSku] },
+        },
+        type: 'in-app',
+      });
+      // The result is handled asynchronously via onPurchaseSuccess / onPurchaseError
     } catch (err: any) {
-      console.error('Purchase error:', err);
-      Alert.alert('Eroare', err?.message || 'Nu s-a putut procesa plata.');
-    } finally {
+      // requestPurchase may throw for Proxy / native errors; the listener
+      // should still fire, so only show an alert if it's NOT a Proxy error.
+      const msg = String(err?.message || err || '');
+      if (
+        msg.includes('Native state') ||
+        msg.includes('HostFunction') ||
+        msg.includes('Proxy')
+      ) {
+        console.warn('[BuyCreditsScreen] Suppressed Proxy error from requestPurchase — listener will handle result');
+        return;
+      }
+      console.error('[BuyCreditsScreen] requestPurchase error:', err);
       setProcessing(false);
+      processingRef.current = false;
+      Alert.alert('Eroare', err?.message || 'Nu s-a putut iniția achiziția.');
     }
   };
 
   const handleRestorePurchases = async () => {
     try {
       setProcessing(true);
-      const results = await restorePurchases();
-      
-      if (results.length === 0) {
-        Alert.alert('Info', 'Nu există achiziții de restaurat.');
-      } else {
-        const successful = results.filter(r => r.success);
-        if (successful.length > 0) {
-          await refreshCredits();
-          const totalCredits = successful.reduce((sum, r) => sum + r.creditsAdded, 0);
-          Alert.alert('Succes', `S-au restaurat ${totalCredits} credite.`);
-        } else {
-          Alert.alert('Info', 'Nu s-au putut restaura achiziții.');
-        }
-      }
+      await restorePurchases();
+      // restorePurchases updates availablePurchases state internally;
+      // for consumables there is typically nothing to restore.
+      Alert.alert('Info', 'Restaurarea achizițiilor s-a efectuat. Consumabilele nu pot fi restaurate.');
     } catch (err: any) {
-      console.error('Restore error:', err);
+      console.error('[BuyCreditsScreen] Restore error:', err);
       Alert.alert('Eroare', err?.message || 'Nu s-au putut restaura achizițiile.');
     } finally {
       setProcessing(false);
     }
   };
 
-  const fallbackProducts: IAPProduct[] = Object.values(IAP_PRODUCTS).map((productId) => ({
-    productId,
-    title: 'Credite eNumismatica',
-    description: `${PRODUCT_CREDITS_MAP[productId] || 0} credite`,
-    price: PRODUCT_PRICE_MAP[productId] || '',
-    localizedPrice: PRODUCT_PRICE_MAP[productId] || '',
-    credits: PRODUCT_CREDITS_MAP[productId] || 0,
-  }));
+  // -----------------------------------------------------------------------
+  // Derived display data
+  // -----------------------------------------------------------------------
 
-  const displayedProducts = products.length > 0 ? products : fallbackProducts;
-  const selectedProduct = displayedProducts.find(p => p.productId === selectedProductId);
-  const estimatedCredits = selectedProduct?.credits || 0;
+  // Build display items from store products, or fallback from constants
+  const displayItems = products.length > 0
+    ? products
+        .filter((p) => IAP_PRODUCT_SKUS.includes(p.id))
+        .sort((a, b) => (PRODUCT_CREDITS_MAP[a.id] ?? 0) - (PRODUCT_CREDITS_MAP[b.id] ?? 0))
+        .map((p) => ({
+          sku: p.id,
+          credits: PRODUCT_CREDITS_MAP[p.id] ?? 0,
+          price: p.displayPrice || (p as any).localizedPrice || PRODUCT_PRICE_MAP[p.id] || '',
+        }))
+    : IAP_PRODUCT_SKUS.map((sku) => ({
+        sku,
+        credits: PRODUCT_CREDITS_MAP[sku] ?? 0,
+        price: PRODUCT_PRICE_MAP[sku] ?? '',
+      }));
 
+  const selectedItem = displayItems.find((i) => i.sku === selectedSku);
+  const estimatedCredits = selectedItem?.credits ?? 0;
+
+  // -----------------------------------------------------------------------
+  // Render
+  // -----------------------------------------------------------------------
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <ScrollView 
-        style={styles.container} 
+      <ScrollView
+        style={styles.container}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -171,18 +298,26 @@ const BuyCreditsScreen: React.FC = () => {
         <InlineBackButton />
 
         <Text style={styles.title}>Cumpărare credite</Text>
-        <Text style={styles.subtitle}>Creditele sunt folosite pentru promovări, listări și licitații.</Text>
+        <Text style={styles.subtitle}>
+          Creditele sunt folosite pentru promovări, listări și licitații.
+        </Text>
 
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Cum funcționează creditele</Text>
           <Text style={styles.infoLine}>• 1 RON = 1 credit</Text>
-          <Text style={styles.infoLine}>• Creditele sunt adăugate după confirmarea plății</Text>
-          <Text style={styles.infoLine}>• Pot fi folosite pentru boost, promovare și publicare</Text>
+          <Text style={styles.infoLine}>
+            • Creditele sunt adăugate după confirmarea plății
+          </Text>
+          <Text style={styles.infoLine}>
+            • Pot fi folosite pentru boost, promovare și publicare
+          </Text>
         </View>
 
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>Sold curent</Text>
-          <Text style={styles.balanceValue}>{currentCredits === null ? '—' : `${currentCredits} credite`}</Text>
+          <Text style={styles.balanceValue}>
+            {currentCredits === null ? '—' : `${currentCredits} credite`}
+          </Text>
         </View>
 
         {loading ? (
@@ -194,34 +329,42 @@ const BuyCreditsScreen: React.FC = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Alege pachetul de credite</Text>
             <View style={styles.productGrid}>
-              {displayedProducts.map((product) => {
-                const selected = selectedProductId === product.productId;
+              {displayItems.map((item) => {
+                const selected = selectedSku === item.sku;
                 return (
                   <TouchableOpacity
-                    key={product.productId}
+                    key={item.sku}
                     style={[
                       styles.productButton,
                       selected && styles.productButtonSelected,
                       iapError && products.length === 0 && styles.productButtonDisabled,
                     ]}
-                    onPress={() => setSelectedProductId(product.productId)}
+                    onPress={() => setSelectedSku(item.sku)}
                   >
-                    <Text style={[styles.productCredits, selected && styles.productCreditsSelected]}>
-                      {product.credits} credite
+                    <Text
+                      style={[
+                        styles.productCredits,
+                        selected && styles.productCreditsSelected,
+                      ]}
+                    >
+                      {item.credits} credite
                     </Text>
-                    <Text style={[styles.productPrice, selected && styles.productPriceSelected]}>
-                      {product.localizedPrice}
+                    <Text
+                      style={[
+                        styles.productPrice,
+                        selected && styles.productPriceSelected,
+                      ]}
+                    >
+                      {item.price}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
-            {iapError ? (
-              <Text style={styles.errorText}>{iapError}</Text>
-            ) : null}
-            
-            {selectedProduct && (
+            {iapError ? <Text style={styles.errorText}>{iapError}</Text> : null}
+
+            {selectedItem && (
               <Text style={styles.estimateText}>
                 Vei primi {estimatedCredits} credite după confirmarea plății.
               </Text>
@@ -229,53 +372,37 @@ const BuyCreditsScreen: React.FC = () => {
           </View>
         )}
 
-        {!loading && displayedProducts.length > 0 && (
-          <TouchableOpacity 
-            style={[styles.primaryButton, processing && styles.primaryButtonDisabled]} 
-            disabled={processing} 
+        {!loading && displayItems.length > 0 && (
+          <TouchableOpacity
+            style={[styles.primaryButton, processing && styles.primaryButtonDisabled]}
+            disabled={processing}
             onPress={handlePurchase}
           >
             {processing ? (
               <ActivityIndicator color={colors.primaryText} />
             ) : (
-              <Text style={styles.primaryButtonText}>Cumpără {estimatedCredits} credite</Text>
+              <Text style={styles.primaryButtonText}>
+                Cumpără {estimatedCredits} credite
+              </Text>
             )}
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity 
-          style={styles.restoreButton} 
-          disabled={processing} 
+        <TouchableOpacity
+          style={styles.restoreButton}
+          disabled={processing}
           onPress={handleRestorePurchases}
         >
           <Text style={styles.restoreButtonText}>Restaurează achizițiile</Text>
         </TouchableOpacity>
-
-        {lastPurchaseResult ? (
-          <View style={styles.statusCard}>
-            <Text style={styles.statusTitle}>Ultima tranzacție</Text>
-            <Text style={styles.statusLine}>
-              Status: {lastPurchaseResult.success ? 'Succes' : 'Eșuat'}
-            </Text>
-            <Text style={styles.statusLine}>
-              Credite: {lastPurchaseResult.creditsAdded}
-            </Text>
-            {lastPurchaseResult.transactionId && (
-              <Text style={styles.statusLine}>
-                ID: {lastPurchaseResult.transactionId}
-              </Text>
-            )}
-            {lastPurchaseResult.error && (
-              <Text style={styles.statusError}>
-                Eroare: {lastPurchaseResult.error}
-              </Text>
-            )}
-          </View>
-        ) : null}
       </ScrollView>
     </TouchableWithoutFeedback>
   );
 };
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -396,14 +523,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
   },
-  errorContainer: {
-    padding: 24,
-    alignItems: 'center',
-  },
   errorText: {
     color: colors.error,
     textAlign: 'center',
     fontSize: 14,
+    marginTop: 8,
   },
   primaryButton: {
     backgroundColor: colors.primary,
@@ -431,27 +555,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '600',
     fontSize: 14,
-  },
-  statusCard: {
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  statusTitle: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  statusLine: {
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  statusError: {
-    color: colors.error,
-    fontSize: 12,
-    marginTop: 4,
   },
 });
 
