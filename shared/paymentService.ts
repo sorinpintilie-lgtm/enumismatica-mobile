@@ -71,12 +71,61 @@ function safeReadString(target: any, key: string): string | undefined {
   }
 }
 
+function safeReadAny(target: any, key: string): any {
+  try {
+    if (!target || typeof target !== 'object') return undefined;
+    return (target as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
+}
+
 function safeToString(value: any): string {
   try {
     return typeof value === 'string' ? value : String(value);
   } catch {
     return '[unreadable-native-error]';
   }
+}
+
+/**
+ * Safely extract all fields from a native IAP purchase proxy object.
+ * Every property access is wrapped in try/catch to avoid
+ * "Exception in HostFunction: Native state unsupported on Proxy".
+ */
+function safeExtractPurchase(purchase: any): {
+  id: string;
+  productId: string;
+  transactionId: string | null;
+  originalTransactionIdentifierIOS: string | null;
+  purchaseToken: string;
+  transactionReceipt: string;
+  verificationResultIOS: string;
+} {
+  return {
+    id: safeReadString(purchase, 'id') || '',
+    productId: safeReadString(purchase, 'productId') || '',
+    transactionId: safeReadString(purchase, 'transactionId') || null,
+    originalTransactionIdentifierIOS: safeReadString(purchase, 'originalTransactionIdentifierIOS') || null,
+    purchaseToken: safeReadString(purchase, 'purchaseToken') || '',
+    transactionReceipt: safeReadString(purchase, 'transactionReceipt') || '',
+    verificationResultIOS: safeReadString(purchase, 'verificationResultIOS') || '',
+  };
+}
+
+/**
+ * Safely extract fields from a native IAP product proxy object.
+ */
+function safeExtractProduct(product: any): IapProductRaw {
+  return {
+    id: safeReadString(product, 'id') || '',
+    productId: safeReadString(product, 'productId') || '',
+    title: safeReadString(product, 'title') || '',
+    description: safeReadString(product, 'description') || '',
+    price: safeReadString(product, 'price') || '',
+    localizedPrice: safeReadString(product, 'localizedPrice') || '',
+    displayPrice: safeReadString(product, 'displayPrice') || '',
+  };
 }
 
 // In-App Purchase product IDs
@@ -311,25 +360,29 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
 
     // fetchProducts returns an array of products.
     // In TestFlight, if only some SKUs exist/are attached, a bulk query can return empty.
-    let products = await iap.fetchProducts({ skus: productIds, type: 'in-app' });
+    let rawProducts = await iap.fetchProducts({ skus: productIds, type: 'in-app' });
+
+    // Safely extract all product data from native proxy objects immediately
+    let products: IapProductRaw[] = (rawProducts || []).map(safeExtractProduct);
 
     pushIapDiagnostic('products:fetch:bulk-result', 'Bulk fetch completed', {
-      receivedCount: products?.length || 0,
-      receivedIds: (products || []).map((p) => p.id || p.productId || 'unknown'),
+      receivedCount: products.length,
+      receivedIds: products.map((p) => p.id || p.productId || 'unknown'),
     });
 
     // Retry strategy: query each SKU individually and merge unique results.
-    if (!products || products.length === 0) {
+    if (products.length === 0) {
       const merged: IapProductRaw[] = [];
       const seen = new Set<string>();
 
       for (const sku of productIds) {
         try {
-          const partial = await iap.fetchProducts({ skus: [sku], type: 'in-app' });
+          const rawPartial = await iap.fetchProducts({ skus: [sku], type: 'in-app' });
+          const partial = (rawPartial || []).map(safeExtractProduct);
           pushIapDiagnostic('products:fetch:single-result', 'Single SKU fetch completed', {
             sku,
-            receivedCount: partial?.length || 0,
-            receivedIds: (partial || []).map((p) => p.id || p.productId || 'unknown'),
+            receivedCount: partial.length,
+            receivedIds: partial.map((p) => p.id || p.productId || 'unknown'),
           });
 
           for (const p of partial) {
@@ -350,7 +403,7 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
       products = merged;
     }
 
-    if (!products || products.length === 0) {
+    if (products.length === 0) {
       pushIapDiagnostic('products:empty', 'No IAP products found after retry strategy', {
         requestedSkus: productIds,
       });
@@ -482,8 +535,12 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     };
 
     // Set up purchase update listener
-    purchaseSubscription = iap.purchaseUpdatedListener(async (purchase: IapPurchaseRaw) => {
+    purchaseSubscription = iap.purchaseUpdatedListener(async (rawPurchase: IapPurchaseRaw) => {
       if (resolved) return;
+
+      // Immediately extract all data from the native proxy into plain JS values
+      // to avoid "Exception in HostFunction: Native state unsupported on Proxy"
+      const purchase = safeExtractPurchase(rawPurchase);
 
       const incomingRawId = purchase.id || purchase.productId;
       // Check if this purchase is for our product
@@ -501,7 +558,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
       cleanup();
 
       try {
-        // Get transaction details
+        // Get transaction details (already safely extracted)
         const transactionId = purchase.transactionId || purchase.originalTransactionIdentifierIOS || null;
         const purchaseToken =
           purchase.purchaseToken ||
@@ -533,9 +590,9 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
         });
 
         if (validationResult.success) {
-          // Finish the transaction
+          // Finish the transaction — pass the ORIGINAL native object, not our extracted copy
           try {
-            await iap.finishTransaction({ purchase, isConsumable: true });
+            await iap.finishTransaction({ purchase: rawPurchase, isConsumable: true });
             pushIapDiagnostic('purchase:finish:success', 'Transaction finished successfully');
           } catch (finishError) {
             pushIapDiagnostic('purchase:finish:error', 'Failed to finish transaction', {
@@ -715,8 +772,9 @@ export async function getPendingPurchases(): Promise<IapPurchaseRaw[]> {
     const iap = getIapModule();
     if (!iap) return [];
 
-    const purchases = await iap.getAvailablePurchases();
-    return purchases || [];
+    const rawPurchases = await iap.getAvailablePurchases();
+    // Safely extract from native proxy objects
+    return (rawPurchases || []).map((p) => safeExtractPurchase(p));
   } catch (error) {
     return [];
   }
@@ -735,18 +793,22 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
       return [];
     }
 
-    const purchases = await iap.getAvailablePurchases();
+    const rawPurchases = await iap.getAvailablePurchases();
     const results: IAPPurchaseResult[] = [];
 
     pushIapDiagnostic('restore:available', 'Loaded available purchases', {
-      count: purchases?.length || 0,
+      count: rawPurchases?.length || 0,
     });
 
-    if (!purchases || purchases.length === 0) {
+    if (!rawPurchases || rawPurchases.length === 0) {
       return results;
     }
 
-    for (const purchase of purchases) {
+    for (let i = 0; i < rawPurchases.length; i++) {
+      const rawPurchase = rawPurchases[i];
+      // Safely extract all data from native proxy immediately
+      const purchase = safeExtractPurchase(rawPurchase);
+
       const productId = purchase.id || purchase.productId;
       const canonicalProductId = toCanonicalProductId(productId);
       if (!canonicalProductId) {
@@ -773,9 +835,9 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
       );
 
       if (validationResult.success) {
-        // Finish the transaction
+        // Finish the transaction — pass the ORIGINAL native object
         try {
-          await iap.finishTransaction({ purchase, isConsumable: true });
+          await iap.finishTransaction({ purchase: rawPurchase, isConsumable: true });
         } catch (finishError) {
           pushIapDiagnostic('restore:finish:error', 'Failed to finish restored transaction', {
             error: sanitizeError(finishError),
