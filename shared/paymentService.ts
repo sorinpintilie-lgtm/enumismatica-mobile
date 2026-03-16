@@ -8,7 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 // In-App Purchase product IDs
 // These must match the products configured in App Store Connect and Google Play Console
 export const IAP_PRODUCTS = {
-  CREDITS_20: 'ro.enumismatica.credits.20',
+  CREDITS_25: 'ro.enumismatica.credits.25',
   CREDITS_50: 'ro.enumismatica.credits.50',
   CREDITS_100: 'ro.enumismatica.credits.100',
   CREDITS_200: 'ro.enumismatica.credits.200',
@@ -16,7 +16,7 @@ export const IAP_PRODUCTS = {
 
 // Product ID to credits mapping
 export const PRODUCT_CREDITS_MAP: Record<string, number> = {
-  [IAP_PRODUCTS.CREDITS_20]: 20,
+  [IAP_PRODUCTS.CREDITS_25]: 25,
   [IAP_PRODUCTS.CREDITS_50]: 50,
   [IAP_PRODUCTS.CREDITS_100]: 100,
   [IAP_PRODUCTS.CREDITS_200]: 200,
@@ -24,7 +24,7 @@ export const PRODUCT_CREDITS_MAP: Record<string, number> = {
 
 // Product ID to price mapping (fallback if store price unavailable)
 export const PRODUCT_PRICE_MAP: Record<string, string> = {
-  [IAP_PRODUCTS.CREDITS_20]: '20 RON',
+  [IAP_PRODUCTS.CREDITS_25]: '25 RON',
   [IAP_PRODUCTS.CREDITS_50]: '50 RON',
   [IAP_PRODUCTS.CREDITS_100]: '100 RON',
   [IAP_PRODUCTS.CREDITS_200]: '200 RON',

@@ -66,23 +66,33 @@ const BuyCreditsScreen: React.FC = () => {
       setProcessing(true);
 
       try {
-        const productId = purchase.productId || purchase.id;
-        const transactionId =
-          purchase.transactionId ??
-          (purchase as any).originalTransactionIdentifierIOS ??
-          null;
-        const purchaseToken = purchase.purchaseToken ?? '';
+        // Safely extract fields — purchase object may be a native Proxy
+        // so we use try/catch on each field access
+        const getField = (key: string): string => {
+          try { return (purchase as any)?.[key] ?? ''; } catch { return ''; }
+        };
+
+        // Use the currently-selected SKU as primary product ID since it's reliable
+        const productId = selectedSku || getField('productId') || getField('id');
+        const transactionId = getField('transactionId') || getField('originalTransactionIdentifierIOS') || null;
+        const purchaseToken = getField('purchaseToken') || getField('transactionReceipt') || getField('verificationResultIOS') || getField('id');
+
+        // Ensure we always have at least a purchaseToken or transactionId so the
+        // Cloud Function can create a unique payment record
+        const effectiveToken = purchaseToken || transactionId || `${productId}_${Date.now()}`;
+        const effectiveTransactionId = transactionId || null;
 
         console.log('[BuyCreditsScreen] Purchase success, validating…', {
           productId,
-          transactionId,
+          hasTransactionId: !!transactionId,
+          hasPurchaseToken: !!purchaseToken,
         });
 
         // 1. Validate with backend Cloud Function — this credits the user
         const validation = await validatePurchaseWithBackend(
           productId,
-          purchaseToken,
-          transactionId,
+          effectiveToken,
+          effectiveTransactionId,
           Platform.OS,
         );
 
