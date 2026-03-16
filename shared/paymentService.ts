@@ -160,9 +160,31 @@ function sanitizeError(error: any): Record<string, unknown> {
   const message = typeof error?.message === 'string' ? error.message : String(error);
   const code = typeof error?.code === 'string' ? error.code : undefined;
   const domain = typeof error?.domain === 'string' ? error.domain : undefined;
-  const userInfo = error?.userInfo && typeof error.userInfo === 'object'
-    ? JSON.stringify(error.userInfo).slice(0, 1200)
-    : undefined;
+
+  // expo-iap can surface native proxy/host objects on errors.
+  // Accessing or JSON-stringifying them may throw runtime errors such as:
+  // "Exception in HostFunction: Native state unsupported on Proxy".
+  // Keep diagnostics strictly to primitive-safe fields.
+  let userInfo: string | undefined;
+  try {
+    if (error && typeof error === 'object' && 'userInfo' in error) {
+      const rawUserInfo = (error as Record<string, unknown>).userInfo;
+
+      if (rawUserInfo && typeof rawUserInfo === 'object') {
+        const safeEntries = Object.entries(rawUserInfo as Record<string, unknown>)
+          .map(([key, value]) => {
+            const valueType = typeof value;
+            if (value == null || valueType === 'string' || valueType === 'number' || valueType === 'boolean') {
+              return [key, value] as const;
+            }
+            return [key, `[${valueType}]`] as const;
+          });
+        userInfo = JSON.stringify(Object.fromEntries(safeEntries)).slice(0, 1200);
+      }
+    }
+  } catch {
+    userInfo = undefined;
+  }
 
   return {
     message,
