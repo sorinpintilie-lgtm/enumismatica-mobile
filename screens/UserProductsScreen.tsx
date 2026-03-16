@@ -115,6 +115,56 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 10,
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(231, 183, 60, 0.5)',
+  },
+  sectionHeaderExpired: {
+    borderBottomColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  sectionIcon: {
+    fontSize: 18,
+  },
+  sectionCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    overflow: 'hidden',
+  },
+  expiredCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    padding: 16,
+    marginBottom: 12,
+  },
+  reactivateButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    flex: 1,
+  },
+  reactivateButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 13,
+  },
 });
 
 const UserProductsScreen: React.FC = () => {
@@ -237,7 +287,13 @@ const UserProductsScreen: React.FC = () => {
           </View>
         ) : (
           <View>
-            <Text style={styles.sectionTitle}>Active în magazin</Text>
+            {/* ── ACTIVE PRODUCTS SECTION ── */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionIcon}>🟢</Text>
+              <Text style={styles.sectionTitle}>Active în magazin</Text>
+              <Text style={styles.sectionCount}>{activeProducts.length}</Text>
+            </View>
+
             {activeProducts.length === 0 ? (
               <View style={styles.card}>
                 <Text style={styles.mutedText}>Nu ai produse active în acest moment.</Text>
@@ -274,16 +330,25 @@ const UserProductsScreen: React.FC = () => {
               })
             )}
 
-            <Text style={styles.sectionTitle}>Expirate — reactivează</Text>
+            {/* ── DIVIDER ── */}
+            <View style={styles.sectionDivider} />
+
+            {/* ── EXPIRED PRODUCTS SECTION ── */}
+            <View style={[styles.sectionHeader, styles.sectionHeaderExpired]}>
+              <Text style={styles.sectionIcon}>🔴</Text>
+              <Text style={[styles.sectionTitle, { color: '#fca5a5' }]}>Expirate — reactivează</Text>
+              <Text style={styles.sectionCount}>{expiredProducts.length}</Text>
+            </View>
+
             {expiredProducts.length === 0 ? (
-              <View style={styles.card}>
+              <View style={styles.expiredCard}>
                 <Text style={styles.mutedText}>Nu ai produse expirate disponibile pentru reactivare.</Text>
               </View>
             ) : (
               expiredProducts.map((product: any) => {
                 const expiryDate = getEffectiveListingExpiryDate(product);
                 const relisting = relistingProductId === product.id;
-                return <View key={product.id} style={styles.card}>
+                return <View key={product.id} style={styles.expiredCard}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                     <View style={{ flex: 1, marginRight: 10 }}>
                       <Text style={styles.cardTitle} numberOfLines={2}>
@@ -311,11 +376,11 @@ const UserProductsScreen: React.FC = () => {
                       <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.primaryButton, { flex: 1, opacity: relisting ? 0.7 : 1 }]}
+                      style={[styles.reactivateButton, { opacity: relisting ? 0.7 : 1 }]}
                       onPress={() => handleRelist(product.id)}
                       disabled={relisting}
                     >
-                      <Text style={styles.primaryButtonText}>
+                      <Text style={styles.reactivateButtonText}>
                         {relisting ? 'Se reactivează...' : `Reactivează (${relistCost} credite)`}
                       </Text>
                     </TouchableOpacity>
