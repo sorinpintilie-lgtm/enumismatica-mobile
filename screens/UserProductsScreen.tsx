@@ -11,161 +11,7 @@ import InlineBackButton from '../components/InlineBackButton';
 import { getEffectiveListingExpiryDate, isDirectListingExpired } from '@shared/listingExpiry';
 import { relistProductWithCredits, calculateProductListingCost } from '@shared/creditService';
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  subtitle: {
-    fontSize: 13,
-    marginTop: 6,
-    color: colors.textSecondary,
-  },
-  card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.borderColor,
-    backgroundColor: colors.cardBackground,
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  mutedText: {
-    color: colors.textSecondary,
-  },
-  priceText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.success,
-  },
-  expiredBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.45)',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  expiredBadgeText: {
-    color: '#fecaca',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: colors.primaryText,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.10)',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-  },
-  errorTitle: {
-    color: colors.error,
-    fontSize: 16,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  errorText: {
-    color: colors.errorLight,
-    textAlign: 'center',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: colors.background,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginVertical: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(231, 183, 60, 0.5)',
-  },
-  sectionHeaderExpired: {
-    borderBottomColor: 'rgba(239, 68, 68, 0.5)',
-  },
-  sectionIcon: {
-    fontSize: 18,
-  },
-  sectionCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
-  expiredCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.04)',
-    padding: 16,
-    marginBottom: 12,
-  },
-  reactivateButton: {
-    backgroundColor: '#dc2626',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    flex: 1,
-  },
-  reactivateButtonText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-  },
-});
+type Tab = 'active' | 'inactive';
 
 const UserProductsScreen: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -173,6 +19,7 @@ const UserProductsScreen: React.FC = () => {
 
   const userId = user?.uid || null;
   const [relistingProductId, setRelistingProductId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>('active');
 
   const { products, loading: productsLoading, error: productsError } = useProducts({
     ownerId: userId || undefined,
@@ -236,7 +83,6 @@ const UserProductsScreen: React.FC = () => {
     );
   }
 
-  const isEmpty = ownerProducts.length === 0;
   const relistDays = 30;
   const relistCost = calculateProductListingCost(relistDays);
 
@@ -252,6 +98,8 @@ const UserProductsScreen: React.FC = () => {
     }
   };
 
+  const displayedProducts = activeTab === 'active' ? activeProducts : expiredProducts;
+
   return (
     <ScrollView style={styles.screen}>
       <View style={styles.content}>
@@ -259,11 +107,9 @@ const UserProductsScreen: React.FC = () => {
         <View style={{ marginTop: 12, marginBottom: 16 }}>
           <View style={styles.headerRow}>
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.title}>Produsele utilizatorului</Text>
+              <Text style={styles.title}>Produsele mele</Text>
               <Text style={styles.subtitle}>
-                {isEmpty
-                  ? 'Nu există încă produse active listate în magazin.'
-                  : `Ai ${activeProducts.length} active și ${expiredProducts.length} expirate.`}
+                {activeProducts.length} active · {expiredProducts.length} expirate
               </Text>
             </View>
             <TouchableOpacity
@@ -275,106 +121,82 @@ const UserProductsScreen: React.FC = () => {
           </View>
         </View>
 
-        {isEmpty ? (
+        {/* ── TAB BAR ── */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+            onPress={() => setActiveTab('active')}
+          >
+            <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+              Active ({activeProducts.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'inactive' && styles.tabInactive]}
+            onPress={() => setActiveTab('inactive')}
+          >
+            <Text style={[styles.tabText, activeTab === 'inactive' && styles.tabTextInactive]}>
+              Expirate ({expiredProducts.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── TAB CONTENT ── */}
+        {displayedProducts.length === 0 ? (
           <View style={styles.card}>
-            <Text style={[styles.mutedText, { marginBottom: 12 }]}>Nu există produse active încă.</Text>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => navigation.navigate('NewListing', { listingType: 'direct' })}
-            >
-              <Text style={styles.primaryButtonText}>Listează un produs</Text>
-            </TouchableOpacity>
+            <Text style={[styles.mutedText, { marginBottom: activeTab === 'active' ? 12 : 0 }]}>
+              {activeTab === 'active'
+                ? 'Nu ai produse active în acest moment.'
+                : 'Nu ai produse expirate disponibile pentru reactivare.'}
+            </Text>
+            {activeTab === 'active' && (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => navigation.navigate('NewListing', { listingType: 'direct' })}
+              >
+                <Text style={styles.primaryButtonText}>Listează un produs</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
-          <View>
-            {/* ── ACTIVE PRODUCTS SECTION ── */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>🟢</Text>
-              <Text style={styles.sectionTitle}>Active în magazin</Text>
-              <Text style={styles.sectionCount}>{activeProducts.length}</Text>
-            </View>
+          displayedProducts.map((product: any) => {
+            const expired = isDirectListingExpired(product);
+            const expiryDate = getEffectiveListingExpiryDate(product);
+            const relisting = relistingProductId === product.id;
 
-            {activeProducts.length === 0 ? (
-              <View style={styles.card}>
-                <Text style={styles.mutedText}>Nu ai produse active în acest moment.</Text>
-              </View>
-            ) : (
-              activeProducts.map((product: any) => {
-                const expiryDate = getEffectiveListingExpiryDate(product);
-                return <View key={product.id} style={styles.card}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>
-                        {product.name}
-                      </Text>
-                      <Text style={styles.mutedText}>
-                        {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
-                      </Text>
-                      <Text style={[styles.mutedText, { marginTop: 2 }]}>
-                        {expiryDate ? `Expirare listare: ${expiryDate.toLocaleDateString()}` : 'Fără expirare definită'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                      <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
-                    </View>
+            return (
+              <View key={product.id} style={expired ? styles.expiredCard : styles.card}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={styles.cardTitle} numberOfLines={2}>
+                      {product.name}
+                    </Text>
+                    <Text style={styles.mutedText}>
+                      {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
+                    </Text>
+                    <Text style={[styles.mutedText, { marginTop: 2 }]}>
+                      {expired
+                        ? (expiryDate ? `Expirat la: ${expiryDate.toLocaleDateString()}` : 'Expirat')
+                        : (expiryDate ? `Expirare listare: ${expiryDate.toLocaleDateString()}` : 'Fără expirare definită')}
+                    </Text>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, { flex: 1 }]}
-                      onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
-                    >
-                      <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              })
-            )}
-
-            {/* ── DIVIDER ── */}
-            <View style={styles.sectionDivider} />
-
-            {/* ── EXPIRED PRODUCTS SECTION ── */}
-            <View style={[styles.sectionHeader, styles.sectionHeaderExpired]}>
-              <Text style={styles.sectionIcon}>🔴</Text>
-              <Text style={[styles.sectionTitle, { color: '#fca5a5' }]}>Expirate — reactivează</Text>
-              <Text style={styles.sectionCount}>{expiredProducts.length}</Text>
-            </View>
-
-            {expiredProducts.length === 0 ? (
-              <View style={styles.expiredCard}>
-                <Text style={styles.mutedText}>Nu ai produse expirate disponibile pentru reactivare.</Text>
-              </View>
-            ) : (
-              expiredProducts.map((product: any) => {
-                const expiryDate = getEffectiveListingExpiryDate(product);
-                const relisting = relistingProductId === product.id;
-                return <View key={product.id} style={styles.expiredCard}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={styles.cardTitle} numberOfLines={2}>
-                        {product.name}
-                      </Text>
-                      <Text style={styles.mutedText}>
-                        {product.country ? `${product.country}${product.year ? ` • ${product.year}` : ''}` : 'Produs listat'}
-                      </Text>
-                      <Text style={[styles.mutedText, { marginTop: 2 }]}>
-                        {expiryDate ? `Expirat la: ${expiryDate.toLocaleDateString()}` : 'Expirat'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                      <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
+                  <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                    <Text style={styles.priceText}>{formatEUR(product.price)}</Text>
+                    {expired && (
                       <View style={styles.expiredBadge}>
                         <Text style={styles.expiredBadgeText}>EXPIRAT</Text>
                       </View>
-                    </View>
+                    )}
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, { flex: 1 }]}
-                      onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
-                    >
-                      <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
-                    </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.secondaryButton, { flex: 1 }]}
+                    onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+                  >
+                    <Text style={styles.secondaryButtonText}>Vezi produsul</Text>
+                  </TouchableOpacity>
+                  {expired && (
                     <TouchableOpacity
                       style={[styles.reactivateButton, { opacity: relisting ? 0.7 : 1 }]}
                       onPress={() => handleRelist(product.id)}
@@ -384,15 +206,169 @@ const UserProductsScreen: React.FC = () => {
                         {relisting ? 'Se reactivează...' : `Reactivează (${relistCost} credite)`}
                       </Text>
                     </TouchableOpacity>
-                  </View>
+                  )}
                 </View>
-              })
-            )}
-          </View>
+              </View>
+            );
+          })
         )}
       </View>
     </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  content: {
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    fontSize: 13,
+    marginTop: 6,
+    color: colors.textSecondary,
+  },
+  // ── Tab bar ──
+  tabBar: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+    overflow: 'hidden',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: colors.primary,
+  },
+  tabInactive: {
+    backgroundColor: '#dc2626',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  tabTextActive: {
+    color: colors.primaryText,
+  },
+  tabTextInactive: {
+    color: '#fff',
+  },
+  // ── Cards ──
+  card: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+    backgroundColor: colors.cardBackground,
+    padding: 16,
+    marginBottom: 12,
+  },
+  expiredCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.04)',
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  mutedText: {
+    color: colors.textSecondary,
+  },
+  priceText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.success,
+  },
+  expiredBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.45)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  expiredBadgeText: {
+    color: '#fecaca',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // ── Buttons ──
+  primaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: colors.primaryText,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  reactivateButton: {
+    backgroundColor: '#dc2626',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    flex: 1,
+  },
+  reactivateButtonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  // ── Layout ──
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorTitle: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorText: {
+    color: colors.errorLight,
+    textAlign: 'center',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: colors.background,
+  },
+});
 
 export default UserProductsScreen;
