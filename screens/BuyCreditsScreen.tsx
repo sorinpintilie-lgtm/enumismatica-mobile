@@ -11,7 +11,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import { useIAP, type Purchase } from 'expo-iap';
+import { useIAP, finishTransaction as finishTransactionDirect, type Purchase } from 'expo-iap';
 import { isUserCancelledError } from 'expo-iap/build/utils/errorMapping';
 import type { PurchaseError } from 'expo-iap/build/utils/errorMapping';
 import InlineBackButton from '../components/InlineBackButton';
@@ -96,15 +96,16 @@ const BuyCreditsScreen: React.FC = () => {
           Platform.OS,
         );
 
-        if (validation.success) {
-          // 2. Finish (consume) the transaction so it can be purchased again
-          try {
-            // Use the iap ref to call finishTransaction
-            await finishTransactionRef.current?.(purchase);
-          } catch (finishErr) {
-            console.warn('[BuyCreditsScreen] finishTransaction error:', finishErr);
-          }
+        // 2. ALWAYS finish (consume) the transaction — even if already processed
+        // This prevents "already purchased" error on next attempt
+        try {
+          await finishTransactionDirect({ purchase, isConsumable: true });
+          console.log('[BuyCreditsScreen] finishTransaction succeeded');
+        } catch (finishErr: any) {
+          console.warn('[BuyCreditsScreen] finishTransaction error (non-fatal):', finishErr?.message || finishErr);
+        }
 
+        if (validation.success) {
           await refreshCredits();
           Alert.alert(
             'Succes',
@@ -127,7 +128,7 @@ const BuyCreditsScreen: React.FC = () => {
         processingRef.current = false;
       }
     },
-    [refreshCredits],
+    [refreshCredits, selectedSku],
   );
 
   // -----------------------------------------------------------------------
@@ -158,19 +159,11 @@ const BuyCreditsScreen: React.FC = () => {
     products,
     fetchProducts,
     requestPurchase,
-    finishTransaction,
     restorePurchases,
   } = useIAP({
     onPurchaseSuccess: handlePurchaseSuccess,
     onPurchaseError: handlePurchaseError,
   });
-
-  // Keep a ref to finishTransaction so the callback can use it
-  const finishTransactionRef = useRef<((purchase: Purchase) => Promise<void>) | undefined>(undefined);
-  useEffect(() => {
-    finishTransactionRef.current = (purchase: Purchase) =>
-      finishTransaction({ purchase, isConsumable: true });
-  }, [finishTransaction]);
 
   // -----------------------------------------------------------------------
   // Fetch products once connected
@@ -193,25 +186,40 @@ const BuyCreditsScreen: React.FC = () => {
     })();
   }, [connected, fetchProducts]);
 
-  // If not connected after mount, stop loading after timeout
+  // Clear connection error and stop loading once actually connected
   useEffect(() => {
-    if (connected) return;
-    const timeout = setTimeout(() => {
-      if (!connected) {
-        setLoading(false);
-        setIapError(
-          'Nu s-a putut conecta la magazin. Asigură-te că ai conexiune la internet și încearcă din nou.',
-        );
-      }
-    }, 10_000);
-    return () => clearTimeout(timeout);
+    if (connected) {
+      setIapError(null);
+    }
   }, [connected]);
 
-  // When products arrive, select the first one
+  // If not connected after mount, stop loading after a generous timeout
   useEffect(() => {
-    if (products.length > 0 && !selectedSku) {
-      setSelectedSku(products[0].id);
+    const timeout = setTimeout(() => {
+      // Only show error if we're still loading AND no products loaded
+      setLoading((prev) => {
+        if (prev) {
+          setIapError((prevErr) => {
+            // Only set if not already cleared by a successful connect
+            if (prevErr === null) return null;
+            return 'Nu s-a putut conecta la magazin. Asigură-te că ai conexiune la internet și încearcă din nou.';
+          });
+        }
+        return false;
+      });
+    }, 15_000);
+    return () => clearTimeout(timeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When products arrive, select the first one and clear any lingering error
+  useEffect(() => {
+    if (products.length > 0) {
+      if (!selectedSku) {
+        setSelectedSku(products[0].id);
+      }
       setLoading(false);
+      setIapError(null); // Products loaded — clear any connection error
     }
   }, [products, selectedSku]);
 
