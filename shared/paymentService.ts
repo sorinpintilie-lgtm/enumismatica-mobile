@@ -34,9 +34,63 @@ type IapModule = {
   };
 };
 
+/**
+ * Safely read a string property from a potentially native Proxy object.
+ * expo-iap returns JSI host objects that throw
+ * "Exception in HostFunction: Native state unsupported on Proxy"
+ * when you access properties directly.
+ */
+function safeStr(obj: any, key: string): string {
+  try {
+    const v = obj?.[key];
+    return typeof v === 'string' ? v : (v != null ? String(v) : '');
+  } catch { return ''; }
+}
+
 function getIapModule(): IapModule | null {
   try {
-    return require('expo-iap') as IapModule;
+    const mod = require('expo-iap') as IapModule & {
+      emitter?: { addListener: (event: string, listener: (...args: any[]) => void) => { remove: () => void } };
+    };
+
+    // Bypass expo-iap's normalizePurchasePlatform which accesses native Proxy
+    // properties and throws "Exception in HostFunction: Native state unsupported on Proxy".
+    if (mod.emitter) {
+      const rawEmitter = mod.emitter;
+      mod.purchaseUpdatedListener = (listener) =>
+        rawEmitter.addListener('purchase-updated', listener);
+      mod.purchaseErrorListener = (listener) =>
+        rawEmitter.addListener('purchase-error', listener);
+    }
+
+    // Wrap requestPurchase to catch Proxy errors from return value normalization
+    const origRequestPurchase = mod.requestPurchase;
+    mod.requestPurchase = async (params) => {
+      try {
+        await origRequestPurchase(params);
+      } catch (err: any) {
+        const msg = String(err?.message || err || '');
+        if (msg.includes('Native state') || msg.includes('HostFunction') || msg.includes('Proxy')) {
+          // Purchase was initiated; listener will handle the result
+          return null;
+        }
+        throw err;
+      }
+      return null;
+    };
+
+    // Wrap getAvailablePurchases to catch Proxy errors
+    const origGetAvailable = mod.getAvailablePurchases;
+    mod.getAvailablePurchases = async () => {
+      try { return await origGetAvailable(); }
+      catch (err: any) {
+        const msg = String(err?.message || err || '');
+        if (msg.includes('Native state') || msg.includes('HostFunction') || msg.includes('Proxy')) return [];
+        throw err;
+      }
+    };
+
+    return mod;
   } catch (error) {
     console.warn('expo-iap native module is unavailable in this client (Expo Go).', error);
     return null;
@@ -44,7 +98,7 @@ function getIapModule(): IapModule | null {
 }
 
 function isUserCancelledError(error: any, iap: IapModule | null): boolean {
-  const code = error?.code;
+  const code = safeStr(error, 'code');
   if (!code) return false;
 
   return (
@@ -161,8 +215,9 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
         try {
           const partial = await iap.fetchProducts({ skus: [sku], type: 'in-app' });
           for (const p of partial) {
-            if (!seen.has(p.id)) {
-              seen.add(p.id);
+            const pid = safeStr(p, 'id');
+            if (pid && !seen.has(pid)) {
+              seen.add(pid);
               merged.push(p);
             }
           }
@@ -179,14 +234,22 @@ export async function getIAPProducts(): Promise<IAPProduct[]> {
       return [];
     }
     
-    return products.map((product) => ({
-      productId: product.id,
-      title: product.title || 'Credite eNumismatica',
-      description: product.description || `${PRODUCT_CREDITS_MAP[product.id] || 0} credite`,
-      price: String(product.price || ''),
-      localizedPrice: String(product.price || ''), // localizedPrice may not exist on all platforms
-      credits: PRODUCT_CREDITS_MAP[product.id] || 0,
-    }));
+    return products.map((product) => {
+      const pid = safeStr(product, 'id');
+      const rawPrice = safeStr(product, 'localizedPrice') || safeStr(product, 'displayPrice') || safeStr(product, 'price');
+      // Use fallback RON price from our map if store returns garbage floats or empty
+      const displayPrice = (rawPrice && !rawPrice.includes('e+') && rawPrice.length < 20)
+        ? rawPrice
+        : (PRODUCT_PRICE_MAP[pid] || rawPrice || '');
+      return {
+        productId: pid,
+        title: safeStr(product, 'title') || 'Credite eNumismatica',
+        description: safeStr(product, 'description') || `${PRODUCT_CREDITS_MAP[pid] || 0} credite`,
+        price: displayPrice,
+        localizedPrice: displayPrice,
+        credits: PRODUCT_CREDITS_MAP[pid] || 0,
+      };
+    });
   } catch (error) {
     console.error('Failed to get IAP products:', error);
     return [];
@@ -241,16 +304,17 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
     purchaseSubscription = iap.purchaseUpdatedListener(async (purchase: IapPurchaseRaw) => {
       if (resolved) return;
       
-      // Check if this purchase is for our product
-      if (purchase.id !== productId) return;
+      // Check if this purchase is for our product (safe read from native Proxy)
+      const purchaseId = safeStr(purchase, 'id') || safeStr(purchase, 'productId');
+      if (purchaseId !== productId) return;
       
       resolved = true;
       cleanup();
 
       try {
-        // Get transaction details
-        const transactionId = purchase.transactionId || null;
-        const purchaseToken = purchase.purchaseToken || '';
+        // Get transaction details (safe reads from native Proxy)
+        const transactionId = safeStr(purchase, 'transactionId') || safeStr(purchase, 'originalTransactionIdentifierIOS') || null;
+        const purchaseToken = safeStr(purchase, 'purchaseToken') || safeStr(purchase, 'transactionReceipt') || safeStr(purchase, 'verificationResultIOS') || '';
 
         // Validate receipt with backend
         const validationResult = await validatePurchaseWithBackend(
@@ -311,7 +375,7 @@ export function purchaseCredits(productId: string): Promise<IAPPurchaseResult> {
           success: false,
           creditsAdded: 0,
           transactionId: null,
-          error: error.message || 'A apărut o eroare la achiziție',
+          error: safeStr(error, 'message') || 'A apărut o eroare la achiziție',
         });
       }
     });
@@ -410,9 +474,9 @@ export async function restorePurchases(): Promise<IAPPurchaseResult[]> {
     }
 
     for (const purchase of purchases) {
-      const productId = purchase.id;
-      const purchaseToken = purchase.purchaseToken || '';
-      const transactionId = purchase.transactionId || null;
+      const productId = safeStr(purchase, 'id') || safeStr(purchase, 'productId');
+      const purchaseToken = safeStr(purchase, 'purchaseToken') || safeStr(purchase, 'transactionReceipt') || safeStr(purchase, 'verificationResultIOS');
+      const transactionId = safeStr(purchase, 'transactionId') || safeStr(purchase, 'originalTransactionIdentifierIOS') || null;
 
       // Validate with backend
       const validationResult = await validatePurchaseWithBackend(
