@@ -23,12 +23,13 @@ import {
   DEFAULT_QUALITY_OPTION,
   DIAMETER_RANGE_OPTIONS,
   MATERIAL_OPTIONS,
+  WEIGHT_RANGE_OPTIONS,
   normalizeDiameterRange,
   normalizeMaterial as normalizeMaterialStd,
   normalizeQuality,
   normalizeWeight,
+  normalizeWeightRange,
   sortQualitiesAlpha,
-  sortWeightsAsc,
 } from '../utils/coinClassification';
 
 interface RawProduct {
@@ -63,16 +64,7 @@ interface TransformedProduct {
   era: string;
 }
 
-const getWeightRange = (weight: string): string => {
-  if (!weight) return '';
-  const match = weight.match(/(\d+(?:[\.,]\d+)?)/);
-  if (!match) return '';
-  const value = parseFloat(match[1].replace(',', '.'));
-  if (!Number.isFinite(value)) return '';
-  if (value < 50) return '0-50 g';
-  if (value < 100) return '50-100 g';
-  return '100+ g';
-};
+
 
 const extractSpec = (text: string, key: 'Material' | 'Diametru' | 'Greutate' | 'Calitate'): string => {
   if (!text) return '';
@@ -225,7 +217,7 @@ export default function MonetariaStatuluiScreen() {
       baseProducts = baseProducts.filter(p => normalizeDiameterRange(p.diameter) === normalizeDiameterRange(diameter));
     }
     if (excludeFilter !== 'weight' && weight !== 'Toate Greutățile') {
-      baseProducts = baseProducts.filter(p => getWeightRange(normalizeWeight(p.weight)) === weight);
+      baseProducts = baseProducts.filter(p => normalizeWeightRange(p.weight) === weight);
     }
     if (excludeFilter !== 'quality' && quality !== DEFAULT_QUALITY_OPTION) {
       baseProducts = baseProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));
@@ -237,7 +229,7 @@ export default function MonetariaStatuluiScreen() {
   // Calculate available options for each filter based on other filters
   const availableMaterials = ['Toate Materialele', ...MATERIAL_OPTIONS.filter((m) => getFilteredProductsExcluding('material').some((p) => normalizeMaterialStd(p.mint) === m))];
   const availableDiameters = ['Toate Diametrele', ...DIAMETER_RANGE_OPTIONS.filter((d) => getFilteredProductsExcluding('diameter').some((p) => normalizeDiameterRange(p.diameter) === d))];
-  const availableWeights = ['Toate Greutățile', ...sortWeightsAsc(Array.from(new Set(getFilteredProductsExcluding('weight').map(p => normalizeWeight(p.weight)).filter(Boolean))))];
+  const availableWeights = ['Toate Greutățile', ...WEIGHT_RANGE_OPTIONS.filter(r => getFilteredProductsExcluding('weight').some(p => normalizeWeightRange(p.weight) === r))];
   const availableQualities = [DEFAULT_QUALITY_OPTION, ...sortQualitiesAlpha(Array.from(new Set(getFilteredProductsExcluding('quality').map(p => normalizeQuality(p.era)).filter(Boolean))))];
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
@@ -251,7 +243,7 @@ export default function MonetariaStatuluiScreen() {
     filteredProducts = filteredProducts.filter(p => normalizeDiameterRange(p.diameter) === normalizeDiameterRange(diameter));
   }
   if (weight !== 'Toate Greutățile') {
-    filteredProducts = filteredProducts.filter(p => getWeightRange(normalizeWeight(p.weight)) === weight);
+    filteredProducts = filteredProducts.filter(p => normalizeWeightRange(p.weight) === weight);
   }
   if (quality !== DEFAULT_QUALITY_OPTION) {
     filteredProducts = filteredProducts.filter(p => normalizeQuality(p.era) === normalizeQuality(quality));

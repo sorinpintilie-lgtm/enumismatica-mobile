@@ -63,6 +63,34 @@ export const normalizeWeight = (input?: string | null): string => {
   return `${n} g`;
 };
 
+/**
+ * Weight range buckets used for the Monetăria Statului filter.
+ * These are human-readable labels that map to numeric ranges.
+ */
+export const WEIGHT_RANGE_OPTIONS = [
+  'Sub 10 g',
+  '10 – 20 g',
+  '20 – 50 g',
+  '50 – 100 g',
+  '100+ g',
+] as const;
+
+export type WeightRange = typeof WEIGHT_RANGE_OPTIONS[number];
+
+/**
+ * Maps a raw weight string (e.g. "31.1 g" or "31.1") to a display range bucket.
+ * Returns '' when the value cannot be parsed.
+ */
+export const normalizeWeightRange = (input?: string | null): string => {
+  const n = parseLeadingNumber(input);
+  if (n === null) return '';
+  if (n < 10) return 'Sub 10 g';
+  if (n < 20) return '10 – 20 g';
+  if (n < 50) return '20 – 50 g';
+  if (n < 100) return '50 – 100 g';
+  return '100+ g';
+};
+
 export const sortWeightsAsc = (values: string[]): string[] => {
   return [...values].sort((a, b) => {
     const na = parseLeadingNumber(a) ?? Number.MAX_SAFE_INTEGER;
@@ -71,14 +99,70 @@ export const sortWeightsAsc = (values: string[]): string[] => {
   });
 };
 
+/**
+ * Canonical quality labels for Monetăria Statului products.
+ * All raw variants from the data source are mapped to one of these.
+ */
+export const QUALITY_CANONICAL = [
+  'Clasică',
+  'Proof',
+  'Proof Like',
+  'Șablată',
+  'Patinată',
+  'Șablată Patinată',
+] as const;
+
+export type QualityCanonical = typeof QUALITY_CANONICAL[number];
+
 export const normalizeQuality = (input?: string | null): string => {
   if (!input) return '';
+
+  // Collapse zero-width spaces, newlines, stray punctuation, then lowercase
   const cleaned = String(input)
-    .replace(/[\u200B\n\r]+/g, ' ')
+    .replace(/[\u200B\u00A0\n\r\t]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    // strip trailing dot / comma / semicolon left by bad data (e.g. "proof.")
+    .replace(/[.,;:]+$/, '')
+    // remove embedded prices like "pret: 121 lei"
+    .replace(/\s*pret\s*:?\s*\d+\s*lei\s*/gi, '')
+    // remove "tiraj fix" / "tiraj limitat" suffixes
+    .replace(/\s*tiraj\s+(fix|limitat)\s*/gi, '')
+    // remove stray digits and currency
+    .replace(/\d+\s*lei\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   if (!cleaned) return '';
+
+  // ---- canonical mapping ----
+  // Order matters: more specific patterns first
+
+  // "sablata patinata" / "sablata, patinata" / "sablată patinată"
+  if (/sabl[aă]t[aă][\s,]+patin[aă]t[aă]/.test(cleaned) ||
+      /patin[aă]t[aă][\s,]+sabl[aă]t[aă]/.test(cleaned)) {
+    return 'Șablată Patinată';
+  }
+
+  // "sablata" / "sablat" / "șablată"
+  if (/^sabl[aă]t[aă]?$/.test(cleaned) || /^[șs]ablat[aă]?$/.test(cleaned)) {
+    return 'Șablată';
+  }
+
+  // "proof like"
+  if (/proof[\s-]+like/.test(cleaned)) return 'Proof Like';
+
+  // "proof" (also catches "proof." already stripped above)
+  if (/^proof$/.test(cleaned) || cleaned.startsWith('proof')) return 'Proof';
+
+  // "patinata" / "patinată"
+  if (/^patin[aă]t[aă]?$/.test(cleaned) || cleaned.startsWith('patin')) return 'Patinată';
+
+  // "clasica" / "clasică"
+  if (/^clasic[aă]?$/.test(cleaned) || cleaned.startsWith('clasic')) return 'Clasică';
+
+  // Fallback: capitalise first letter and return as-is (unknown raw variant)
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 };
 
